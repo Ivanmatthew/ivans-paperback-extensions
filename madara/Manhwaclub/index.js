@@ -2230,7 +2230,7 @@ class Manhwaclub extends Madara_1.Madara {
         super(...arguments);
         this.baseUrl = DOMAIN;
         this.hasAdvancedSearchPage = true;
-        this.sourceTraversalPathName = 'manga';
+        //override directoryPath = 'manga' // already set by default
         this.searchMangaSelector = 'div.c-tabs-item > div.row';
     }
 }
