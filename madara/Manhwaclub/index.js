@@ -2209,7 +2209,7 @@ const types_1 = require("@paperback/types");
 const Madara_1 = require("../Madara");
 const DOMAIN = 'https://manhwaclub.net';
 exports.ManhwaclubInfo = {
-    version: (0, Madara_1.getExportVersion)('0.0.2'),
+    version: (0, Madara_1.getExportVersion)('0.0.3'),
     name: 'ManhwaClub',
     description: 'Extension that pulls from Manhwaclub',
     author: 'IvanMatthew',
@@ -2229,11 +2229,9 @@ class Manhwaclub extends Madara_1.Madara {
     constructor() {
         super(...arguments);
         this.baseUrl = DOMAIN;
-        this.languageCode = LanguageCode.ENGLISH;
         this.hasAdvancedSearchPage = true;
         this.sourceTraversalPathName = 'manga';
         this.searchMangaSelector = 'div.c-tabs-item > div.row';
-        this.userAgent = false;
     }
 }
 exports.Manhwaclub = Manhwaclub;
