@@ -9048,7 +9048,7 @@ const Madara_1 = require("../Madara");
 const MangaCultivatorParser_1 = require("./MangaCultivatorParser");
 const DOMAIN = 'https://mangacultivator.com';
 exports.MangaCultivatorInfo = {
-    version: (0, Madara_1.getExportVersion)('0.0.0'),
+    version: (0, Madara_1.getExportVersion)('0.0.1'),
     name: 'MangaCultivator',
     description: `Extension that pulls manga from ${DOMAIN}`,
     author: 'Community',
