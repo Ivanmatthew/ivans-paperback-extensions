@@ -8362,6 +8362,16 @@ class Madara {
          */
         this.searchPagePathName = 'page';
         /**
+         * Set to true if the source makes use of the manga chapter protector plugin.
+         * (https://mangabooth.com/product/wp-manga-chapter-protector/)
+         */
+        this.hasProtectedChapters = false;
+        /**
+         * Some sources may in the future change how to get the chapter protector data,
+         * making it configurable, will make it way more flexible and open to customized installations of the protector plugin.
+         */
+        this.protectedChapterDataSelector = '#chapter-protector-data';
+        /**
          * Some sites use the alternate URL for getting chapters through ajax
          */
         this.alternativeChapterAjaxEndpoint = false;
@@ -8454,6 +8464,9 @@ class Madara {
         const response = await this.requestManager.schedule(request, 1);
         this.checkResponseError(response);
         const $ = this.cheerio.load(response.data);
+        if (this.hasProtectedChapters) {
+            return this.parser.parseProtectedChapterDetails($, mangaId, chapterId, this.protectedChapterDataSelector, this);
+        }
         return this.parser.parseChapterDetails($, mangaId, chapterId, this.chapterDetailsSelector, this);
     }
     async getSearchTags() {
@@ -8781,9 +8794,38 @@ exports.URLBuilder = URLBuilder;
 
 },{}],108:[function(require,module,exports){
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Parser = void 0;
 const entities = require("entities");
+const crypto_js_1 = __importDefault(require("crypto-js"));
+const CryptoJSFormatter = {
+    stringify: function (cipherParams) {
+        const jsonObj = { ct: cipherParams.ciphertext.toString(crypto_js_1.default.enc.Base64), iv: '',
+            s: ''
+        };
+        if (cipherParams.iv) {
+            jsonObj.iv = cipherParams.iv.toString();
+        }
+        if (cipherParams.salt) {
+            jsonObj.s = cipherParams.salt.toString();
+        }
+        return JSON.stringify(jsonObj);
+    },
+    parse: function (jsonStr) {
+        const jsonObj = JSON.parse(jsonStr);
+        const cipherParams = crypto_js_1.default.lib.CipherParams.create({ ciphertext: crypto_js_1.default.enc.Base64.parse(jsonObj.ct) });
+        if (jsonObj.iv) {
+            cipherParams.iv = crypto_js_1.default.enc.Hex.parse(jsonObj.iv);
+        }
+        if (jsonObj.s) {
+            cipherParams.salt = crypto_js_1.default.enc.Hex.parse(jsonObj.s);
+        }
+        return cipherParams;
+    }
+};
 class Parser {
     constructor() {
         this.parseDate = (date) => {
@@ -8923,6 +8965,39 @@ class Parser {
             pages: pages
         });
     }
+    decryptData(cipherText, key) {
+        return JSON.parse(JSON.parse(crypto_js_1.default.AES.decrypt(cipherText, key, { format: CryptoJSFormatter }).toString(crypto_js_1.default.enc.Utf8)));
+    }
+    extractVariableValues(chapterData) {
+        const variableRegex = /var\s+(\w+)\s*=\s*'([^']*)';/g;
+        const variables = {};
+        let match;
+        while ((match = variableRegex.exec(chapterData)) !== null) {
+            const [, variableName, variableValue] = match;
+            variables[variableName] = variableValue;
+        }
+        return variables;
+    }
+    async parseProtectedChapterDetails($, mangaId, chapterId, selector, source) {
+        if (!$(selector).length) {
+            return this.parseChapterDetails($, mangaId, chapterId, selector, source);
+        }
+        // under no circumstances directly eval (or Function), as they might go hardy harr-harr sneaky and pull an RCE
+        const variables = this.extractVariableValues($(selector).get()[0].children[0].data);
+        if (!('chapter_data' in variables) || !('wpmangaprotectornonce' in variables)) {
+            throw new Error(`Could not parse page for postId:${mangaId} chapterId:${chapterId}. Reason: Lacks sufficient data`);
+        }
+        const chapterList = this.decryptData(variables['chapter_data'], variables['wpmangaprotectornonce']);
+        const pages = [];
+        chapterList.forEach((page) => {
+            pages.push(encodeURI(page));
+        });
+        return App.createChapterDetails({
+            id: chapterId,
+            mangaId: mangaId,
+            pages: pages
+        });
+    }
     parseTags($, advancedSearch) {
         const genres = [];
         if (advancedSearch) {
@@ -9039,13 +9114,12 @@ class Parser {
 }
 exports.Parser = Parser;
 
-},{"entities":105}],109:[function(require,module,exports){
+},{"crypto-js":72,"entities":105}],109:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MangaCultivator = exports.MangaCultivatorInfo = void 0;
 const types_1 = require("@paperback/types");
 const Madara_1 = require("../Madara");
-const MangaCultivatorParser_1 = require("./MangaCultivatorParser");
 const DOMAIN = 'https://mangacultivator.com';
 exports.MangaCultivatorInfo = {
     version: (0, Madara_1.getExportVersion)('0.0.1'),
@@ -9065,83 +9139,11 @@ class MangaCultivator extends Madara_1.Madara {
         this.baseUrl = DOMAIN;
         this.alternativeChapterAjaxEndpoint = true;
         this.hasAdvancedSearchPage = true;
+        this.hasProtectedChapters = true;
         this.usePostIds = false;
-        this.chapterDetailsSelector = '#chapter-protector-data';
-        this.parser = new MangaCultivatorParser_1.MangaCultivatorParser();
     }
 }
 exports.MangaCultivator = MangaCultivator;
 
-},{"../Madara":106,"./MangaCultivatorParser":110,"@paperback/types":61}],110:[function(require,module,exports){
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.MangaCultivatorParser = void 0;
-const MadaraParser_1 = require("../MadaraParser");
-const crypto_js_1 = __importDefault(require("crypto-js"));
-const CryptoJSFormatter = {
-    stringify: function (cipherParams) {
-        const jsonObj = { ct: cipherParams.ciphertext.toString(crypto_js_1.default.enc.Base64), iv: '',
-            s: ''
-        };
-        if (cipherParams.iv) {
-            jsonObj.iv = cipherParams.iv.toString();
-        }
-        if (cipherParams.salt) {
-            jsonObj.s = cipherParams.salt.toString();
-        }
-        return JSON.stringify(jsonObj);
-    },
-    parse: function (jsonStr) {
-        const jsonObj = JSON.parse(jsonStr);
-        const cipherParams = crypto_js_1.default.lib.CipherParams.create({ ciphertext: crypto_js_1.default.enc.Base64.parse(jsonObj.ct) });
-        if (jsonObj.iv) {
-            cipherParams.iv = crypto_js_1.default.enc.Hex.parse(jsonObj.iv);
-        }
-        if (jsonObj.s) {
-            cipherParams.salt = crypto_js_1.default.enc.Hex.parse(jsonObj.s);
-        }
-        return cipherParams;
-    }
-};
-class MangaCultivatorParser extends MadaraParser_1.Parser {
-    decryptData(cipherText, key) {
-        return JSON.parse(JSON.parse(crypto_js_1.default.AES.decrypt(cipherText, key, { format: CryptoJSFormatter }).toString(crypto_js_1.default.enc.Utf8)));
-    }
-    extractVariableValues(chapterData) {
-        const variableRegex = /var\s+(\w+)\s*=\s*'([^']*)';/g;
-        const variables = {};
-        let match;
-        while ((match = variableRegex.exec(chapterData)) !== null) {
-            const [, variableName, variableValue] = match;
-            variables[variableName] = variableValue;
-        }
-        return variables;
-    }
-    async parseChapterDetails($, mangaId, chapterId, selector, source) {
-        if (!$(selector).length) {
-            return super.parseChapterDetails($, mangaId, chapterId, selector, source);
-        }
-        // under no circumstances directly eval (or Function), as they might go hardy harr-harr sneaky and pull an RCE
-        const variables = this.extractVariableValues($(selector).get()[0].children[0].data);
-        if (!('chapter_data' in variables) || !('wpmangaprotectornonce' in variables)) {
-            throw new Error(`Could not parse page for postId:${mangaId} chapterId:${chapterId}. Reason: Lacks sufficient data`);
-        }
-        const chapterList = this.decryptData(variables['chapter_data'], variables['wpmangaprotectornonce']);
-        const pages = [];
-        chapterList.forEach((page) => {
-            pages.push(encodeURI(page));
-        });
-        return App.createChapterDetails({
-            id: chapterId,
-            mangaId: mangaId,
-            pages: pages
-        });
-    }
-}
-exports.MangaCultivatorParser = MangaCultivatorParser;
-
-},{"../MadaraParser":108,"crypto-js":72}]},{},[109])(109)
+},{"../Madara":106,"@paperback/types":61}]},{},[109])(109)
 });
