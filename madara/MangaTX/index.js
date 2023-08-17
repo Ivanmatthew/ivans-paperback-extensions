@@ -2209,7 +2209,7 @@ const types_1 = require("@paperback/types");
 const Madara_1 = require("../Madara");
 const DOMAIN = 'https://mangatx.com';
 exports.MangaTXInfo = {
-    version: (0, Madara_1.getExportVersion)('0.0.1'),
+    version: (0, Madara_1.getExportVersion)('0.0.0'),
     name: 'MangaTX',
     description: `Extension that pulls manga from ${DOMAIN}`,
     author: 'Netsky',
@@ -2224,7 +2224,7 @@ class MangaTX extends Madara_1.Madara {
     constructor() {
         super(...arguments);
         this.baseUrl = DOMAIN;
-        this.alternativeChapterAjaxEndpoint = true;
+        this.alternativeChapterAjaxEndpoint = false;
         this.hasAdvancedSearchPage = true;
     }
 }
