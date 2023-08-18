@@ -1435,58 +1435,32 @@ Object.defineProperty(exports, "decodeXMLStrict", { enumerable: true, get: funct
 },{"./decode.js":62,"./encode.js":64,"./escape.js":65}],70:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AresManga = exports.AresMangaInfo = void 0;
+exports.FreakScans = exports.FreakScansInfo = void 0;
 const types_1 = require("@paperback/types");
 const MangaStream_1 = require("../MangaStream");
-const DOMAIN = 'https://aresmanga.org';
-exports.AresMangaInfo = {
+const DOMAIN = 'https://freakscans.com';
+exports.FreakScansInfo = {
     version: (0, MangaStream_1.getExportVersion)('0.0.0'),
-    name: 'AresManga',
+    name: 'FreakScans',
     description: `Extension that pulls manga from ${DOMAIN}`,
-    author: 'Ali Mohamed',
+    author: 'Netsky',
+    authorWebsite: 'http://github.com/TheNetsky',
     icon: 'icon.png',
     contentRating: types_1.ContentRating.MATURE,
     websiteBaseURL: DOMAIN,
     intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | types_1.SourceIntents.SETTINGS_UI,
-    sourceTags: [
-        {
-            text: 'Arabic',
-            type: types_1.BadgeColor.GREY
-        }
-    ]
+    sourceTags: []
 };
-class AresManga extends MangaStream_1.MangaStream {
+class FreakScans extends MangaStream_1.MangaStream {
     constructor() {
         super(...arguments);
         this.baseUrl = DOMAIN;
-        this.language = 'AR';
-        this.directoryPath = 'series';
-        this.manga_selector_author = 'المؤلف';
-        this.manga_selector_artist = 'الرسام';
-        this.manga_selector_status = 'الحالة';
-        //----DATE SETTINGS
-        this.dateMonths = {
-            january: 'يناير',
-            february: 'فبراير',
-            march: 'مارس',
-            april: 'أبريل',
-            may: 'مايو',
-            june: 'يونيو',
-            july: 'يوليو',
-            august: 'أغسطس',
-            september: 'سبتمبر',
-            october: 'أكتوبر',
-            november: 'نوفمبر',
-            december: 'ديسمبر'
-        };
     }
     configureSections() {
         this.homescreen_sections['new_titles'].enabled = false;
-        this.homescreen_sections['popular_today'].enabled = false;
-        this.homescreen_sections['latest_update'].selectorFunc = ($) => $('div.bsx', $('h2:contains(جديد إصداراتنا)')?.parent()?.next());
     }
 }
-exports.AresManga = AresManga;
+exports.FreakScans = FreakScans;
 
 },{"../MangaStream":72,"@paperback/types":61}],71:[function(require,module,exports){
 "use strict";

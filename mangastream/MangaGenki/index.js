@@ -1499,7 +1499,7 @@ const MangaStreamParser_1 = require("./MangaStreamParser");
 const UrlBuilder_1 = require("./UrlBuilder");
 const MangaStreamHelper_1 = require("./MangaStreamHelper");
 // Set the version for the base, changing this version will change the versions of all sources
-const BASE_VERSION = '3.0.1';
+const BASE_VERSION = '3.0.0';
 const getExportVersion = (EXTENSION_VERSION) => {
     return BASE_VERSION.split('.').map((x, index) => Number(x) + Number(EXTENSION_VERSION.split('.')[index])).join('.');
 };
@@ -1527,9 +1527,6 @@ class MangaStream {
                 interceptResponse: async (response) => {
                     if (response.headers.location) {
                         response.headers.location = response.headers.location.replace(/^http:/, 'https:');
-                    }
-                    if (response.status === 302) {
-                        return this.implicit302Pointer(response);
                     }
                     return response;
                 }
@@ -1984,20 +1981,6 @@ class MangaStream {
             case 404:
                 throw new Error(`The requested page ${response.request.url} was not found!`);
         }
-    }
-    implicit302Pointer(response) {
-        const newLocation = response.headers.Location; // always ends with a '/' e.g. 'https://google.com/', therefore remove the last character (next line)
-        const actualNewLocation = newLocation.substring(0, newLocation.length - 1);
-        const oldRequest = response.request;
-        const request = App.createRequest({
-            url: actualNewLocation,
-            method: oldRequest.method,
-            headers: oldRequest.headers,
-            param: oldRequest.param,
-            data: oldRequest.data,
-            cookies: oldRequest.cookies
-        });
-        return this.requestManager.schedule(request, 1);
     }
 }
 exports.MangaStream = MangaStream;
