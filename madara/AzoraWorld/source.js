@@ -8479,6 +8479,10 @@ class Madara {
          * When not using postIds, you need to set the directory path
          */
         this.directoryPath = 'manga';
+        /**
+         * Some sources may redirect to the manga page instead of the chapter page if adding the parameter '?style=list'
+         */
+        this.useListParameter = true;
         this.parser = new MadaraParser_1.Parser();
     }
     async getSourceMenu() {
@@ -8538,10 +8542,10 @@ class Madara {
         let url;
         if (this.usePostIds) {
             const slugData = await this.convertPostIdToSlug(Number(mangaId));
-            url = `${this.baseUrl}/${slugData.path}/${slugData.slug}/${chapterId}/?style=list`;
+            url = `${this.baseUrl}/${slugData.path}/${slugData.slug}/${chapterId}${this.useListParameter ? '/?style=list' : ''}`;
         }
         else {
-            url = `${this.baseUrl}/${this.directoryPath}/${mangaId}/${chapterId}/?style=list`;
+            url = `${this.baseUrl}/${this.directoryPath}/${mangaId}/${chapterId}${this.useListParameter ? '/?style=list' : ''}`;
         }
         const request = App.createRequest({
             url: url,
