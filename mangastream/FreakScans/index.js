@@ -1435,6 +1435,36 @@ Object.defineProperty(exports, "decodeXMLStrict", { enumerable: true, get: funct
 },{"./decode.js":62,"./encode.js":64,"./escape.js":65}],70:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.FreakScans = exports.FreakScansInfo = void 0;
+const types_1 = require("@paperback/types");
+const MangaStream_1 = require("../MangaStream");
+const DOMAIN = 'https://freakscans.com';
+exports.FreakScansInfo = {
+    version: (0, MangaStream_1.getExportVersion)('0.0.0'),
+    name: 'FreakScans',
+    description: `Extension that pulls manga from ${DOMAIN}`,
+    author: 'Netsky',
+    authorWebsite: 'http://github.com/TheNetsky',
+    icon: 'icon.png',
+    contentRating: types_1.ContentRating.MATURE,
+    websiteBaseURL: DOMAIN,
+    intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | types_1.SourceIntents.SETTINGS_UI,
+    sourceTags: []
+};
+class FreakScans extends MangaStream_1.MangaStream {
+    constructor() {
+        super(...arguments);
+        this.baseUrl = DOMAIN;
+    }
+    configureSections() {
+        this.homescreen_sections['new_titles'].enabled = false;
+    }
+}
+exports.FreakScans = FreakScans;
+
+},{"../MangaStream":72,"@paperback/types":61}],71:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.convertDate = void 0;
 function convertDate(dateString, source) {
     // Parsed date string
@@ -1455,7 +1485,7 @@ function convertDate(dateString, source) {
 }
 exports.convertDate = convertDate;
 
-},{}],71:[function(require,module,exports){
+},{}],72:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MangaStream = exports.getExportVersion = void 0;
@@ -1954,7 +1984,7 @@ class MangaStream {
 }
 exports.MangaStream = MangaStream;
 
-},{"./MangaStreamHelper":72,"./MangaStreamParser":73,"./UrlBuilder":75,"@paperback/types":61}],72:[function(require,module,exports){
+},{"./MangaStreamHelper":73,"./MangaStreamParser":74,"./UrlBuilder":75,"@paperback/types":61}],73:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getFilterTagsBySection = exports.getIncludedTagBySection = exports.createHomeSection = exports.DefaultHomeSectionData = void 0;
@@ -1993,7 +2023,7 @@ function getFilterTagsBySection(section, tags, included, supportsExclusion = fal
 }
 exports.getFilterTagsBySection = getFilterTagsBySection;
 
-},{"@paperback/types":61}],73:[function(require,module,exports){
+},{"@paperback/types":61}],74:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MangaStreamParser = void 0;
@@ -2271,73 +2301,7 @@ class MangaStreamParser {
 }
 exports.MangaStreamParser = MangaStreamParser;
 
-},{"./LanguageUtils":70,"entities":69}],74:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SushiScan = exports.SushiScanInfo = void 0;
-const types_1 = require("@paperback/types");
-const MangaStream_1 = require("../MangaStream");
-const DOMAIN = 'https://sushiscan.net';
-exports.SushiScanInfo = {
-    version: (0, MangaStream_1.getExportVersion)('0.0.1'),
-    name: 'Sushi Scan',
-    description: `Extension that pulls manga from ${DOMAIN}`,
-    author: 'btylerh7',
-    authorWebsite: 'http://github.com/btylerh7',
-    icon: 'logo.png',
-    contentRating: types_1.ContentRating.EVERYONE,
-    websiteBaseURL: DOMAIN,
-    intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | types_1.SourceIntents.SETTINGS_UI,
-    sourceTags: [
-        {
-            text: 'French',
-            type: types_1.BadgeColor.GREY
-        }
-    ]
-};
-class SushiScan extends MangaStream_1.MangaStream {
-    constructor() {
-        super(...arguments);
-        this.baseUrl = DOMAIN;
-        this.directoryPath = 'catalogue';
-        this.language = '🇫🇷';
-        this.manga_tag_selector_box = 'div.seriestugenre';
-        this.manga_selector_artist = 'Dessinateur';
-        this.manga_selector_author = 'Auteur';
-        this.manga_selector_status = 'Statut';
-        this.manga_StatusTypes = {
-            ONGOING: 'En Cours',
-            COMPLETED: 'Terminé'
-        };
-        // ----DATE SELECTORS----
-        /**
-         * Enter the months for the website's language in correct order, case insensitive.
-         * Default = English Translation
-         */
-        this.dateMonths = {
-            january: 'janvier',
-            february: 'février',
-            march: 'mars',
-            april: 'avril',
-            may: 'mai',
-            june: 'juin',
-            july: 'juillet',
-            august: 'août',
-            september: 'septembre',
-            october: 'octobre',
-            november: 'novembre',
-            december: 'décembre'
-        };
-    }
-    configureSections() {
-        this.homescreen_sections['popular_today'].selectorFunc = ($) => $('div.bsx', $('h2:contains(Populaire Aujourd\'hui)')?.parent()?.next());
-        this.homescreen_sections['latest_update'].selectorFunc = ($) => $('div.utao', $('h2:contains(Dernières Sorties)')?.parent()?.next());
-        this.homescreen_sections['new_titles'].enabled = false;
-    }
-}
-exports.SushiScan = SushiScan;
-
-},{"../MangaStream":71,"@paperback/types":61}],75:[function(require,module,exports){
+},{"./LanguageUtils":71,"entities":69}],75:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.URLBuilder = void 0;
@@ -2398,5 +2362,5 @@ class URLBuilder {
 }
 exports.URLBuilder = URLBuilder;
 
-},{}]},{},[74])(74)
+},{}]},{},[70])(70)
 });

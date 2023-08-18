@@ -1494,7 +1494,7 @@ const MangaStreamParser_1 = require("./MangaStreamParser");
 const UrlBuilder_1 = require("./UrlBuilder");
 const MangaStreamHelper_1 = require("./MangaStreamHelper");
 // Set the version for the base, changing this version will change the versions of all sources
-const BASE_VERSION = '3.0.1';
+const BASE_VERSION = '3.0.0';
 const getExportVersion = (EXTENSION_VERSION) => {
     return BASE_VERSION.split('.').map((x, index) => Number(x) + Number(EXTENSION_VERSION.split('.')[index])).join('.');
 };
@@ -1522,9 +1522,6 @@ class MangaStream {
                 interceptResponse: async (response) => {
                     if (response.headers.location) {
                         response.headers.location = response.headers.location.replace(/^http:/, 'https:');
-                    }
-                    if (response.status === 302) {
-                        return this.implicit302Pointer(response);
                     }
                     return response;
                 }
@@ -1566,6 +1563,10 @@ class MangaStream {
          * Default = "manga"
          */
         this.directoryPath = 'manga';
+        /**
+         * The pathname between the domain and the filter page (this is usually the same as the directory path).
+         */
+        this.filterPath = this.directoryPath;
         /**
          * Some websites have the Cloudflare defense check enabled on specific parts of the website, these need to be loaded when using the Cloudflare bypass within the app
          */
@@ -1768,7 +1769,7 @@ class MangaStream {
     }
     async getSearchTags() {
         const request = App.createRequest({
-            url: `${this.baseUrl}/${this.directoryPath}/`,
+            url: `${this.baseUrl}/${this.filterPath}/`,
             method: 'GET'
         });
         const response = await this.requestManager.schedule(request, 1);
@@ -1980,20 +1981,6 @@ class MangaStream {
                 throw new Error(`The requested page ${response.request.url} was not found!`);
         }
     }
-    implicit302Pointer(response) {
-        const newLocation = response.headers.Location; // always ends with a '/' e.g. 'https://google.com/', therefore remove the last character (next line)
-        const actualNewLocation = newLocation.substring(0, newLocation.length - 1);
-        const oldRequest = response.request;
-        const request = App.createRequest({
-            url: actualNewLocation,
-            method: oldRequest.method,
-            headers: oldRequest.headers,
-            param: oldRequest.param,
-            data: oldRequest.data,
-            cookies: oldRequest.cookies
-        });
-        return this.requestManager.schedule(request, 1);
-    }
 }
 exports.MangaStream = MangaStream;
 
@@ -2071,8 +2058,8 @@ class MangaStreamParser {
             }
             titles.push(this.decodeHTMLEntity(title.trim()));
         }
-        const author = $(`span:contains(${source.manga_selector_author}), .fmed b:contains(${source.manga_selector_author})+span, .imptdt:contains(${source.manga_selector_author}) i`).contents().remove().last().text().trim(); // Language dependant
-        const artist = $(`span:contains(${source.manga_selector_artist}), .fmed b:contains(${source.manga_selector_artist})+span, .imptdt:contains(${source.manga_selector_artist}) i`).contents().remove().last().text().trim(); // Language dependant
+        const author = $(`span:contains(${source.manga_selector_author}), .fmed b:contains(${source.manga_selector_author})+span, .imptdt:contains(${source.manga_selector_author}) i, .tsinfo > div:nth-child(4) > i`).contents().remove().last().text().trim(); // Language dependant
+        const artist = $(`span:contains(${source.manga_selector_artist}), .fmed b:contains(${source.manga_selector_artist})+span, .imptdt:contains(${source.manga_selector_artist}) i, .tsinfo > div:nth-child(5) > i`).contents().remove().last().text().trim(); // Language dependant
         const image = this.getImageSrc($('img', 'div[itemprop="image"]'));
         const description = this.decodeHTMLEntity($('div[itemprop="description"]  p').text().trim());
         const arrayTags = [];
