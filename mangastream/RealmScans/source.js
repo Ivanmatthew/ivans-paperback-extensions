@@ -1538,6 +1538,10 @@ class MangaStream {
          */
         this.filterPath = this.directoryPath;
         /**
+         * The pathname between the domain and the search page (this is usually the same as the directory path).
+         */
+        this.searchPath = this.directoryPath;
+        /**
          * Some websites have the Cloudflare defense check enabled on specific parts of the website, these need to be loaded when using the Cloudflare bypass within the app
          */
         this.bypassPage = '';
@@ -1775,7 +1779,7 @@ class MangaStream {
     }
     async constructSearchRequest(page, query) {
         let urlBuilder = new UrlBuilder_1.URLBuilder(this.baseUrl)
-            .addPathComponent(this.directoryPath)
+            .addPathComponent(this.searchPath)
             .addQueryParameter('page', page.toString());
         if (query?.title) {
             urlBuilder = urlBuilder.addQueryParameter('s', encodeURIComponent(query?.title.replace(/[’–][a-z]*/g, '') ?? ''));
@@ -2278,9 +2282,12 @@ exports.RealmScans = exports.RealmScansInfo = void 0;
 const types_1 = require("@paperback/types");
 const MangaStream_1 = require("../MangaStream");
 const RealmScansParser_1 = require("./RealmScansParser");
+const MangaStreamHelper_1 = require("../MangaStreamHelper");
+const UrlBuilder_1 = require("../UrlBuilder");
 const DOMAIN = 'https://realmscans.to';
+const FILTER_PAGE_PATH = 'Index/filter_series';
 exports.RealmScansInfo = {
-    version: (0, MangaStream_1.getExportVersion)('1.0.2'),
+    version: (0, MangaStream_1.getExportVersion)('1.1.2'),
     name: 'RealmScans',
     description: `Extension that pulls manga from ${DOMAIN}`,
     author: 'IvanMatthew',
@@ -2297,6 +2304,7 @@ class RealmScans extends MangaStream_1.MangaStream {
         this.baseUrl = DOMAIN;
         this.directoryPath = 'm050523/series';
         this.filterPath = 'series';
+        this.searchPath = 'Index/live_search';
         this.usePostIds = false;
         this.parser = new RealmScansParser_1.RealmScansParser();
         this.dateMonths = {
@@ -2317,10 +2325,62 @@ class RealmScans extends MangaStream_1.MangaStream {
     configureSections() {
         this.homescreen_sections['new_titles'].enabled = false;
     }
+    async constructSearchRequest(page, query) {
+        let searchUrl = new UrlBuilder_1.URLBuilder(this.baseUrl);
+        const headers = {
+            'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        };
+        const formData = {};
+        if (query?.title) {
+            searchUrl = searchUrl.addPathComponent(this.searchPath);
+            formData['search_value'] = query?.title.replace(/[’–][a-z]*/g, '') ?? '';
+        }
+        else {
+            searchUrl = searchUrl.addPathComponent(FILTER_PAGE_PATH);
+            const statusValue = (0, MangaStreamHelper_1.getIncludedTagBySection)('status', query?.includedTags);
+            const typeValue = (0, MangaStreamHelper_1.getIncludedTagBySection)('type', query?.includedTags);
+            const orderValue = (0, MangaStreamHelper_1.getIncludedTagBySection)('order', query?.includedTags);
+            formData['genres_checked[]'] = (0, MangaStreamHelper_1.getFilterTagsBySection)('genres', query?.includedTags, true).join('&genre[]=');
+            formData['StatusValue'] = statusValue !== '' ? statusValue : 'all';
+            formData['TypeValue'] = typeValue !== '' ? typeValue : 'all';
+            formData['OrderValue'] = orderValue !== '' ? orderValue : 'all';
+        }
+        return App.createRequest({
+            url: searchUrl.buildUrl({ addTrailingSlash: true, includeUndefinedParameters: false }),
+            headers: headers,
+            data: Object.entries(formData).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&'),
+            method: 'POST'
+        });
+    }
+    async getSearchResults(query, metadata) {
+        const request = await this.constructSearchRequest(1, query);
+        const response = await this.requestManager.schedule(request, 1);
+        this.checkResponseError(response);
+        const searchResultData = JSON.parse(response.data);
+        const results = [];
+        for (const manga of searchResultData) {
+            results.push(App.createPartialSourceManga({
+                mangaId: getSlugFromTitle(manga.title),
+                title: manga.title,
+                image: `${this.baseUrl}/assets/images/${manga.image_url}`
+            }));
+        }
+        // Results are single page, unpaged, therefore no metadata for next page is required
+        return App.createPagedResults({
+            results: results
+        });
+    }
 }
 exports.RealmScans = RealmScans;
+const getSlugFromTitle = (title) => {
+    return title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/-s-/, "s-")
+        .replace(/-ll-/, "ll-");
+};
 
-},{"../MangaStream":71,"./RealmScansParser":75,"@paperback/types":61}],75:[function(require,module,exports){
+},{"../MangaStream":71,"../MangaStreamHelper":72,"../UrlBuilder":76,"./RealmScansParser":75,"@paperback/types":61}],75:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RealmScansParser = void 0;
@@ -2337,11 +2397,33 @@ class RealmScansParser extends MangaStreamParser_1.MangaStreamParser {
             pages: pages
         });
     }
+    async parseSearchResults($, source) {
+        const results = [];
+        for (const obj of $('div.bs', 'div.listupd').toArray()) {
+            const slug = ($('a', obj).attr('href') ?? '').replace(/\/$/, '').split('/').pop() ?? '';
+            const path = ($('a', obj).attr('href') ?? '').replace(/\/$/, '').split('/').slice(-2).shift() ?? '';
+            if (!slug || !path) {
+                throw new Error(`Unable to parse slug (${slug}) or path (${path})!`);
+            }
+            const title = $('a', obj).attr('title') ?? '';
+            const image = this.getImageSrc($('img', obj)) ?? '';
+            const subtitle = $('div.epxs', obj).text().trim();
+            results.push({
+                slug,
+                path,
+                image: image || source.fallbackImage,
+                title: this.decodeHTMLEntity(title),
+                subtitle: this.decodeHTMLEntity(subtitle)
+            });
+        }
+        return results;
+    }
 }
 exports.RealmScansParser = RealmScansParser;
 
 },{"../MangaStreamParser":73}],76:[function(require,module,exports){
 "use strict";
+// this has been superseded by the URL class in the standard library
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.URLBuilder = void 0;
 class URLBuilder {
