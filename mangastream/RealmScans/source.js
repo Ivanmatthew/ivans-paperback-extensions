@@ -2287,7 +2287,7 @@ const UrlBuilder_1 = require("../UrlBuilder");
 const DOMAIN = 'https://realmscans.to';
 const FILTER_PAGE_PATH = 'Index/filter_series';
 exports.RealmScansInfo = {
-    version: (0, MangaStream_1.getExportVersion)('1.1.2'),
+    version: (0, MangaStream_1.getExportVersion)('1.1.3'),
     name: 'RealmScans',
     description: `Extension that pulls manga from ${DOMAIN}`,
     author: 'IvanMatthew',
@@ -2388,9 +2388,10 @@ const MangaStreamParser_1 = require("../MangaStreamParser");
 class RealmScansParser extends MangaStreamParser_1.MangaStreamParser {
     parseChapterDetails($, mangaId, chapterId) {
         const pages = [];
-        for (const page of $('#readerarea > img').toArray()) {
-            pages.push($(page).attr('src') ?? '');
-        }
+        $('#readerarea > img').toArray().forEach(page => {
+            const selectorPage = $(page);
+            pages.push(selectorPage.attr('src') ?? selectorPage.attr('data-cfsrc') ?? '');
+        });
         return App.createChapterDetails({
             id: chapterId,
             mangaId: mangaId,
