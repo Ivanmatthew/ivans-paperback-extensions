@@ -1579,10 +1579,6 @@ class MangaStream {
          */
         this.filterPath = this.directoryPath;
         /**
-         * The pathname between the domain and the search page (this is usually the same as the directory path).
-         */
-        this.searchPath = this.directoryPath;
-        /**
          * Some websites have the Cloudflare defense check enabled on specific parts of the website, these need to be loaded when using the Cloudflare bypass within the app
          */
         this.bypassPage = '';
@@ -1820,7 +1816,7 @@ class MangaStream {
     }
     async constructSearchRequest(page, query) {
         let urlBuilder = new UrlBuilder_1.URLBuilder(this.baseUrl)
-            .addPathComponent(this.searchPath)
+            .addPathComponent(this.directoryPath)
             .addQueryParameter('page', page.toString());
         if (query?.title) {
             urlBuilder = urlBuilder.addQueryParameter('s', encodeURIComponent(query?.title.replace(/[’–][a-z]*/g, '') ?? ''));

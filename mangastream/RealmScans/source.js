@@ -1538,10 +1538,6 @@ class MangaStream {
          */
         this.filterPath = this.directoryPath;
         /**
-         * The pathname between the domain and the search page (this is usually the same as the directory path).
-         */
-        this.searchPath = this.directoryPath;
-        /**
          * Some websites have the Cloudflare defense check enabled on specific parts of the website, these need to be loaded when using the Cloudflare bypass within the app
          */
         this.bypassPage = '';
@@ -1779,7 +1775,7 @@ class MangaStream {
     }
     async constructSearchRequest(page, query) {
         let urlBuilder = new UrlBuilder_1.URLBuilder(this.baseUrl)
-            .addPathComponent(this.searchPath)
+            .addPathComponent(this.directoryPath)
             .addQueryParameter('page', page.toString());
         if (query?.title) {
             urlBuilder = urlBuilder.addQueryParameter('s', encodeURIComponent(query?.title.replace(/[’–][a-z]*/g, '') ?? ''));
@@ -1958,7 +1954,7 @@ class MangaStream {
 }
 exports.MangaStream = MangaStream;
 
-},{"./MangaStreamHelper":72,"./MangaStreamParser":73,"./UrlBuilder":76,"@paperback/types":61}],72:[function(require,module,exports){
+},{"./MangaStreamHelper":72,"./MangaStreamParser":73,"./UrlBuilder":77,"@paperback/types":61}],72:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getFilterTagsBySection = exports.getIncludedTagBySection = exports.createHomeSection = exports.DefaultHomeSectionData = void 0;
@@ -2284,10 +2280,12 @@ const MangaStream_1 = require("../MangaStream");
 const RealmScansParser_1 = require("./RealmScansParser");
 const MangaStreamHelper_1 = require("../MangaStreamHelper");
 const UrlBuilder_1 = require("../UrlBuilder");
+const RealmScansHelper_1 = require("./RealmScansHelper");
 const DOMAIN = 'https://realmscans.to';
-const FILTER_PAGE_PATH = 'Index/filter_series';
+const FILTER_ENDPOINT = 'Index/filter_series';
+const SEARCH_ENDPOINT = 'Index/live_search';
 exports.RealmScansInfo = {
-    version: (0, MangaStream_1.getExportVersion)('1.1.3'),
+    version: (0, MangaStream_1.getExportVersion)('1.2.4'),
     name: 'RealmScans',
     description: `Extension that pulls manga from ${DOMAIN}`,
     author: 'IvanMatthew',
@@ -2304,7 +2302,6 @@ class RealmScans extends MangaStream_1.MangaStream {
         this.baseUrl = DOMAIN;
         this.directoryPath = 'm050523/series';
         this.filterPath = 'series';
-        this.searchPath = 'Index/live_search';
         this.usePostIds = false;
         this.parser = new RealmScansParser_1.RealmScansParser();
         this.dateMonths = {
@@ -2332,11 +2329,11 @@ class RealmScans extends MangaStream_1.MangaStream {
         };
         const formData = {};
         if (query?.title) {
-            searchUrl = searchUrl.addPathComponent(this.searchPath);
+            searchUrl = searchUrl.addPathComponent(SEARCH_ENDPOINT);
             formData['search_value'] = query?.title.replace(/[’–][a-z]*/g, '') ?? '';
         }
         else {
-            searchUrl = searchUrl.addPathComponent(FILTER_PAGE_PATH);
+            searchUrl = searchUrl.addPathComponent(FILTER_ENDPOINT);
             const statusValue = (0, MangaStreamHelper_1.getIncludedTagBySection)('status', query?.includedTags);
             const typeValue = (0, MangaStreamHelper_1.getIncludedTagBySection)('type', query?.includedTags);
             const orderValue = (0, MangaStreamHelper_1.getIncludedTagBySection)('order', query?.includedTags);
@@ -2360,7 +2357,7 @@ class RealmScans extends MangaStream_1.MangaStream {
         const results = [];
         for (const manga of searchResultData) {
             results.push(App.createPartialSourceManga({
-                mangaId: getSlugFromTitle(manga.title),
+                mangaId: (0, RealmScansHelper_1.getSlugFromTitle)(manga.title),
                 title: manga.title,
                 image: `${this.baseUrl}/assets/images/${manga.image_url}`
             }));
@@ -2370,8 +2367,45 @@ class RealmScans extends MangaStream_1.MangaStream {
             results: results
         });
     }
+    async getViewMoreItems(homepageSectionId, metadata) {
+        if (homepageSectionId !== 'latest_update') {
+            return super.getViewMoreItems(homepageSectionId, metadata);
+        }
+        const headers = {
+            'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        };
+        const formData = {
+            'StatusValue': 'all',
+            'TypeValue': 'all',
+            'OrderValue': 'update',
+        };
+        const request = App.createRequest({
+            url: `${this.baseUrl}/${FILTER_ENDPOINT}`,
+            headers: headers,
+            data: Object.entries(formData).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&'),
+            method: 'POST'
+        });
+        const response = await this.requestManager.schedule(request, 1);
+        const pageData = JSON.parse(response.data);
+        const items = [];
+        for (const manga of pageData) {
+            items.push(App.createPartialSourceManga({
+                mangaId: (0, RealmScansHelper_1.getSlugFromTitle)(manga.title),
+                title: manga.title,
+                image: `${this.baseUrl}/assets/images/${manga.image_url}`
+            }));
+        }
+        return App.createPagedResults({
+            results: items
+        });
+    }
 }
 exports.RealmScans = RealmScans;
+
+},{"../MangaStream":71,"../MangaStreamHelper":72,"../UrlBuilder":77,"./RealmScansHelper":75,"./RealmScansParser":76,"@paperback/types":61}],75:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getSlugFromTitle = void 0;
 const getSlugFromTitle = (title) => {
     return title
         .toLowerCase()
@@ -2379,8 +2413,9 @@ const getSlugFromTitle = (title) => {
         .replace(/-s-/, "s-")
         .replace(/-ll-/, "ll-");
 };
+exports.getSlugFromTitle = getSlugFromTitle;
 
-},{"../MangaStream":71,"../MangaStreamHelper":72,"../UrlBuilder":76,"./RealmScansParser":75,"@paperback/types":61}],75:[function(require,module,exports){
+},{}],76:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RealmScansParser = void 0;
@@ -2390,7 +2425,7 @@ class RealmScansParser extends MangaStreamParser_1.MangaStreamParser {
         const pages = [];
         $('#readerarea > img').toArray().forEach(page => {
             const selectorPage = $(page);
-            pages.push(selectorPage.attr('src') ?? selectorPage.attr('data-cfsrc') ?? '');
+            pages.push(selectorPage.attr('src') ?? selectorPage.attr('data-cfsrc') ?? selectorPage.attr('data-src') ?? '');
         });
         return App.createChapterDetails({
             id: chapterId,
@@ -2422,7 +2457,7 @@ class RealmScansParser extends MangaStreamParser_1.MangaStreamParser {
 }
 exports.RealmScansParser = RealmScansParser;
 
-},{"../MangaStreamParser":73}],76:[function(require,module,exports){
+},{"../MangaStreamParser":73}],77:[function(require,module,exports){
 "use strict";
 // this has been superseded by the URL class in the standard library
 Object.defineProperty(exports, "__esModule", { value: true });
