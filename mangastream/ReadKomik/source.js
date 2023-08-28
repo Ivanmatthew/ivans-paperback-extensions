@@ -1534,10 +1534,6 @@ class MangaStream {
          */
         this.directoryPath = 'manga';
         /**
-         * The pathname between the domain and the filter page (this is usually the same as the directory path).
-         */
-        this.filterPath = this.directoryPath;
-        /**
          * Some websites have the Cloudflare defense check enabled on specific parts of the website, these need to be loaded when using the Cloudflare bypass within the app
          */
         this.bypassPage = '';
@@ -1739,7 +1735,7 @@ class MangaStream {
     }
     async getSearchTags() {
         const request = App.createRequest({
-            url: `${this.baseUrl}/${this.filterPath}/`,
+            url: `${this.baseUrl}/${this.directoryPath}/`,
             method: 'GET'
         });
         const response = await this.requestManager.schedule(request, 1);
@@ -1819,7 +1815,7 @@ class MangaStream {
             }
             // eslint-disable-next-line no-async-promise-executor
             promises.push(new Promise(async () => {
-                section.section.items = await this.parser.parseHomeSection($, section, this, this.baseUrl);
+                section.section.items = await this.parser.parseHomeSection($, section, this);
                 sectionCallback(section.section);
             }));
         }
@@ -2028,9 +2024,9 @@ class MangaStreamParser {
             }
             titles.push(this.decodeHTMLEntity(title.trim()));
         }
-        const author = $(`span:contains(${source.manga_selector_author}), .fmed b:contains(${source.manga_selector_author})+span, .imptdt:contains(${source.manga_selector_author}) i, .tsinfo > div:nth-child(4) > i`).contents().remove().last().text().trim(); // Language dependant
-        const artist = $(`span:contains(${source.manga_selector_artist}), .fmed b:contains(${source.manga_selector_artist})+span, .imptdt:contains(${source.manga_selector_artist}) i, .tsinfo > div:nth-child(5) > i`).contents().remove().last().text().trim(); // Language dependant
-        const image = this.getImageSrc($('img', 'div[itemprop="image"]'), undefined);
+        const author = $(`span:contains(${source.manga_selector_author}), .fmed b:contains(${source.manga_selector_author})+span, .imptdt:contains(${source.manga_selector_author}) i`).contents().remove().last().text().trim(); // Language dependant
+        const artist = $(`span:contains(${source.manga_selector_artist}), .fmed b:contains(${source.manga_selector_artist})+span, .imptdt:contains(${source.manga_selector_artist}) i`).contents().remove().last().text().trim(); // Language dependant
+        const image = this.getImageSrc($('img', 'div[itemprop="image"]'));
         const description = this.decodeHTMLEntity($('div[itemprop="description"]  p').text().trim());
         const arrayTags = [];
         for (const tag of $('a', source.manga_tag_selector_box).toArray()) {
@@ -2171,7 +2167,7 @@ class MangaStreamParser {
                 throw new Error(`Unable to parse slug (${slug}) or path (${path})!`);
             }
             const title = $('a', obj).attr('title') ?? '';
-            const image = this.getImageSrc($('img', obj), undefined) ?? '';
+            const image = this.getImageSrc($('img', obj)) ?? '';
             const subtitle = $('div.epxs', obj).text().trim();
             results.push({
                 slug,
@@ -2187,7 +2183,7 @@ class MangaStreamParser {
         const items = [];
         for (const manga of $('div.bs', 'div.listupd').toArray()) {
             const title = $('a', manga).attr('title');
-            const image = this.getImageSrc($('img', manga), undefined) ?? '';
+            const image = this.getImageSrc($('img', manga)) ?? '';
             const subtitle = $('div.epxs', manga).text().trim();
             const slug = this.idCleaner($('a', manga).attr('href') ?? '');
             const path = ($('a', manga).attr('href') ?? '').replace(/\/$/, '').split('/').slice(-2).shift() ?? '';
@@ -2206,7 +2202,7 @@ class MangaStreamParser {
         }
         return items;
     }
-    async parseHomeSection($, section, source, baseUrl) {
+    async parseHomeSection($, section, source) {
         const items = [];
         const mangas = section.selectorFunc($);
         if (!mangas.length) {
@@ -2215,7 +2211,7 @@ class MangaStreamParser {
         }
         for (const manga of mangas.toArray()) {
             const title = section.titleSelectorFunc($, manga);
-            const image = this.getImageSrc($('img', manga), baseUrl) ?? '';
+            const image = this.getImageSrc($('img', manga)) ?? '';
             const subtitle = section.subtitleSelectorFunc($, manga) ?? '';
             const slug = this.idCleaner($('a', manga).attr('href') ?? '');
             const path = ($('a', manga).attr('href') ?? '').replace(/\/$/, '').split('/').slice(-2).shift() ?? '';
@@ -2234,7 +2230,7 @@ class MangaStreamParser {
         }
         return items;
     }
-    getImageSrc(imageObj, baseUrl) {
+    getImageSrc(imageObj) {
         let image;
         if ((typeof imageObj?.attr('data-src')) != 'undefined') {
             image = imageObj?.attr('data-src');
@@ -2255,16 +2251,8 @@ class MangaStreamParser {
             image = '';
         }
         image = image?.split('?resize')[0] ?? '';
-        if (!image?.startsWith('http')) {
-            if (!baseUrl) {
-                throw new Error(`Unable to parse image source, image src does not have full address, and base url is not supplied!\nImage url: ${image}`);
-            }
-            image = `${baseUrl}${image}`; // in this form, it is expected the baseUrl has NO trailing slash, and the image DOES have a leading slash
-        }
-        else {
-            image = image.replace(/^\/\//, 'https://');
-            image = image.replace(/^\//, 'https:/');
-        }
+        image = image.replace(/^\/\//, 'https://');
+        image = image.replace(/^\//, 'https:/');
         return encodeURI(decodeURI(this.decodeHTMLEntity(image?.trim() ?? '')));
     }
     decodeHTMLEntity(str) {
