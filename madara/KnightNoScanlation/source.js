@@ -8273,37 +8273,97 @@ Object.defineProperty(exports, "decodeXMLStrict", { enumerable: true, get: funct
 },{"./decode.js":98,"./encode.js":100,"./escape.js":101}],106:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.HiperDex = exports.HiperDexInfo = void 0;
+exports.KnightNoScanlation = exports.KnightNoScanlationInfo = void 0;
 const types_1 = require("@paperback/types");
 const Madara_1 = require("../Madara");
-const DOMAIN = 'https://hiperdex.com';
-exports.HiperDexInfo = {
-    version: (0, Madara_1.getExportVersion)('0.0.4'),
-    name: 'HiperDex',
+const KnightNoScanlationParser_1 = require("./KnightNoScanlationParser");
+const DOMAIN = 'https://knightnoscanlation.com';
+exports.KnightNoScanlationInfo = {
+    version: (0, Madara_1.getExportVersion)('0.0.0'),
+    name: 'KnightNoScanlation',
     description: `Extension that pulls manga from ${DOMAIN}`,
-    author: 'Netsky',
+    author: 'Netsky & Seitenca',
     authorWebsite: 'http://github.com/TheNetsky',
     icon: 'icon.png',
-    contentRating: types_1.ContentRating.ADULT,
+    contentRating: types_1.ContentRating.MATURE,
     websiteBaseURL: DOMAIN,
     sourceTags: [
         {
-            text: '18+',
-            type: types_1.BadgeColor.YELLOW
+            text: 'Spanish',
+            type: types_1.BadgeColor.GREY
         }
     ],
     intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | types_1.SourceIntents.SETTINGS_UI
 };
-class HiperDex extends Madara_1.Madara {
+class KnightNoScanlation extends Madara_1.Madara {
     constructor() {
         super(...arguments);
         this.baseUrl = DOMAIN;
+        this.language = '🇪🇸';
         this.alternativeChapterAjaxEndpoint = true;
+        this.parser = new KnightNoScanlationParser_1.KnightNoScanlationParser();
     }
 }
-exports.HiperDex = HiperDex;
+exports.KnightNoScanlation = KnightNoScanlation;
 
-},{"../Madara":107,"@paperback/types":61}],107:[function(require,module,exports){
+},{"../Madara":108,"./KnightNoScanlationParser":107,"@paperback/types":61}],107:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.KnightNoScanlationParser = void 0;
+const MadaraParser_1 = require("../MadaraParser");
+class KnightNoScanlationParser extends MadaraParser_1.Parser {
+    async parseMangaDetails($, mangaId, source) {
+        const image = encodeURI(await this.getImageSrc($('div.summary_image img').first(), source));
+        const titles = [];
+        titles.push(this.decodeHTMLEntity($('div.post-title h1, div#manga-title h1').children().remove().end().text().trim()));
+        let parsedStatus = '';
+        let description = '';
+        for (const obj of $('div.post-content_item').toArray()) {
+            switch (this.decodeHTMLEntity($('h5', obj).first().text()).trim().toUpperCase()) {
+                case 'ALTERNATIVE':
+                    titles.push(this.decodeHTMLEntity($('div.summary-content', obj).text().trim()));
+                    break;
+                case 'STATUS':
+                    parsedStatus = $('div.summary-content', obj).text().trim();
+                    break;
+                case 'SUMMARY':
+                    description = this.decodeHTMLEntity($('p', obj).text().trim());
+                    break;
+            }
+        }
+        let status;
+        switch (parsedStatus.toUpperCase()) {
+            case 'COMPLETED':
+                status = 'Completed';
+                break;
+            default:
+                status = 'Ongoing';
+                break;
+        }
+        const genres = [];
+        for (const obj of $('div.genres-content a').toArray()) {
+            const label = $(obj).text();
+            const id = $(obj).attr('href')?.split('/')[4] ?? label;
+            if (!label || !id)
+                continue;
+            genres.push(App.createTag({ label: label, id: id }));
+        }
+        const tagSections = [App.createTagSection({ id: '0', label: 'genres', tags: genres })];
+        return App.createSourceManga({
+            id: mangaId,
+            mangaInfo: App.createMangaInfo({
+                titles: titles,
+                image: image,
+                tags: tagSections,
+                desc: description,
+                status: status
+            })
+        });
+    }
+}
+exports.KnightNoScanlationParser = KnightNoScanlationParser;
+
+},{"../MadaraParser":111}],108:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Madara = exports.getExportVersion = void 0;
@@ -8788,7 +8848,7 @@ class Madara {
 }
 exports.Madara = Madara;
 
-},{"./MadaraHelper":109,"./MadaraParser":110,"@paperback/types":61}],108:[function(require,module,exports){
+},{"./MadaraHelper":110,"./MadaraParser":111,"@paperback/types":61}],109:[function(require,module,exports){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -8839,7 +8899,7 @@ function extractVariableValues(chapterData) {
 }
 exports.extractVariableValues = extractVariableValues;
 
-},{"crypto-js":72}],109:[function(require,module,exports){
+},{"crypto-js":72}],110:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.URLBuilder = void 0;
@@ -8882,7 +8942,7 @@ class URLBuilder {
 }
 exports.URLBuilder = URLBuilder;
 
-},{}],110:[function(require,module,exports){
+},{}],111:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Parser = void 0;
@@ -9162,5 +9222,5 @@ class Parser {
 }
 exports.Parser = Parser;
 
-},{"./MadaraDecrypter":108,"entities":105}]},{},[106])(106)
+},{"./MadaraDecrypter":109,"entities":105}]},{},[106])(106)
 });

@@ -8273,39 +8273,6 @@ Object.defineProperty(exports, "decodeXMLStrict", { enumerable: true, get: funct
 },{"./decode.js":98,"./encode.js":100,"./escape.js":101}],106:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.HiperDex = exports.HiperDexInfo = void 0;
-const types_1 = require("@paperback/types");
-const Madara_1 = require("../Madara");
-const DOMAIN = 'https://hiperdex.com';
-exports.HiperDexInfo = {
-    version: (0, Madara_1.getExportVersion)('0.0.4'),
-    name: 'HiperDex',
-    description: `Extension that pulls manga from ${DOMAIN}`,
-    author: 'Netsky',
-    authorWebsite: 'http://github.com/TheNetsky',
-    icon: 'icon.png',
-    contentRating: types_1.ContentRating.ADULT,
-    websiteBaseURL: DOMAIN,
-    sourceTags: [
-        {
-            text: '18+',
-            type: types_1.BadgeColor.YELLOW
-        }
-    ],
-    intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | types_1.SourceIntents.SETTINGS_UI
-};
-class HiperDex extends Madara_1.Madara {
-    constructor() {
-        super(...arguments);
-        this.baseUrl = DOMAIN;
-        this.alternativeChapterAjaxEndpoint = true;
-    }
-}
-exports.HiperDex = HiperDex;
-
-},{"../Madara":107,"@paperback/types":61}],107:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 exports.Madara = exports.getExportVersion = void 0;
 const types_1 = require("@paperback/types");
 const MadaraParser_1 = require("./MadaraParser");
@@ -8788,7 +8755,7 @@ class Madara {
 }
 exports.Madara = Madara;
 
-},{"./MadaraHelper":109,"./MadaraParser":110,"@paperback/types":61}],108:[function(require,module,exports){
+},{"./MadaraHelper":108,"./MadaraParser":109,"@paperback/types":61}],107:[function(require,module,exports){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -8839,7 +8806,7 @@ function extractVariableValues(chapterData) {
 }
 exports.extractVariableValues = extractVariableValues;
 
-},{"crypto-js":72}],109:[function(require,module,exports){
+},{"crypto-js":72}],108:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.URLBuilder = void 0;
@@ -8882,7 +8849,7 @@ class URLBuilder {
 }
 exports.URLBuilder = URLBuilder;
 
-},{}],110:[function(require,module,exports){
+},{}],109:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Parser = void 0;
@@ -9162,5 +9129,129 @@ class Parser {
 }
 exports.Parser = Parser;
 
-},{"./MadaraDecrypter":108,"entities":105}]},{},[106])(106)
+},{"./MadaraDecrypter":107,"entities":105}],110:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SamuraiScan = exports.SamuraiScanInfo = void 0;
+const types_1 = require("@paperback/types");
+const Madara_1 = require("../Madara");
+const SamuraiScanParser_1 = require("./SamuraiScanParser");
+const DOMAIN = 'https://samuraiscan.com';
+exports.SamuraiScanInfo = {
+    version: (0, Madara_1.getExportVersion)('0.0.0'),
+    name: 'SamuraiScan',
+    description: `Extension that pulls manga from ${DOMAIN}`,
+    author: 'Netsky & Seitenca',
+    authorWebsite: 'http://github.com/TheNetsky',
+    icon: 'icon.png',
+    contentRating: types_1.ContentRating.ADULT,
+    websiteBaseURL: DOMAIN,
+    sourceTags: [
+        {
+            text: 'Spanish',
+            type: types_1.BadgeColor.GREY
+        }
+    ],
+    intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | types_1.SourceIntents.SETTINGS_UI
+};
+class SamuraiScan extends Madara_1.Madara {
+    constructor() {
+        super(...arguments);
+        this.baseUrl = DOMAIN;
+        this.language = '🇪🇸';
+        this.alternativeChapterAjaxEndpoint = true;
+        this.parser = new SamuraiScanParser_1.SamuraiScanParser();
+    }
+    async getHomePageSections(sectionCallback) {
+        const sections = [
+            {
+                request: this.constructAjaxHomepageRequest(0, 10, '_wp_manga_week_views_value'),
+                section: App.createHomeSection({
+                    id: '0',
+                    title: 'Currently Trending',
+                    type: types_1.HomeSectionType.featured,
+                    containsMoreItems: true
+                })
+            },
+            {
+                request: this.constructAjaxHomepageRequest(0, 10, '_latest_update'),
+                section: App.createHomeSection({
+                    id: '1',
+                    title: 'Recently Updated',
+                    type: types_1.HomeSectionType.singleRowNormal,
+                    containsMoreItems: true
+                })
+            },
+            {
+                request: this.constructAjaxHomepageRequest(0, 10, '_wp_manga_views'),
+                section: App.createHomeSection({
+                    id: '2',
+                    title: 'Most Popular',
+                    type: types_1.HomeSectionType.singleRowNormal,
+                    containsMoreItems: true
+                })
+            }
+        ];
+        const promises = [];
+        for (const section of sections) {
+            // Let the app load empty sections
+            sectionCallback(section.section);
+            // Get the section data
+            promises.push(this.requestManager.schedule(section.request, 1).then(async (response) => {
+                this.checkResponseError(response);
+                const $ = this.cheerio.load(response.data);
+                section.section.items = await this.parser.parseHomeSection($, this);
+                sectionCallback(section.section);
+            }));
+        }
+        // Make sure the function completes
+        await Promise.all(promises);
+    }
+}
+exports.SamuraiScan = SamuraiScan;
+
+},{"../Madara":106,"./SamuraiScanParser":111,"@paperback/types":61}],111:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SamuraiScanParser = void 0;
+const MadaraParser_1 = require("../MadaraParser");
+class SamuraiScanParser extends MadaraParser_1.Parser {
+    async parseMangaDetails($, mangaId, source) {
+        const title = this.decodeHTMLEntity($('div.post-title h1, div#manga-title h1').children().remove().end().text().trim());
+        const description = this.decodeHTMLEntity($('div.manga-excerpt').first().text()).replace('Show more', '').trim();
+        const image = encodeURI(await this.getImageSrc($('div.summary_image img').first(), source));
+        const parsedStatus = $('div.summary-content', $('div.post-content_item').last()).text().trim();
+        let status;
+        switch (parsedStatus.toUpperCase()) {
+            case 'COMPLETED':
+                status = 'Completed';
+                break;
+            default:
+                status = 'Ongoing';
+                break;
+        }
+        const genres = [];
+        for (const obj of $('div.genres-content a').toArray()) {
+            const label = $(obj).text();
+            const id = $(obj).attr('href')?.split('/')[4] ?? label;
+            if (!label || !id)
+                continue;
+            genres.push(App.createTag({ label: label, id: id }));
+        }
+        const tagSections = [App.createTagSection({ id: '0', label: 'genres', tags: genres })];
+        return App.createSourceManga({
+            id: mangaId,
+            mangaInfo: App.createMangaInfo({
+                titles: [title],
+                image: image,
+                tags: tagSections,
+                desc: description,
+                status: status
+            })
+        });
+    }
+}
+exports.SamuraiScanParser = SamuraiScanParser;
+
+},{"../MadaraParser":109}]},{},[110])(110)
 });
