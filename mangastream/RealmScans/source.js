@@ -1819,7 +1819,7 @@ class MangaStream {
             }
             // eslint-disable-next-line no-async-promise-executor
             promises.push(new Promise(async () => {
-                section.section.items = await this.parser.parseHomeSection($, section, this);
+                section.section.items = await this.parser.parseHomeSection($, section, this, this.baseUrl);
                 sectionCallback(section.section);
             }));
         }
@@ -2030,7 +2030,7 @@ class MangaStreamParser {
         }
         const author = $(`span:contains(${source.manga_selector_author}), .fmed b:contains(${source.manga_selector_author})+span, .imptdt:contains(${source.manga_selector_author}) i, .tsinfo > div:nth-child(4) > i`).contents().remove().last().text().trim(); // Language dependant
         const artist = $(`span:contains(${source.manga_selector_artist}), .fmed b:contains(${source.manga_selector_artist})+span, .imptdt:contains(${source.manga_selector_artist}) i, .tsinfo > div:nth-child(5) > i`).contents().remove().last().text().trim(); // Language dependant
-        const image = this.getImageSrc($('img', 'div[itemprop="image"]'));
+        const image = this.getImageSrc($('img', 'div[itemprop="image"]'), undefined);
         const description = this.decodeHTMLEntity($('div[itemprop="description"]  p').text().trim());
         const arrayTags = [];
         for (const tag of $('a', source.manga_tag_selector_box).toArray()) {
@@ -2171,7 +2171,7 @@ class MangaStreamParser {
                 throw new Error(`Unable to parse slug (${slug}) or path (${path})!`);
             }
             const title = $('a', obj).attr('title') ?? '';
-            const image = this.getImageSrc($('img', obj)) ?? '';
+            const image = this.getImageSrc($('img', obj), undefined) ?? '';
             const subtitle = $('div.epxs', obj).text().trim();
             results.push({
                 slug,
@@ -2187,7 +2187,7 @@ class MangaStreamParser {
         const items = [];
         for (const manga of $('div.bs', 'div.listupd').toArray()) {
             const title = $('a', manga).attr('title');
-            const image = this.getImageSrc($('img', manga)) ?? '';
+            const image = this.getImageSrc($('img', manga), undefined) ?? '';
             const subtitle = $('div.epxs', manga).text().trim();
             const slug = this.idCleaner($('a', manga).attr('href') ?? '');
             const path = ($('a', manga).attr('href') ?? '').replace(/\/$/, '').split('/').slice(-2).shift() ?? '';
@@ -2206,7 +2206,7 @@ class MangaStreamParser {
         }
         return items;
     }
-    async parseHomeSection($, section, source) {
+    async parseHomeSection($, section, source, baseUrl) {
         const items = [];
         const mangas = section.selectorFunc($);
         if (!mangas.length) {
@@ -2215,7 +2215,7 @@ class MangaStreamParser {
         }
         for (const manga of mangas.toArray()) {
             const title = section.titleSelectorFunc($, manga);
-            const image = this.getImageSrc($('img', manga)) ?? '';
+            const image = this.getImageSrc($('img', manga), baseUrl) ?? '';
             const subtitle = section.subtitleSelectorFunc($, manga) ?? '';
             const slug = this.idCleaner($('a', manga).attr('href') ?? '');
             const path = ($('a', manga).attr('href') ?? '').replace(/\/$/, '').split('/').slice(-2).shift() ?? '';
@@ -2234,7 +2234,7 @@ class MangaStreamParser {
         }
         return items;
     }
-    getImageSrc(imageObj) {
+    getImageSrc(imageObj, baseUrl) {
         let image;
         if ((typeof imageObj?.attr('data-src')) != 'undefined') {
             image = imageObj?.attr('data-src');
@@ -2255,8 +2255,16 @@ class MangaStreamParser {
             image = '';
         }
         image = image?.split('?resize')[0] ?? '';
-        image = image.replace(/^\/\//, 'https://');
-        image = image.replace(/^\//, 'https:/');
+        if (!image?.startsWith('http')) {
+            if (!baseUrl) {
+                throw new Error('Unable to parse image source, image src does not have full address, and base url is not supplied!');
+            }
+            image = `${baseUrl}${image}`; // in this form, it is expected the baseUrl has NO trailing slash, and the image DOES have a leading slash
+        }
+        else {
+            image = image.replace(/^\/\//, 'https://');
+            image = image.replace(/^\//, 'https:/');
+        }
         return encodeURI(decodeURI(this.decodeHTMLEntity(image?.trim() ?? '')));
     }
     decodeHTMLEntity(str) {
@@ -2285,7 +2293,7 @@ const DOMAIN = 'https://realmscans.to';
 const FILTER_ENDPOINT = 'Index/filter_series';
 const SEARCH_ENDPOINT = 'Index/live_search';
 exports.RealmScansInfo = {
-    version: (0, MangaStream_1.getExportVersion)('1.2.4'),
+    version: (0, MangaStream_1.getExportVersion)('1.2.5'),
     name: 'RealmScans',
     description: `Extension that pulls manga from ${DOMAIN}`,
     author: 'IvanMatthew',
@@ -2405,21 +2413,35 @@ exports.RealmScans = RealmScans;
 },{"../MangaStream":71,"../MangaStreamHelper":72,"../UrlBuilder":77,"./RealmScansHelper":75,"./RealmScansParser":76,"@paperback/types":61}],75:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSlugFromTitle = void 0;
-const getSlugFromTitle = (title) => {
+exports.extractVariableValues = exports.getSlugFromTitle = void 0;
+function getSlugFromTitle(title) {
     return title
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/-s-/, "s-")
-        .replace(/-ll-/, "ll-");
-};
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/-s-/, 's-')
+        .replace(/-ll-/, 'll-');
+}
 exports.getSlugFromTitle = getSlugFromTitle;
+function extractVariableValues(chapterData) {
+    const variableRegex = /var\s+(\w+)\s*=\s*([\s\S]*?);/g; // modified to not only match strings
+    const variables = {};
+    let match;
+    // thanks past me for this code
+    // Under no circumstances directly eval (or Function), as they might go hardy harr-harr sneaky and pull an RCE
+    while ((match = variableRegex.exec(chapterData)) !== null) {
+        const [, variableName, variableValue] = match;
+        variables[variableName] = variableValue;
+    }
+    return variables;
+}
+exports.extractVariableValues = extractVariableValues;
 
 },{}],76:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RealmScansParser = void 0;
 const MangaStreamParser_1 = require("../MangaStreamParser");
+const RealmScansHelper_1 = require("./RealmScansHelper");
 class RealmScansParser extends MangaStreamParser_1.MangaStreamParser {
     parseChapterDetails($, mangaId, chapterId) {
         const pages = [];
@@ -2442,7 +2464,7 @@ class RealmScansParser extends MangaStreamParser_1.MangaStreamParser {
                 throw new Error(`Unable to parse slug (${slug}) or path (${path})!`);
             }
             const title = $('a', obj).attr('title') ?? '';
-            const image = this.getImageSrc($('img', obj)) ?? '';
+            const image = this.getImageSrc($('img', obj), undefined) ?? '';
             const subtitle = $('div.epxs', obj).text().trim();
             results.push({
                 slug,
@@ -2454,10 +2476,75 @@ class RealmScansParser extends MangaStreamParser_1.MangaStreamParser {
         }
         return results;
     }
+    parseMangaDetails($, mangaId, source) {
+        const titles = [];
+        titles.push(this.decodeHTMLEntity($('h1.entry-title').text().trim()));
+        const altTitles = $(`span:contains(${source.manga_selector_AlternativeTitles}), b:contains(${source.manga_selector_AlternativeTitles})+span, .imptdt:contains(${source.manga_selector_AlternativeTitles}) i, h1.entry-title+span`).contents().remove().last().text().split(','); // Language dependant
+        for (const title of altTitles) {
+            if (title == '') {
+                continue;
+            }
+            titles.push(this.decodeHTMLEntity(title.trim()));
+        }
+        const author = $(`span:contains(${source.manga_selector_author}), .fmed b:contains(${source.manga_selector_author})+span, .imptdt:contains(${source.manga_selector_author}) i, .tsinfo > div:nth-child(4) > i`).contents().remove().last().text().trim(); // Language dependant
+        const artist = $(`span:contains(${source.manga_selector_artist}), .fmed b:contains(${source.manga_selector_artist})+span, .imptdt:contains(${source.manga_selector_artist}) i, .tsinfo > div:nth-child(5) > i`).contents().remove().last().text().trim(); // Language dependant
+        const image = this.getImageSrc($('img', 'div[itemprop="image"]'), undefined);
+        const descriptionScriptContent = $('div[itemprop="description"] script').get()[0].children[0].data;
+        const description = (0, RealmScansHelper_1.extractVariableValues)(descriptionScriptContent)?.description ?? 'N/A';
+        // RealmScans uses markdown to create their descriptions, the following code is meant to disassemble the markdown and create a clean description
+        const cleanedDescription = description
+            // remove first character of string (it'll be matched as "content")
+            .slice(1, -1)
+            .replace(/\\r/g, "")
+            .replace(/> /g, "")
+            .replace(/\\n/g, "\n")
+            .replace(/\\u[\dA - F]{ 4} /gi, match => String.fromCharCode(parseInt(match.slice(2), 16)));
+        const arrayTags = [];
+        for (const tag of $('a', source.manga_tag_selector_box).toArray()) {
+            const label = $(tag).text().trim();
+            const id = this.idCleaner($(tag).attr('href') ?? '');
+            if (!id || !label) {
+                continue;
+            }
+            arrayTags.push({ id, label });
+        }
+        const rawStatus = $(`span:contains(${source.manga_selector_status}), .fmed b:contains(${source.manga_selector_status})+span, .imptdt:contains(${source.manga_selector_status}) i`).contents().remove().last().text().trim();
+        let status;
+        switch (rawStatus.toLowerCase()) {
+            case source.manga_StatusTypes.ONGOING.toLowerCase():
+                status = 'Ongoing';
+                break;
+            case source.manga_StatusTypes.COMPLETED.toLowerCase():
+                status = 'Completed';
+                break;
+            default:
+                status = 'Ongoing';
+                break;
+        }
+        const tagSections = [
+            App.createTagSection({
+                id: '0',
+                label: 'genres',
+                tags: arrayTags.map((x) => App.createTag(x))
+            })
+        ];
+        return App.createSourceManga({
+            id: mangaId,
+            mangaInfo: App.createMangaInfo({
+                titles,
+                image: image,
+                status,
+                author: author == '' ? 'Unknown' : author,
+                artist: artist == '' ? 'Unknown' : artist,
+                tags: tagSections,
+                desc: cleanedDescription
+            })
+        });
+    }
 }
 exports.RealmScansParser = RealmScansParser;
 
-},{"../MangaStreamParser":73}],77:[function(require,module,exports){
+},{"../MangaStreamParser":73,"./RealmScansHelper":75}],77:[function(require,module,exports){
 "use strict";
 // this has been superseded by the URL class in the standard library
 Object.defineProperty(exports, "__esModule", { value: true });
