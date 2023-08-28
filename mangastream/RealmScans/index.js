@@ -2396,7 +2396,7 @@ class RealmScans extends MangaStream_1.MangaStream {
             }
             // eslint-disable-next-line no-async-promise-executor
             promises.push(new Promise(async () => {
-                section.section.items = await this.parser.parseHomeSection($, section, this, this.baseUrl);
+                section.section.items = await this.parser.parseHomeSection($, section, this);
                 sectionCallback(section.section);
             }));
         }
