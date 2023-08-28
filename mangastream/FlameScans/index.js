@@ -2293,7 +2293,7 @@ class MangaStreamParser {
         image = image?.split('?resize')[0] ?? '';
         if (!image?.startsWith('http')) {
             if (!baseUrl) {
-                throw new Error('Unable to parse image source, image src does not have full address, and base url is not supplied!');
+                throw new Error(`Unable to parse image source, image src does not have full address, and base url is not supplied!\nImage url: ${image}`);
             }
             image = `${baseUrl}${image}`; // in this form, it is expected the baseUrl has NO trailing slash, and the image DOES have a leading slash
         }
