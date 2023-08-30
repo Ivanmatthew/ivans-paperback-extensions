@@ -4408,7 +4408,6 @@ exports.SkyMangasParser = SkyMangasParser;
 }).call(this)}).call(this,require("buffer").Buffer)
 },{"../MangaStreamParser":76,"buffer":63}],79:[function(require,module,exports){
 "use strict";
-// this has been superseded by the URL class in the standard library
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.URLBuilder = void 0;
 class URLBuilder {

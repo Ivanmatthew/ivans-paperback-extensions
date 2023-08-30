@@ -2307,7 +2307,6 @@ exports.ManhwaX = ManhwaX;
 
 },{"../MangaStream":71,"@paperback/types":61}],75:[function(require,module,exports){
 "use strict";
-// this has been superseded by the URL class in the standard library
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.URLBuilder = void 0;
 class URLBuilder {
