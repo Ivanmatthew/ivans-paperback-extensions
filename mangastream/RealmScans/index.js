@@ -2296,7 +2296,7 @@ class RealmScans extends MangaStream_1.MangaStream {
     constructor() {
         super(...arguments);
         this.baseUrl = exports.DOMAIN;
-        this.directoryPath = 'm050523/series';
+        this.directoryPath = 'oc10103/series';
         this.filterPath = 'series';
         this.usePostIds = false;
         this.parser = new RealmScansParser_1.RealmScansParser();
