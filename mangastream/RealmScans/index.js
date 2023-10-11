@@ -2281,7 +2281,7 @@ exports.DOMAIN = 'https://realmscans.to';
 const FILTER_ENDPOINT = 'Index/filter_series';
 const SEARCH_ENDPOINT = 'Index/live_search';
 exports.RealmScansInfo = {
-    version: (0, MangaStream_1.getExportVersion)('1.2.5'),
+    version: (0, MangaStream_1.getExportVersion)('1.2.6'),
     name: 'RealmScans',
     description: `Extension that pulls manga from ${exports.DOMAIN}`,
     author: 'IvanMatthew',
