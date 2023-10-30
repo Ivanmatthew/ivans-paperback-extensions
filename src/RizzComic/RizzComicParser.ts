@@ -1,11 +1,11 @@
 import { ChapterDetails, PartialSourceManga, SourceManga, Tag, TagSection } from '@paperback/types'
 import { MangaStreamParser } from '../MangaStreamParser'
-import { extractVariableValues } from './RealmScansHelper'
+import { extractVariableValues } from './RizzComicHelper'
 
-import { DOMAIN as baseUrl } from './RealmScans'
+import { DOMAIN as baseUrl } from './RizzComic'
 import { HomeSectionData } from '../MangaStreamHelper'
 
-export class RealmScansParser extends MangaStreamParser {
+export class RizzComicParser extends MangaStreamParser {
     override parseChapterDetails($: CheerioStatic, mangaId: string, chapterId: string): ChapterDetails {
         const pages: string[] = []
 
@@ -63,6 +63,7 @@ export class RealmScansParser extends MangaStreamParser {
         const artist = $(`span:contains(${source.manga_selector_artist}), .fmed b:contains(${source.manga_selector_artist})+span, .imptdt:contains(${source.manga_selector_artist}) i, .tsinfo > div:nth-child(5) > i`).contents().remove().last().text().trim() // Language dependant
         const image = this.getImageSrc($('img', 'div[itemprop="image"]'))
 
+        // TODO: Simplify this by concatenating the description out of the html, not the script tag
         const descriptionScriptContent = $('div[itemprop="description"] script').get()[0].children[0].data
         const description = extractVariableValues(descriptionScriptContent)?.description ?? 'N/A'
 
@@ -70,10 +71,10 @@ export class RealmScansParser extends MangaStreamParser {
         const cleanedDescription = description
             // remove first character of string (it'll be matched as "content")
             .slice(1, -1)
-            .replace(/\\r/g, "")
-            .replace(/> /g, "")
-            .replace(/\\n/g, "\n")
-            .replace(/\\u[\dA - F]{ 4} /gi, match => String.fromCharCode(parseInt(match.slice(2), 16)));
+            .replace(/\\r/g, '')
+            .replace(/> /g, '')
+            .replace(/\\n/g, '\n')
+            .replace(/\\u[\dA - F]{ 4} /gi, match => String.fromCharCode(parseInt(match.slice(2), 16)))
 
         const arrayTags: Tag[] = []
         for (const tag of $('a', source.manga_tag_selector_box).toArray()) {

@@ -36,7 +36,7 @@ import {
 } from './MangaStreamInterfaces'
 
 // Set the version for the base, changing this version will change the versions of all sources
-const BASE_VERSION = '3.0.0'
+const BASE_VERSION = '0.0.0'
 export const getExportVersion = (EXTENSION_VERSION: string): string => {
     return BASE_VERSION.split('.').map((x, index) => Number(x) + Number(EXTENSION_VERSION.split('.')[index])).join('.')
 }
@@ -597,6 +597,11 @@ export abstract class MangaStream implements ChapterProviding, HomePageSectionsP
 
     checkResponseError(response: Response): void {
         const status = response.status
+
+        if (response.data?.includes('403: Forbidden')) {
+            throw new Error(`CLOUDFLARE BYPASS ERROR:\nPlease go to the homepage of <${this.baseUrl}> and press the cloud icon.`)
+        }
+
         switch (status) {
             case 403:
             case 503:

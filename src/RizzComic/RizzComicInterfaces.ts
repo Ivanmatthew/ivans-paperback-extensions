@@ -1,4 +1,4 @@
-export type RealmScansResult = {
+export type RizzComicResult = {
     id: string
     title: string
     image_url: string

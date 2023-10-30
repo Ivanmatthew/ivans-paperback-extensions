@@ -3,6 +3,7 @@ import {
     HomeSection,
     PagedResults,
     PartialSourceManga,
+    Request,
     SearchRequest,
     SourceInfo,
     SourceIntents,
@@ -13,25 +14,26 @@ import {
     getExportVersion,
     MangaStream
 } from '../MangaStream'
-import { RealmScansParser } from './RealmScansParser'
+import { RizzComicParser } from './RizzComicParser'
 import { Months } from '../MangaStreamInterfaces'
-import { createHomeSection, getFilterTagsBySection, getIncludedTagBySection } from '../MangaStreamHelper'
-import { URLBuilder } from '../UrlBuilder';
-import { RealmScansResult } from './RealmScansInterfaces'
-import { getSlugFromTitle } from './RealmScansHelper'
+import { getFilterTagsBySection, getIncludedTagBySection } from '../MangaStreamHelper'
+
+import { URLBuilder } from '../UrlBuilder'
+import { RizzComicResult } from './RizzComicInterfaces'
+import { getSlugFromTitle } from './RizzComicHelper'
 
 
-export const DOMAIN = 'https://realmscans.to'
+export const DOMAIN = 'https://rizzcomic.com'
 const FILTER_ENDPOINT = 'Index/filter_series'
 const SEARCH_ENDPOINT = 'Index/live_search'
 
-export const RealmScansInfo: SourceInfo = {
-    version: getExportVersion('1.2.6'),
-    name: 'RealmScans',
+export const RizzComicInfo: SourceInfo = {
+    version: getExportVersion('1.0.0'),
+    name: 'RizzComic',
     description: `Extension that pulls manga from ${DOMAIN}`,
     author: 'IvanMatthew',
     authorWebsite: 'http://github.com/Ivanmatthew',
-    icon: 'icon.webp',
+    icon: 'icon.png',
     contentRating: ContentRating.MATURE,
     websiteBaseURL: DOMAIN,
     intents: SourceIntents.MANGA_CHAPTERS | SourceIntents.HOMEPAGE_SECTIONS | SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | SourceIntents.SETTINGS_UI,
@@ -40,17 +42,17 @@ export const RealmScansInfo: SourceInfo = {
 
 
 
-export class RealmScans extends MangaStream {
+export class RizzComic extends MangaStream {
 
     baseUrl: string = DOMAIN
 
-    override directoryPath = 'oc10103/series'
+    override directoryPath = 'series'
 
-    filterPath: string = 'series'
+    filterPath = 'series'
 
     override usePostIds = false
 
-    override parser: RealmScansParser = new RealmScansParser()
+    override parser: RizzComicParser = new RizzComicParser()
 
     override configureSections(): void {
         this.homescreen_sections['new_titles'].enabled = false
@@ -87,7 +89,7 @@ export class RealmScans extends MangaStream {
     override async constructSearchRequest(page: number, query: SearchRequest): Promise<any> {
         let searchUrl: URLBuilder = new URLBuilder(this.baseUrl)
         const headers: Record<string, string> = {
-            'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'content-type': 'application/x-www-form-urlencoded; charset=UTF-8'
         }
         const formData: Record<string, string> = {}
 
@@ -119,7 +121,7 @@ export class RealmScans extends MangaStream {
         const request = await this.constructSearchRequest(1, query)
         const response = await this.requestManager.schedule(request, 1)
         this.checkResponseError(response)
-        const searchResultData: RealmScansResult[] = JSON.parse(response.data as string)
+        const searchResultData: RizzComicResult[] = JSON.parse(response.data as string)
 
         const results: PartialSourceManga[] = []
         for (const manga of searchResultData) {
@@ -144,6 +146,7 @@ export class RealmScans extends MangaStream {
 
         const response = await this.requestManager.schedule(request, 1)
         this.checkResponseError(response)
+
         const $ = this.cheerio.load(response.data as string)
 
         const promises: Promise<void>[] = []
@@ -178,12 +181,12 @@ export class RealmScans extends MangaStream {
         }
 
         const headers: Record<string, string> = {
-            'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'content-type': 'application/x-www-form-urlencoded; charset=UTF-8'
         }
         const formData: Record<string, string> = {
             'StatusValue': 'all',
             'TypeValue': 'all',
-            'OrderValue': 'update',
+            'OrderValue': 'update'
         }
 
         const request = App.createRequest({
@@ -194,7 +197,7 @@ export class RealmScans extends MangaStream {
         })
 
         const response = await this.requestManager.schedule(request, 1)
-        const pageData: RealmScansResult[] = JSON.parse(response.data as string)
+        const pageData: RizzComicResult[] = JSON.parse(response.data as string)
 
         const items: PartialSourceManga[] = []
 
@@ -209,5 +212,12 @@ export class RealmScans extends MangaStream {
         return App.createPagedResults({
             results: items
         })
+    }
+    
+    override async getCloudflareBypassRequestAsync(): Promise<Request> {
+        // Delete cookies
+        this.requestManager?.cookieStore?.getAllCookies().forEach(x => { this.requestManager?.cookieStore?.removeCookie(x) })
+
+        return await super.getCloudflareBypassRequestAsync()
     }
 }
