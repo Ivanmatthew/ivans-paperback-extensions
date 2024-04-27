@@ -6,6 +6,6 @@ For support, you can join [Netsky's](https://github.com/TheNetsky) [discord serv
 
 ## Source Indexes
 
-| Used Backend | Used Theme | Description | Link |
-| --- | --- | --- | --- |
-| Wordpress | MangaStream | MangaStream Modified | [/mangastream-modified](https://ivanmatthew.github.io/ivans-paperback-extensions/mangastream-modified)    |
+| Used Backend | For Paperback Version | Link |
+| --- | --- | --- |
+| PHP Wordpress | 0.8.x < 0.9 | [/mangastream-modified](https://ivanmatthew.github.io/ivans-paperback-extensions/mangastream-modified) |
