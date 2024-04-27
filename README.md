@@ -1,14 +1,11 @@
-# Extensions Generic (0.8) Repo Index
+# [Ivan's Paperback (0.8) Extensions Repository Index](https://github.com/Ivanmatthew/ivans-paperback-extensions)
 
-[Github Repo](https://github.com/Ivanmatthew/extensions-generic-0.8)
-<br>
-Join the [Discord](https://discord.gg/rmf6jQpMU9) for support and more sources (Netsky's discord)!
+This repository contains all sources made by [Ivanmatthew](https://github.com/Ivanmatthew).
 
-Attention, this repository will be modified to only suit modified repos, though the transition may take some time.
-Currently only RizzComic in the MangaStream branch will be maintained, all the other source repo's are maintained by Netsky, these can be found [here](https://github.com/TheNetsky/extensions-generic-0.8)
+For support, you can join [Netsky's](https://github.com/TheNetsky) [discord server](https://discord.gg/rmf6jQpMU9), which is currently being used as a central support server for multiple source repositories/indexes.
 
-## Current Repo
+## Source Indexes
 
-| Source Type | Description |          Link |
-| ---        |    ----   |         --- |
-| MangaStream      | MangaStream Modified      | [Click me!](https://ivanmatthew.github.io/extensions-generic-0.8/mangastream-modified/)    |
+| Used Backend | Used Theme | Description | Link |
+| --- | --- | --- | --- |
+| Wordpress | MangaStream | MangaStream Modified | [/mangastream-modified](https://ivanmatthew.github.io/ivans-paperback-extensions/mangastream-modified)    |
