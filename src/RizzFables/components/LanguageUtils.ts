@@ -1,6 +1,9 @@
-import { Months } from './MangaStreamInterfaces'
+import { RizzFables } from '../RizzFables'
+import { Months } from './Types'
 
-export function convertDate(dateString: string, source: any): Date {
+const source = RizzFables
+
+export function convertDate(dateString: string): Date {
     // Parsed date string
     dateString = dateString.toLowerCase()
 
