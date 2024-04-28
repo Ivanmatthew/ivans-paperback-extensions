@@ -1,2 +1,2 @@
-# MangaStream Extensions
-[Click me](https://ivanmatthew.github.io/extensions-generic-0.8/mangastream-modified/) to go to the index page!
+# Paperback 0.8 Extensions
+[Click me](https://ivanmatthew.github.io/ivans-paperback-extensions/paperback-0.8) to go to the index page!
