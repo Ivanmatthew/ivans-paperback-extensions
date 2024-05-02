@@ -4,7 +4,7 @@
 ## Migrating from the old extension
 #### Make sure you have backed up your data before proceeding
 
-### Migrationg mangas
+### Migrating mangas
 If you are using the old extension, you can migrate to the new one by following these steps:
 1. Download the new extension from the link above by adding the new repository and installing the new source.
 2. Ensure you can read a manga chapter from the new extension, (do the cloudflare bypass if necessary).
