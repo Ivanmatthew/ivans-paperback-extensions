@@ -21595,7 +21595,7 @@ exports.RizzFablesInfo = {
     authorWebsite: 'http://github.com/Ivanmatthew',
     icon: 'icon.png',
     contentRating: types_1.ContentRating.MATURE,
-    websiteBaseURL: Configuration_1.Configuration.baseUrl, // CHANGEIT
+    websiteBaseURL: Configuration_1.Configuration.baseUrl,
     intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | types_1.SourceIntents.SETTINGS_UI,
     sourceTags: []
 };
@@ -21995,7 +21995,7 @@ class MangaStreamParser {
                 throw new Error(`Could not parse out ID when getting chapters for title :${mangaTitle}`);
             }
             chapters.push({
-                id: id, // Store chapterNumber as id
+                id: id,
                 langCode: language,
                 chapNum: chapterNumber,
                 name: title,
