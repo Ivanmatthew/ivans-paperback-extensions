@@ -55,6 +55,11 @@ export function cleanId(slug: string): string {
         .pop() ?? ''
 }
 
+export function trimUrl(url: string): string {
+    url = url.replace(/\/$/, '')
+    return url.split('/').pop() ?? ''
+}
+
 export function extractVariableValues(chapterData: string): Record<string, string> {
     const variableRegex = /var\s+(\w+)\s*=\s*([\s\S]*?);/g // modified to not only match strings
     const variables: Record<string, string> = {}

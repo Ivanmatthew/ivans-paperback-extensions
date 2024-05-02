@@ -10,17 +10,18 @@ import {
 
 import { convertDate } from './components/LanguageUtils'
 
-import { HomeSectionData, SearchResult } from './components/Types'
+import { HomeSectionData } from './components/Types'
 
 import entities = require('entities')
 
 import * as cheerio from 'cheerio'
-import { cleanId, extractVariableValues } from './components/Helper'
+import { cleanId, extractVariableValues, trimUrl } from './components/Helper'
+import { Configuration as Source } from './components/Configuration'
 import { RizzFables } from './RizzFables'
 
-const source = RizzFables
+const source = Source
 export class MangaStreamParser {
-    parseMangaDetails($: cheerio.CheerioAPI, mangaId: string): SourceManga {
+    parseMangaDetails($: cheerio.CheerioAPI, mangaTitle: string): SourceManga {
         const titles: string[] = []
         titles.push(entities.decodeHTML($('h1.entry-title').text().trim()))
 
@@ -37,9 +38,13 @@ export class MangaStreamParser {
         const image = this.getImageSrc($('img', 'div[itemprop="image"]'))
 
         // TODO: Simplify this by concatenating the description out of the html, not the script tag
-        const selectedScript = $('div[itemprop="description"] script').get()
-        if (!selectedScript) {
-            throw new Error(`Could not parse out description script when getting manga details for postId:${mangaId}`)
+        const scriptSelection = $('div[itemprop="description"] script')
+        if (!scriptSelection) {
+            throw new Error(`Could not find description script when getting manga details for title: ${mangaTitle}`)
+        }
+        const selectedScript = scriptSelection.get()
+        if (selectedScript.length == 0) {
+            throw new Error(`Could not parse out description script when getting manga details for title: ${mangaTitle}`)
         }
         // @ts-expect-error - This is a valid check, as the selectedScript will always exist.
         const descriptionScriptContent = selectedScript[0].children[0].data
@@ -57,7 +62,7 @@ export class MangaStreamParser {
         const arrayTags: Tag[] = []
         for (const tag of $('a', source.manga_tag_selector_box).toArray()) {
             const label = $(tag).text().trim()
-            const id = cleanId($(tag).attr('href') ?? '')
+            const id = trimUrl($(tag).attr('href') ?? '')
             if (!id || !label) {
                 continue
             }
@@ -87,7 +92,7 @@ export class MangaStreamParser {
         ]
 
         return App.createSourceManga({
-            id: mangaId,
+            id: mangaTitle,
             mangaInfo: App.createMangaInfo({
                 titles,
                 image: image,
@@ -100,13 +105,10 @@ export class MangaStreamParser {
         })
     }
 
-    parseChapterList($: cheerio.CheerioAPI, mangaId: string): Chapter[] {
+    parseChapterList($: cheerio.CheerioAPI, mangaTitle: string): Chapter[] {
         const chapters: Chapter[] = []
         let sortingIndex = 0
         let language = source.language
-
-        // Usually for Manhwa sites
-        if (mangaId.toUpperCase().endsWith('-RAW') && source.language == '🇬🇧') language = '🇰🇷'
 
         for (const chapter of $('li', 'div#chapterlist').toArray()) {
             const title = $('span.chapternum', chapter).text().trim()
@@ -119,7 +121,7 @@ export class MangaStreamParser {
             }
 
             if (!id || typeof id === 'undefined') {
-                throw new Error(`Could not parse out ID when getting chapters for postId:${mangaId}`)
+                throw new Error(`Could not parse out ID when getting chapters for title :${mangaTitle}`)
             }
 
             chapters.push({
@@ -137,7 +139,7 @@ export class MangaStreamParser {
 
         // If there are no chapters, throw error to avoid losing progress
         if (chapters.length == 0) {
-            throw new Error(`Couldn't find any chapters for mangaId: ${mangaId}!`)
+            throw new Error(`Couldn't find any chapters for title: ${mangaTitle}!`)
         }
 
         return chapters.map((chapter) => {
@@ -146,7 +148,7 @@ export class MangaStreamParser {
         })
     }
 
-    parseChapterDetails($: cheerio.CheerioAPI, mangaId: string, chapterId: string): ChapterDetails {
+    parseChapterDetails($: cheerio.CheerioAPI, mangaTitle: string, chapterId: string): ChapterDetails {
         const pages: string[] = []
 
         $('#readerarea > img').toArray().forEach(page => {
@@ -156,7 +158,7 @@ export class MangaStreamParser {
 
         return App.createChapterDetails({
             id: chapterId,
-            mangaId: mangaId,
+            mangaId: mangaTitle,
             pages: pages
         })
     }
@@ -189,32 +191,6 @@ export class MangaStreamParser {
         }
 
         return tagSections.map((x) => App.createTagSection(x))
-    }
-
-    async parseSearchResults($: cheerio.CheerioAPI): Promise<SearchResult[]> {
-        const results: SearchResult[] = []
-
-        for (const obj of $('div.bs', 'div.listupd').toArray()) {
-            const slug: string = ($('a', obj).attr('href') ?? '').replace(/\/$/, '').split('/').pop() ?? ''
-            const path: string = ($('a', obj).attr('href') ?? '').replace(/\/$/, '').split('/').slice(-2).shift() ?? ''
-            if (!slug || !path) {
-                throw new Error(`Unable to parse slug (${slug}) or path (${path})!`)
-            }
-
-            const title: string = $('a', obj).attr('title') ?? ''
-            const image = this.getImageSrc($('img', obj)) ?? ''
-            const subtitle = $('div.epxs', obj).text().trim()
-
-            results.push({
-                slug,
-                path,
-                image: image,
-                title: entities.decodeHTML(title),
-                subtitle: entities.decodeHTML(subtitle)
-            })
-        }
-
-        return results
     }
 
     async parseViewMore($: cheerio.CheerioAPI, sourceInstance: RizzFables): Promise<PartialSourceManga[]> {
@@ -259,7 +235,6 @@ export class MangaStreamParser {
             const subtitle = section.subtitleSelectorFunc($, manga) ?? ''
 
             const mangaId: string = cleanId($('a', manga).attr('href') ?? '')
-
             if (mangaId === '' || !title) {
                 console.log(`Failed to parse homepage sections for ${source.baseUrl} title (${title}) mangaId (${mangaId})`)
                 continue

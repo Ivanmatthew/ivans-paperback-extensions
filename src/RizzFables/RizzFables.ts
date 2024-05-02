@@ -27,12 +27,12 @@ import { Configuration as SourceConfiguration } from './components/Configuration
 import {
     Source,
     Metadata,
-    Slug,
     ComicResult,
     HomeSectionData,
     DefaultHomeSectionData
 } from './components/Types'
 import {
+    cleanId,
     createHomeSection,
     getFilterTagsBySection,
     getIncludedTagBySection,
@@ -40,7 +40,7 @@ import {
 } from './components/Helper'
 
 export const RizzFablesInfo: SourceInfo = {
-    version: '2.0.0',
+    version: '2.0.1',
     name: 'RizzFables',
     description: 'Extension that pulls manga from RizzFables',
     author: 'IvanMatthew',
@@ -85,7 +85,7 @@ export class RizzFables extends SourceConfiguration implements Source {
         'latest_update': {
             ...DefaultHomeSectionData,
             section: createHomeSection('latest_update', 'Latest Updates'),
-            selectorFunc: ($: cheerio.CheerioAPI) => $('div.uta', $('h2:contains(Latest Update)')?.parent()?.next()),
+            selectorFunc: ($: cheerio.CheerioAPI) => $('div.uta'),
             titleSelectorFunc: ($: cheerio.CheerioAPI, element: cheerio.Element) => $('a', element).attr('title'),
             subtitleSelectorFunc: ($: cheerio.CheerioAPI, element: cheerio.Element) => $('li > a, div.epxs', $('div.luf, div.bigor', element)).first().text().trim(),
             getViewMoreItemsFunc: (page: string) => `${RizzFables.directoryPath}/?page=${page}&order=update`,
@@ -95,21 +95,18 @@ export class RizzFables extends SourceConfiguration implements Source {
             ...DefaultHomeSectionData,
             section: createHomeSection('top_alltime', 'Top All Time', false),
             selectorFunc: ($: cheerio.CheerioAPI) => $('li', $('div.serieslist.pop.wpop.wpop-alltime')),
-            subtitleSelectorFunc: ($: cheerio.CheerioAPI, element: cheerio.Element) => $('span a', element).toArray().map(x => $(x).text().trim()).join(', '),
             sortIndex: 40
         },
         'top_monthly': {
             ...DefaultHomeSectionData,
             section: createHomeSection('top_monthly', 'Top Monthly', false),
             selectorFunc: ($: cheerio.CheerioAPI) => $('li', $('div.serieslist.pop.wpop.wpop-monthly')),
-            subtitleSelectorFunc: ($: cheerio.CheerioAPI, element: cheerio.Element) => $('span a', element).toArray().map(x => $(x).text().trim()).join(', '),
             sortIndex: 50
         },
         'top_weekly': {
             ...DefaultHomeSectionData,
             section: createHomeSection('top_weekly', 'Top Weekly', false),
             selectorFunc: ($: cheerio.CheerioAPI) => $('li', $('div.serieslist.pop.wpop.wpop-weekly')),
-            subtitleSelectorFunc: ($: cheerio.CheerioAPI, element: cheerio.Element) => $('span a', element).toArray().map(x => $(x).text().trim()).join(', '),
             sortIndex: 60
         }
     }
@@ -117,11 +114,12 @@ export class RizzFables extends SourceConfiguration implements Source {
     stateManager = App.createSourceStateManager()
     parser = new MangaStreamParser()
 
-    getMangaShareUrl(mangaId: string): string {
-        return `${RizzFables.baseUrl}/${RizzFables.directoryPath}/${mangaId}/`
+    getMangaShareUrl(mangaTitle: string): string {
+        return `${RizzFables.baseUrl}/${RizzFables.directoryPath}/${getSlugFromTitle(mangaTitle)}/`
     }
 
-    async getMangaDetails(mangaId: string): Promise<SourceManga> {
+    async getMangaDetails(mangaTitle: string): Promise<SourceManga> {
+        const mangaId = getSlugFromTitle(mangaTitle)
         const request = App.createRequest({
             url: `${RizzFables.baseUrl}/${RizzFables.directoryPath}/${mangaId}/`,
             method: 'GET'
@@ -131,10 +129,12 @@ export class RizzFables extends SourceConfiguration implements Source {
         this.checkResponseError(response)
         const $ = cheerio.load(response.data as string)
 
-        return this.parser.parseMangaDetails($, mangaId)
+        return this.parser.parseMangaDetails($, mangaTitle)
     }
 
-    async getChapters(mangaId: string): Promise<Chapter[]> {
+    async getChapters(mangaTitle: string): Promise<Chapter[]> {
+
+        const mangaId = getSlugFromTitle(mangaTitle)
         const request = App.createRequest({
             url: `${RizzFables.baseUrl}/${RizzFables.directoryPath}/${mangaId}/`,
             method: 'GET'
@@ -144,10 +144,11 @@ export class RizzFables extends SourceConfiguration implements Source {
         this.checkResponseError(response)
         const $ = cheerio.load(response.data as string)
 
-        return this.parser.parseChapterList($, mangaId)
+        return this.parser.parseChapterList($, mangaTitle)
     }
 
-    async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {
+    async getChapterDetails(mangaTitle: string, chapterId: string): Promise<ChapterDetails> {
+        const mangaId = getSlugFromTitle(mangaTitle)
         // Request the manga page
         const request = App.createRequest({
             url: `${RizzFables.baseUrl}/${RizzFables.directoryPath}/${mangaId}/`,
@@ -165,7 +166,7 @@ export class RizzFables extends SourceConfiguration implements Source {
 
         // Fetch the ID (URL) of the chapter
         const id = $('a', chapter).attr('href') ?? ''
-        if (!id) {
+        if (!id || id === '') {
             throw new Error(`Unable to fetch id for chapter numer: ${chapterId}`)
         }
         // Request the chapter page
@@ -178,7 +179,7 @@ export class RizzFables extends SourceConfiguration implements Source {
         this.checkResponseError(_response)
         const _$ = cheerio.load(_response.data as string)
 
-        return this.parser.parseChapterDetails(_$, mangaId, chapterId)
+        return this.parser.parseChapterDetails(_$, mangaTitle, chapterId)
     }
 
     async getSearchTags(): Promise<TagSection[]> {
@@ -204,7 +205,7 @@ export class RizzFables extends SourceConfiguration implements Source {
         const results: PartialSourceManga[] = []
         for (const manga of searchResultData) {
             results.push(App.createPartialSourceManga({
-                mangaId: getSlugFromTitle(manga.title),
+                mangaId: cleanId(manga.title),
                 title: manga.title,
                 image: `${RizzFables.baseUrl}/assets/images/${manga.image_url}`
             }))
@@ -314,7 +315,7 @@ export class RizzFables extends SourceConfiguration implements Source {
         
                 for (const manga of pageData) {
                     items.push(App.createPartialSourceManga({
-                        mangaId: getSlugFromTitle(manga.title),
+                        mangaId: cleanId(manga.title),
                         title: manga.title,
                         image: `${RizzFables.baseUrl}/assets/images/${manga.image_url}`
                     }))
@@ -331,7 +332,7 @@ export class RizzFables extends SourceConfiguration implements Source {
                 // @ts-ignore
                 const param = this.homescreen_sections[homepageSectionId].getViewMoreItemsFunc(page) ?? undefined
                 if (!param) {
-                    throw new Error(`Invalid homeSectionId | ${homepageSectionId}`)
+                    throw new Error(`Invalid homeSectionId: ${homepageSectionId}`)
                 }
 
                 const request = App.createRequest({
@@ -350,114 +351,6 @@ export class RizzFables extends SourceConfiguration implements Source {
                 })
             }
         }
-    }
-
-    // Utility
-
-    async slugToPostId(slug: string, path: string): Promise<string> {
-        if ((await this.stateManager.retrieve(slug)) == null) {
-            const postId = await this.convertSlugToPostId(slug, path) ?? ''
-
-            const existingMappedSlug = await this.stateManager.retrieve(postId)
-            if (existingMappedSlug != null) {
-                await this.stateManager.store(slug, undefined)
-            }
-
-            await this.stateManager.store(postId, slug)
-            await this.stateManager.store(slug, postId)
-        }
-
-        const postId = await this.stateManager.retrieve(slug)
-        if (!postId) {
-            throw new Error(`Unable to fetch postId for slug:${slug}`)
-        }
-
-        return postId
-    }
-
-    async convertPostIdToSlug(postId: number): Promise<Slug> {
-        const request = App.createRequest({
-            url: `${RizzFables.baseUrl}/?p=${postId}`,
-            method: 'GET'
-        })
-
-        const response = await this.requestManager.schedule(request, 1)
-        const $ = cheerio.load(response.data as string)
-
-        let parseSlug: string | string[]
-        // Step 1: Try to get slug from og-url
-        parseSlug = String($('meta[property="og:url"]').attr('content'))
-
-        // Step 2: Try to get slug from canonical
-        if (!parseSlug.includes(RizzFables.baseUrl)) {
-            parseSlug = String($('link[rel="canonical"]').attr('href'))
-        }
-
-        if (!parseSlug || !parseSlug.includes(RizzFables.baseUrl)) {
-            throw new Error('Unable to parse slug!')
-        }
-
-        parseSlug = parseSlug.replace(/\/$/, '').split('/')
-
-        const slug = parseSlug.slice(-1).pop()
-        const path = parseSlug.slice(-2).shift()
-
-        return {
-            path,
-            slug
-        }
-    }
-
-    async convertSlugToPostId(slug: string, path: string): Promise<string | undefined> {
-        // Credit to the MadaraDex team :-D
-        const headRequest = App.createRequest({
-            url: `${RizzFables.baseUrl}/${path}/${slug}/`,
-            method: 'HEAD'
-        })
-        const headResponse = await this.requestManager.schedule(headRequest, 1)
-        this.checkResponseError(headResponse)
-
-        let postId: string | number | undefined
-
-        const postIdRegex = headResponse?.headers.Link?.match(/\?p=(\d+)/)
-        if (postIdRegex?.[1]) {
-            postId = postIdRegex[1]
-        }
-
-        if (postId || !isNaN(Number(postId))) {
-            return postId?.toString()
-        }
-
-        const request = App.createRequest({
-            url: `${RizzFables.baseUrl}/${path}/${slug}/`,
-            method: 'GET'
-        })
-
-        const response = await this.requestManager.schedule(request, 1)
-        const $ = cheerio.load(response.data as string)
-
-        // Step 1: Try to get postId from shortlink
-        postId = Number($('link[rel="shortlink"]')?.attr('href')?.split('/?p=')[1])
-
-        // Step 2: If no number has been found, try to parse from data-id
-        if (isNaN(postId)) {
-            postId = Number($('div.bookmark').attr('data-id'))
-        }
-
-        // Step 3: If no number has been found, try to parse from manga script
-        if (isNaN(postId)) {
-            const page = $.root().html()
-            const match = page?.match(/postID.*\D(\d+)/)
-            if (match != null && match[1]) {
-                postId = Number(match[1]?.trim())
-            }
-        }
-
-        if (!postId || isNaN(postId)) {
-            throw new Error(`Unable to fetch numeric postId for this item! (path:${path} slug:${slug})`)
-        }
-
-        return postId.toString()
     }
 
     async getCloudflareBypassRequestAsync(): Promise<Request> {

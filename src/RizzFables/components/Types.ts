@@ -88,7 +88,7 @@ export interface HomeSectionData {
 }
 export const DefaultHomeSectionData = {
     titleSelectorFunc: ($: cheerio.CheerioAPI, element: cheerio.Element) => $('h2', element).text().trim(),
-    subtitleSelectorFunc: () => '',
+    subtitleSelectorFunc: ($: cheerio.CheerioAPI, element: cheerio.Element) => $('span a', element).toArray().map(x => $(x).text().trim()).join(', '),
     getViewMoreItemsFunc: () => '',
     enabled: true
 }

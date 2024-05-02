@@ -1,7 +1,7 @@
-import { RizzFables } from '../RizzFables'
+import { Configuration as Source } from '../components/Configuration'
 import { Months } from './Types'
 
-const source = RizzFables
+const source = Source
 
 export function convertDate(dateString: string): Date {
     // Parsed date string
@@ -18,7 +18,7 @@ export function convertDate(dateString: string): Date {
     })
 
     if (!date || String(date) == 'Invalid Date') {
-        console.log('Failed to parse chapter date! TO DEV: Please check if the entered months reflect the sites months')
+        console.log('Failed to parse chapter date!')
         return new Date()
     }
     return date

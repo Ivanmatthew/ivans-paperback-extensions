@@ -32,7 +32,7 @@ export class Configuration {
     /**
      * Some websites have the Cloudflare defense check enabled on specific parts of the website, these need to be loaded when using the Cloudflare bypass within the app
      */
-    static bypassPage = ''
+    static bypassPage = 'https://rizzfables.com/chapter/r2311170-the-counts-youngest-son-is-a-player-chapter-54'
 
     // ----MANGA DETAILS SELECTORS----
     /**
