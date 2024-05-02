@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [22] 
+        node-version: [22]
 
     steps:
       - name: Checkout Branch
@@ -33,7 +33,7 @@ jobs:
           ref: gh-pages
           path: bundles
 
-      - run: npm install
+      - run: npm ci
       - run: npm run bundle -- --folder=${{ steps.extract_branch.outputs.branch }}
 
       - name: Deploy to GitHub Pages
