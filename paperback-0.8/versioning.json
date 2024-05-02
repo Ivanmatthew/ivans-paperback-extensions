@@ -1,1 +1,1 @@
-{"buildTime":"2024-04-28T01:10:46.667Z","sources":[],"builtWith":{"toolchain":"0.8.0-alpha.47","types":"0.8.0-alpha.47"}}
+{"buildTime":"2024-05-02T01:11:13.454Z","sources":[{"id":"RizzFables","name":"RizzFables","author":"IvanMatthew","desc":"Extension that pulls manga from RizzFables","website":"http://github.com/Ivanmatthew","contentRating":"MATURE","version":"2.0.1","icon":"icon.png","tags":[],"websiteBaseURL":"https://rizzfables.com","intents":53}],"builtWith":{"toolchain":"0.8.0-alpha.47","types":"0.8.0-alpha.47"}}

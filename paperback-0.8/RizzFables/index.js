@@ -21588,7 +21588,7 @@ const Configuration_1 = require("./components/Configuration");
 const Types_1 = require("./components/Types");
 const Helper_1 = require("./components/Helper");
 exports.RizzFablesInfo = {
-    version: '2.0.0',
+    version: '2.0.1',
     name: 'RizzFables',
     description: 'Extension that pulls manga from RizzFables',
     author: 'IvanMatthew',
@@ -21615,7 +21615,7 @@ class RizzFables extends Configuration_1.Configuration {
             'latest_update': {
                 ...Types_1.DefaultHomeSectionData,
                 section: (0, Helper_1.createHomeSection)('latest_update', 'Latest Updates'),
-                selectorFunc: ($) => $('div.uta', $('h2:contains(Latest Update)')?.parent()?.next()),
+                selectorFunc: ($) => $('div.uta'),
                 titleSelectorFunc: ($, element) => $('a', element).attr('title'),
                 subtitleSelectorFunc: ($, element) => $('li > a, div.epxs', $('div.luf, div.bigor', element)).first().text().trim(),
                 getViewMoreItemsFunc: (page) => `${RizzFables.directoryPath}/?page=${page}&order=update`,
@@ -21625,21 +21625,18 @@ class RizzFables extends Configuration_1.Configuration {
                 ...Types_1.DefaultHomeSectionData,
                 section: (0, Helper_1.createHomeSection)('top_alltime', 'Top All Time', false),
                 selectorFunc: ($) => $('li', $('div.serieslist.pop.wpop.wpop-alltime')),
-                subtitleSelectorFunc: ($, element) => $('span a', element).toArray().map(x => $(x).text().trim()).join(', '),
                 sortIndex: 40
             },
             'top_monthly': {
                 ...Types_1.DefaultHomeSectionData,
                 section: (0, Helper_1.createHomeSection)('top_monthly', 'Top Monthly', false),
                 selectorFunc: ($) => $('li', $('div.serieslist.pop.wpop.wpop-monthly')),
-                subtitleSelectorFunc: ($, element) => $('span a', element).toArray().map(x => $(x).text().trim()).join(', '),
                 sortIndex: 50
             },
             'top_weekly': {
                 ...Types_1.DefaultHomeSectionData,
                 section: (0, Helper_1.createHomeSection)('top_weekly', 'Top Weekly', false),
                 selectorFunc: ($) => $('li', $('div.serieslist.pop.wpop.wpop-weekly')),
-                subtitleSelectorFunc: ($, element) => $('span a', element).toArray().map(x => $(x).text().trim()).join(', '),
                 sortIndex: 60
             }
         };
@@ -21656,10 +21653,11 @@ class RizzFables extends Configuration_1.Configuration {
      * Selector Default = "h2:contains(Popular Today)"
      */
     configureSections() { return; }
-    getMangaShareUrl(mangaId) {
-        return `${RizzFables.baseUrl}/${RizzFables.directoryPath}/${mangaId}/`;
+    getMangaShareUrl(mangaTitle) {
+        return `${RizzFables.baseUrl}/${RizzFables.directoryPath}/${(0, Helper_1.getSlugFromTitle)(mangaTitle)}/`;
     }
-    async getMangaDetails(mangaId) {
+    async getMangaDetails(mangaTitle) {
+        const mangaId = (0, Helper_1.getSlugFromTitle)(mangaTitle);
         const request = App.createRequest({
             url: `${RizzFables.baseUrl}/${RizzFables.directoryPath}/${mangaId}/`,
             method: 'GET'
@@ -21667,9 +21665,10 @@ class RizzFables extends Configuration_1.Configuration {
         const response = await this.requestManager.schedule(request, 1);
         this.checkResponseError(response);
         const $ = cheerio.load(response.data);
-        return this.parser.parseMangaDetails($, mangaId);
+        return this.parser.parseMangaDetails($, mangaTitle);
     }
-    async getChapters(mangaId) {
+    async getChapters(mangaTitle) {
+        const mangaId = (0, Helper_1.getSlugFromTitle)(mangaTitle);
         const request = App.createRequest({
             url: `${RizzFables.baseUrl}/${RizzFables.directoryPath}/${mangaId}/`,
             method: 'GET'
@@ -21677,9 +21676,10 @@ class RizzFables extends Configuration_1.Configuration {
         const response = await this.requestManager.schedule(request, 1);
         this.checkResponseError(response);
         const $ = cheerio.load(response.data);
-        return this.parser.parseChapterList($, mangaId);
+        return this.parser.parseChapterList($, mangaTitle);
     }
-    async getChapterDetails(mangaId, chapterId) {
+    async getChapterDetails(mangaTitle, chapterId) {
+        const mangaId = (0, Helper_1.getSlugFromTitle)(mangaTitle);
         // Request the manga page
         const request = App.createRequest({
             url: `${RizzFables.baseUrl}/${RizzFables.directoryPath}/${mangaId}/`,
@@ -21694,7 +21694,7 @@ class RizzFables extends Configuration_1.Configuration {
         }
         // Fetch the ID (URL) of the chapter
         const id = $('a', chapter).attr('href') ?? '';
-        if (!id) {
+        if (!id || id === '') {
             throw new Error(`Unable to fetch id for chapter numer: ${chapterId}`);
         }
         // Request the chapter page
@@ -21705,7 +21705,7 @@ class RizzFables extends Configuration_1.Configuration {
         const _response = await this.requestManager.schedule(_request, 1);
         this.checkResponseError(_response);
         const _$ = cheerio.load(_response.data);
-        return this.parser.parseChapterDetails(_$, mangaId, chapterId);
+        return this.parser.parseChapterDetails(_$, mangaTitle, chapterId);
     }
     async getSearchTags() {
         const request = App.createRequest({
@@ -21726,7 +21726,7 @@ class RizzFables extends Configuration_1.Configuration {
         const results = [];
         for (const manga of searchResultData) {
             results.push(App.createPartialSourceManga({
-                mangaId: (0, Helper_1.getSlugFromTitle)(manga.title),
+                mangaId: (0, Helper_1.cleanId)(manga.title),
                 title: manga.title,
                 image: `${RizzFables.baseUrl}/assets/images/${manga.image_url}`
             }));
@@ -21818,7 +21818,7 @@ class RizzFables extends Configuration_1.Configuration {
                 const items = [];
                 for (const manga of pageData) {
                     items.push(App.createPartialSourceManga({
-                        mangaId: (0, Helper_1.getSlugFromTitle)(manga.title),
+                        mangaId: (0, Helper_1.cleanId)(manga.title),
                         title: manga.title,
                         image: `${RizzFables.baseUrl}/assets/images/${manga.image_url}`
                     }));
@@ -21833,7 +21833,7 @@ class RizzFables extends Configuration_1.Configuration {
                 // @ts-ignore
                 const param = this.homescreen_sections[homepageSectionId].getViewMoreItemsFunc(page) ?? undefined;
                 if (!param) {
-                    throw new Error(`Invalid homeSectionId | ${homepageSectionId}`);
+                    throw new Error(`Invalid homeSectionId: ${homepageSectionId}`);
                 }
                 const request = App.createRequest({
                     url: `${RizzFables.baseUrl}/${param}`,
@@ -21849,89 +21849,6 @@ class RizzFables extends Configuration_1.Configuration {
                 });
             }
         }
-    }
-    // Utility
-    async slugToPostId(slug, path) {
-        if ((await this.stateManager.retrieve(slug)) == null) {
-            const postId = await this.convertSlugToPostId(slug, path) ?? '';
-            const existingMappedSlug = await this.stateManager.retrieve(postId);
-            if (existingMappedSlug != null) {
-                await this.stateManager.store(slug, undefined);
-            }
-            await this.stateManager.store(postId, slug);
-            await this.stateManager.store(slug, postId);
-        }
-        const postId = await this.stateManager.retrieve(slug);
-        if (!postId) {
-            throw new Error(`Unable to fetch postId for slug:${slug}`);
-        }
-        return postId;
-    }
-    async convertPostIdToSlug(postId) {
-        const request = App.createRequest({
-            url: `${RizzFables.baseUrl}/?p=${postId}`,
-            method: 'GET'
-        });
-        const response = await this.requestManager.schedule(request, 1);
-        const $ = cheerio.load(response.data);
-        let parseSlug;
-        // Step 1: Try to get slug from og-url
-        parseSlug = String($('meta[property="og:url"]').attr('content'));
-        // Step 2: Try to get slug from canonical
-        if (!parseSlug.includes(RizzFables.baseUrl)) {
-            parseSlug = String($('link[rel="canonical"]').attr('href'));
-        }
-        if (!parseSlug || !parseSlug.includes(RizzFables.baseUrl)) {
-            throw new Error('Unable to parse slug!');
-        }
-        parseSlug = parseSlug.replace(/\/$/, '').split('/');
-        const slug = parseSlug.slice(-1).pop();
-        const path = parseSlug.slice(-2).shift();
-        return {
-            path,
-            slug
-        };
-    }
-    async convertSlugToPostId(slug, path) {
-        // Credit to the MadaraDex team :-D
-        const headRequest = App.createRequest({
-            url: `${RizzFables.baseUrl}/${path}/${slug}/`,
-            method: 'HEAD'
-        });
-        const headResponse = await this.requestManager.schedule(headRequest, 1);
-        this.checkResponseError(headResponse);
-        let postId;
-        const postIdRegex = headResponse?.headers.Link?.match(/\?p=(\d+)/);
-        if (postIdRegex?.[1]) {
-            postId = postIdRegex[1];
-        }
-        if (postId || !isNaN(Number(postId))) {
-            return postId?.toString();
-        }
-        const request = App.createRequest({
-            url: `${RizzFables.baseUrl}/${path}/${slug}/`,
-            method: 'GET'
-        });
-        const response = await this.requestManager.schedule(request, 1);
-        const $ = cheerio.load(response.data);
-        // Step 1: Try to get postId from shortlink
-        postId = Number($('link[rel="shortlink"]')?.attr('href')?.split('/?p=')[1]);
-        // Step 2: If no number has been found, try to parse from data-id
-        if (isNaN(postId)) {
-            postId = Number($('div.bookmark').attr('data-id'));
-        }
-        // Step 3: If no number has been found, try to parse from manga script
-        if (isNaN(postId)) {
-            const page = $.root().html();
-            const match = page?.match(/postID.*\D(\d+)/);
-            if (match != null && match[1]) {
-                postId = Number(match[1]?.trim());
-            }
-        }
-        if (!postId || isNaN(postId)) {
-            throw new Error(`Unable to fetch numeric postId for this item! (path:${path} slug:${slug})`);
-        }
-        return postId.toString();
     }
     async getCloudflareBypassRequestAsync() {
         this.requestManager?.cookieStore?.getAllCookies().forEach(x => { this.requestManager?.cookieStore?.removeCookie(x); });
@@ -21965,8 +21882,8 @@ exports.MangaStreamParser = void 0;
 const LanguageUtils_1 = require("./components/LanguageUtils");
 const entities = require("entities");
 const Helper_1 = require("./components/Helper");
-const RizzFables_1 = require("./RizzFables");
-const source = RizzFables_1.RizzFables;
+const Configuration_1 = require("./components/Configuration");
+const source = Configuration_1.Configuration;
 class MangaStreamParser {
     constructor() {
         this.isLastPage = ($, id) => {
@@ -21986,7 +21903,7 @@ class MangaStreamParser {
             return isLast;
         };
     }
-    parseMangaDetails($, mangaId) {
+    parseMangaDetails($, mangaTitle) {
         const titles = [];
         titles.push(entities.decodeHTML($('h1.entry-title').text().trim()));
         const altTitles = $(`span:contains(${source.manga_selector_AlternativeTitles}), b:contains(${source.manga_selector_AlternativeTitles})+span, .imptdt:contains(${source.manga_selector_AlternativeTitles}) i, h1.entry-title+span`).contents().remove().last().text().split(','); // Language dependant
@@ -22000,9 +21917,13 @@ class MangaStreamParser {
         const artist = $(`span:contains(${source.manga_selector_artist}), .fmed b:contains(${source.manga_selector_artist})+span, .imptdt:contains(${source.manga_selector_artist}) i, .tsinfo > div:nth-child(5) > i`).contents().remove().last().text().trim(); // Language dependant
         const image = this.getImageSrc($('img', 'div[itemprop="image"]'));
         // TODO: Simplify this by concatenating the description out of the html, not the script tag
-        const selectedScript = $('div[itemprop="description"] script').get();
-        if (!selectedScript) {
-            throw new Error(`Could not parse out description script when getting manga details for postId:${mangaId}`);
+        const scriptSelection = $('div[itemprop="description"] script');
+        if (!scriptSelection) {
+            throw new Error(`Could not find description script when getting manga details for title: ${mangaTitle}`);
+        }
+        const selectedScript = scriptSelection.get();
+        if (selectedScript.length == 0) {
+            throw new Error(`Could not parse out description script when getting manga details for title: ${mangaTitle}`);
         }
         // @ts-expect-error - This is a valid check, as the selectedScript will always exist.
         const descriptionScriptContent = selectedScript[0].children[0].data;
@@ -22018,7 +21939,7 @@ class MangaStreamParser {
         const arrayTags = [];
         for (const tag of $('a', source.manga_tag_selector_box).toArray()) {
             const label = $(tag).text().trim();
-            const id = (0, Helper_1.cleanId)($(tag).attr('href') ?? '');
+            const id = (0, Helper_1.trimUrl)($(tag).attr('href') ?? '');
             if (!id || !label) {
                 continue;
             }
@@ -22045,7 +21966,7 @@ class MangaStreamParser {
             })
         ];
         return App.createSourceManga({
-            id: mangaId,
+            id: mangaTitle,
             mangaInfo: App.createMangaInfo({
                 titles,
                 image: image,
@@ -22057,13 +21978,10 @@ class MangaStreamParser {
             })
         });
     }
-    parseChapterList($, mangaId) {
+    parseChapterList($, mangaTitle) {
         const chapters = [];
         let sortingIndex = 0;
         let language = source.language;
-        // Usually for Manhwa sites
-        if (mangaId.toUpperCase().endsWith('-RAW') && source.language == '🇬🇧')
-            language = '🇰🇷';
         for (const chapter of $('li', 'div#chapterlist').toArray()) {
             const title = $('span.chapternum', chapter).text().trim();
             const date = (0, LanguageUtils_1.convertDate)($('span.chapterdate', chapter).text().trim());
@@ -22074,7 +21992,7 @@ class MangaStreamParser {
                 chapterNumber = Number(chapterNumberRegex[1]);
             }
             if (!id || typeof id === 'undefined') {
-                throw new Error(`Could not parse out ID when getting chapters for postId:${mangaId}`);
+                throw new Error(`Could not parse out ID when getting chapters for title :${mangaTitle}`);
             }
             chapters.push({
                 id: id, // Store chapterNumber as id
@@ -22090,14 +22008,14 @@ class MangaStreamParser {
         }
         // If there are no chapters, throw error to avoid losing progress
         if (chapters.length == 0) {
-            throw new Error(`Couldn't find any chapters for mangaId: ${mangaId}!`);
+            throw new Error(`Couldn't find any chapters for title: ${mangaTitle}!`);
         }
         return chapters.map((chapter) => {
             chapter.sortingIndex += chapters.length;
             return App.createChapter(chapter);
         });
     }
-    parseChapterDetails($, mangaId, chapterId) {
+    parseChapterDetails($, mangaTitle, chapterId) {
         const pages = [];
         $('#readerarea > img').toArray().forEach(page => {
             const selectorPage = $(page);
@@ -22105,7 +22023,7 @@ class MangaStreamParser {
         });
         return App.createChapterDetails({
             id: chapterId,
-            mangaId: mangaId,
+            mangaId: mangaTitle,
             pages: pages
         });
     }
@@ -22132,27 +22050,6 @@ class MangaStreamParser {
             }
         }
         return tagSections.map((x) => App.createTagSection(x));
-    }
-    async parseSearchResults($) {
-        const results = [];
-        for (const obj of $('div.bs', 'div.listupd').toArray()) {
-            const slug = ($('a', obj).attr('href') ?? '').replace(/\/$/, '').split('/').pop() ?? '';
-            const path = ($('a', obj).attr('href') ?? '').replace(/\/$/, '').split('/').slice(-2).shift() ?? '';
-            if (!slug || !path) {
-                throw new Error(`Unable to parse slug (${slug}) or path (${path})!`);
-            }
-            const title = $('a', obj).attr('title') ?? '';
-            const image = this.getImageSrc($('img', obj)) ?? '';
-            const subtitle = $('div.epxs', obj).text().trim();
-            results.push({
-                slug,
-                path,
-                image: image,
-                title: entities.decodeHTML(title),
-                subtitle: entities.decodeHTML(subtitle)
-            });
-        }
-        return results;
     }
     async parseViewMore($, sourceInstance) {
         const items = [];
@@ -22235,7 +22132,7 @@ class MangaStreamParser {
 }
 exports.MangaStreamParser = MangaStreamParser;
 
-},{"./RizzFables":139,"./components/Helper":142,"./components/LanguageUtils":143,"entities":116}],141:[function(require,module,exports){
+},{"./components/Configuration":141,"./components/Helper":142,"./components/LanguageUtils":143,"entities":116}],141:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Configuration = void 0;
@@ -22266,7 +22163,7 @@ Configuration.searchEndpoint = 'Index/live_search';
 /**
  * Some websites have the Cloudflare defense check enabled on specific parts of the website, these need to be loaded when using the Cloudflare bypass within the app
  */
-Configuration.bypassPage = '';
+Configuration.bypassPage = 'https://rizzfables.com/chapter/r2311170-the-counts-youngest-son-is-a-player-chapter-54';
 // ----MANGA DETAILS SELECTORS----
 /**
  * The selector for alternative titles.
@@ -22332,7 +22229,7 @@ Configuration.dateMonths = {
 },{}],142:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.extractVariableValues = exports.cleanId = exports.getTitleFromSlug = exports.getSlugFromTitle = exports.getFilterTagsBySection = exports.getIncludedTagBySection = exports.createHomeSection = void 0;
+exports.extractVariableValues = exports.trimUrl = exports.cleanId = exports.getTitleFromSlug = exports.getSlugFromTitle = exports.getFilterTagsBySection = exports.getIncludedTagBySection = exports.createHomeSection = void 0;
 const types_1 = require("@paperback/types");
 function createHomeSection(id, title, containsMoreItems = true, type = types_1.HomeSectionType.singleRowNormal) {
     return App.createHomeSection({
@@ -22385,6 +22282,11 @@ function cleanId(slug) {
         .pop() ?? '';
 }
 exports.cleanId = cleanId;
+function trimUrl(url) {
+    url = url.replace(/\/$/, '');
+    return url.split('/').pop() ?? '';
+}
+exports.trimUrl = trimUrl;
 function extractVariableValues(chapterData) {
     const variableRegex = /var\s+(\w+)\s*=\s*([\s\S]*?);/g; // modified to not only match strings
     const variables = {};
@@ -22403,8 +22305,8 @@ exports.extractVariableValues = extractVariableValues;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.convertDate = void 0;
-const RizzFables_1 = require("../RizzFables");
-const source = RizzFables_1.RizzFables;
+const Configuration_1 = require("../components/Configuration");
+const source = Configuration_1.Configuration;
 function convertDate(dateString) {
     // Parsed date string
     dateString = dateString.toLowerCase();
@@ -22417,14 +22319,14 @@ function convertDate(dateString) {
         }
     });
     if (!date || String(date) == 'Invalid Date') {
-        console.log('Failed to parse chapter date! TO DEV: Please check if the entered months reflect the sites months');
+        console.log('Failed to parse chapter date!');
         return new Date();
     }
     return date;
 }
 exports.convertDate = convertDate;
 
-},{"../RizzFables":139}],144:[function(require,module,exports){
+},{"../components/Configuration":141}],144:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getSourceRequestManager = void 0;
@@ -22463,7 +22365,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DefaultHomeSectionData = void 0;
 exports.DefaultHomeSectionData = {
     titleSelectorFunc: ($, element) => $('h2', element).text().trim(),
-    subtitleSelectorFunc: () => '',
+    subtitleSelectorFunc: ($, element) => $('span a', element).toArray().map(x => $(x).text().trim()).join(', '),
     getViewMoreItemsFunc: () => '',
     enabled: true
 };
