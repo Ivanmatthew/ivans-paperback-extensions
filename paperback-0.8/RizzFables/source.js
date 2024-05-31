@@ -21588,22 +21588,25 @@ const Configuration_1 = require("./components/Configuration");
 const Types_1 = require("./components/Types");
 const Helper_1 = require("./components/Helper");
 exports.RizzFablesInfo = {
-    version: '2.0.1',
+    version: '2.0.2',
     name: 'RizzFables',
     description: 'Extension that pulls manga from RizzFables',
     author: 'IvanMatthew',
     authorWebsite: 'http://github.com/Ivanmatthew',
     icon: 'icon.png',
     contentRating: types_1.ContentRating.MATURE,
-    websiteBaseURL: Configuration_1.Configuration.baseUrl,
-    intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | types_1.SourceIntents.SETTINGS_UI,
+    websiteBaseURL: Configuration_1.Configuration.baseUrl, // CHANGEIT
+    intents: types_1.SourceIntents.MANGA_CHAPTERS |
+        types_1.SourceIntents.HOMEPAGE_SECTIONS |
+        types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED |
+        types_1.SourceIntents.SETTINGS_UI,
     sourceTags: []
 };
 class RizzFables extends Configuration_1.Configuration {
     constructor() {
         super();
         this.homescreen_sections = {
-            'popular_today': {
+            popular_today: {
                 ...Types_1.DefaultHomeSectionData,
                 section: (0, Helper_1.createHomeSection)('popular_today', 'Popular Today', false, types_1.HomeSectionType.featured),
                 selectorFunc: ($) => $('div.bsx', $('h2:contains(Popular Today)')?.parent()?.next()),
@@ -21612,28 +21615,32 @@ class RizzFables extends Configuration_1.Configuration {
                 getViewMoreItemsFunc: (page) => `${RizzFables.directoryPath}/?page=${page}&order=popular`,
                 sortIndex: 10
             },
-            'latest_update': {
+            latest_update: {
                 ...Types_1.DefaultHomeSectionData,
                 section: (0, Helper_1.createHomeSection)('latest_update', 'Latest Updates'),
                 selectorFunc: ($) => $('div.uta'),
                 titleSelectorFunc: ($, element) => $('a', element).attr('title'),
-                subtitleSelectorFunc: ($, element) => $('li > a, div.epxs', $('div.luf, div.bigor', element)).first().text().trim(),
-                getViewMoreItemsFunc: (page) => `${RizzFables.directoryPath}/?page=${page}&order=update`,
+                subtitleSelectorFunc: ($, element) => $('li > a, div.epxs', $('div.luf, div.bigor', element))
+                    .first()
+                    .text()
+                    .trim(),
+                // TODO: Remove nicely
+                // getViewMoreItemsFunc: (page: string) => `${RizzFables.directoryPath}/?page=${page}&order=update`,
                 sortIndex: 20
             },
-            'top_alltime': {
+            top_alltime: {
                 ...Types_1.DefaultHomeSectionData,
                 section: (0, Helper_1.createHomeSection)('top_alltime', 'Top All Time', false),
                 selectorFunc: ($) => $('li', $('div.serieslist.pop.wpop.wpop-alltime')),
                 sortIndex: 40
             },
-            'top_monthly': {
+            top_monthly: {
                 ...Types_1.DefaultHomeSectionData,
                 section: (0, Helper_1.createHomeSection)('top_monthly', 'Top Monthly', false),
                 selectorFunc: ($) => $('li', $('div.serieslist.pop.wpop.wpop-monthly')),
                 sortIndex: 50
             },
-            'top_weekly': {
+            top_weekly: {
                 ...Types_1.DefaultHomeSectionData,
                 section: (0, Helper_1.createHomeSection)('top_weekly', 'Top Weekly', false),
                 selectorFunc: ($) => $('li', $('div.serieslist.pop.wpop.wpop-weekly')),
@@ -21652,7 +21659,9 @@ class RizzFables extends Configuration_1.Configuration {
      * Enabled Default = true
      * Selector Default = "h2:contains(Popular Today)"
      */
-    configureSections() { return; }
+    configureSections() {
+        return;
+    }
     getMangaShareUrl(mangaTitle) {
         return `${RizzFables.baseUrl}/${RizzFables.directoryPath}/${(0, Helper_1.getSlugFromTitle)(mangaTitle)}/`;
     }
@@ -21744,7 +21753,8 @@ class RizzFables extends Configuration_1.Configuration {
         const formData = {};
         if (query?.title) {
             searchUrl = searchUrl.addPathComponent(RizzFables.searchEndpoint);
-            formData['search_value'] = query?.title.replace(/[’–][a-z]*/g, '') ?? '';
+            formData['search_value'] =
+                query?.title.replace(/[’–][a-z]*/g, '') ?? '';
         }
         else {
             searchUrl = searchUrl.addPathComponent(RizzFables.filterEndpoint);
@@ -21757,9 +21767,14 @@ class RizzFables extends Configuration_1.Configuration {
             formData['OrderValue'] = orderValue !== '' ? orderValue : 'all';
         }
         return App.createRequest({
-            url: searchUrl.build({ addTrailingSlash: true, includeUndefinedParameters: false }),
+            url: searchUrl.build({
+                addTrailingSlash: true,
+                includeUndefinedParameters: false
+            }),
             headers: headers,
-            data: Object.entries(formData).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&'),
+            data: Object.entries(formData)
+                .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+                .join('&'),
             method: 'POST'
         });
     }
@@ -21803,14 +21818,16 @@ class RizzFables extends Configuration_1.Configuration {
                     'content-type': 'application/x-www-form-urlencoded; charset=UTF-8'
                 };
                 const formData = {
-                    'StatusValue': 'all',
-                    'TypeValue': 'all',
-                    'OrderValue': 'update'
+                    StatusValue: 'all',
+                    TypeValue: 'all',
+                    OrderValue: 'update'
                 };
                 const request = App.createRequest({
                     url: `${RizzFables.baseUrl}/${RizzFables.filterEndpoint}`,
                     headers: headers,
-                    data: Object.entries(formData).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&'),
+                    data: Object.entries(formData)
+                        .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+                        .join('&'),
                     method: 'POST'
                 });
                 const response = await this.requestManager.schedule(request, 1);
@@ -21842,7 +21859,9 @@ class RizzFables extends Configuration_1.Configuration {
                 const response = await this.requestManager.schedule(request, 1);
                 const $ = cheerio.load(response.data);
                 const items = await this.parser.parseViewMore($, this);
-                metadata = !this.parser.isLastPage($, 'view_more') ? { page: page + 1 } : undefined;
+                metadata = !this.parser.isLastPage($, 'view_more')
+                    ? { page: page + 1 }
+                    : undefined;
                 return App.createPagedResults({
                     results: items,
                     metadata
@@ -21851,13 +21870,15 @@ class RizzFables extends Configuration_1.Configuration {
         }
     }
     async getCloudflareBypassRequestAsync() {
-        this.requestManager?.cookieStore?.getAllCookies().forEach(x => { this.requestManager?.cookieStore?.removeCookie(x); });
+        this.requestManager?.cookieStore?.getAllCookies().forEach((x) => {
+            this.requestManager?.cookieStore?.removeCookie(x);
+        });
         return App.createRequest({
             url: `${RizzFables.bypassPage || RizzFables.baseUrl}/`,
             method: 'GET',
             headers: {
-                'referer': `${RizzFables.baseUrl}/`,
-                'origin': `${RizzFables.baseUrl}/`,
+                referer: `${RizzFables.baseUrl}/`,
+                origin: `${RizzFables.baseUrl}/`,
                 'user-agent': await this.requestManager.getDefaultUserAgent()
             }
         });
@@ -21995,7 +22016,7 @@ class MangaStreamParser {
                 throw new Error(`Could not parse out ID when getting chapters for title :${mangaTitle}`);
             }
             chapters.push({
-                id: id,
+                id: id, // Store chapterNumber as id
                 langCode: language,
                 chapNum: chapterNumber,
                 name: title,
@@ -22276,10 +22297,10 @@ function getTitleFromSlug(slug) {
 }
 exports.getTitleFromSlug = getTitleFromSlug;
 function cleanId(slug) {
-    return slug.replace(/\/$/, '')
+    return (slug.replace(/\/$/, '')
         .replace(preSlugContent + '-', '')
         .split('/')
-        .pop() ?? '';
+        .pop() ?? '').toLowerCase();
 }
 exports.cleanId = cleanId;
 function trimUrl(url) {
