@@ -49,10 +49,10 @@ export function getTitleFromSlug(slug: string): string {
         .replace('ll-', 'll ')
 }
 export function cleanId(slug: string): string {
-    return slug.replace(/\/$/, '')
+    return (slug.replace(/\/$/, '')
         .replace(preSlugContent+'-', '')
         .split('/')
-        .pop() ?? ''
+        .pop() ?? '').toLowerCase()
 }
 
 export function trimUrl(url: string): string {
