@@ -39,7 +39,7 @@ import {
 } from './components/Helper'
 
 export const RizzFablesInfo: SourceInfo = {
-    version: '2.0.2',
+    version: '2.0.3',
     name: 'RizzFables',
     description: 'Extension that pulls manga from RizzFables',
     author: 'IvanMatthew',
