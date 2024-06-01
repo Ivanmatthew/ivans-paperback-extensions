@@ -21588,7 +21588,7 @@ const Configuration_1 = require("./components/Configuration");
 const Types_1 = require("./components/Types");
 const Helper_1 = require("./components/Helper");
 exports.RizzFablesInfo = {
-    version: '2.0.2',
+    version: '2.0.3',
     name: 'RizzFables',
     description: 'Extension that pulls manga from RizzFables',
     author: 'IvanMatthew',
@@ -21927,15 +21927,30 @@ class MangaStreamParser {
     parseMangaDetails($, mangaTitle) {
         const titles = [];
         titles.push(entities.decodeHTML($('h1.entry-title').text().trim()));
-        const altTitles = $(`span:contains(${source.manga_selector_AlternativeTitles}), b:contains(${source.manga_selector_AlternativeTitles})+span, .imptdt:contains(${source.manga_selector_AlternativeTitles}) i, h1.entry-title+span`).contents().remove().last().text().split(','); // Language dependant
+        const altTitles = $(`span:contains(${source.manga_selector_AlternativeTitles}), b:contains(${source.manga_selector_AlternativeTitles})+span, .imptdt:contains(${source.manga_selector_AlternativeTitles}) i, h1.entry-title+span`)
+            .contents()
+            .remove()
+            .last()
+            .text()
+            .split(','); // Language dependant
         for (const title of altTitles) {
             if (title == '') {
                 continue;
             }
             titles.push(entities.decodeHTML(title.trim()));
         }
-        const author = $(`span:contains(${source.manga_selector_author}), .fmed b:contains(${source.manga_selector_author})+span, .imptdt:contains(${source.manga_selector_author}) i, .tsinfo > div:nth-child(4) > i`).contents().remove().last().text().trim(); // Language dependant
-        const artist = $(`span:contains(${source.manga_selector_artist}), .fmed b:contains(${source.manga_selector_artist})+span, .imptdt:contains(${source.manga_selector_artist}) i, .tsinfo > div:nth-child(5) > i`).contents().remove().last().text().trim(); // Language dependant
+        const author = $(`span:contains(${source.manga_selector_author}), .fmed b:contains(${source.manga_selector_author})+span, .imptdt:contains(${source.manga_selector_author}) i, .tsinfo > div:nth-child(4) > i`)
+            .contents()
+            .remove()
+            .last()
+            .text()
+            .trim(); // Language dependant
+        const artist = $(`span:contains(${source.manga_selector_artist}), .fmed b:contains(${source.manga_selector_artist})+span, .imptdt:contains(${source.manga_selector_artist}) i, .tsinfo > div:nth-child(5) > i`)
+            .contents()
+            .remove()
+            .last()
+            .text()
+            .trim(); // Language dependant
         const image = this.getImageSrc($('img', 'div[itemprop="image"]'));
         // TODO: Simplify this by concatenating the description out of the html, not the script tag
         const scriptSelection = $('div[itemprop="description"] script');
@@ -21948,7 +21963,8 @@ class MangaStreamParser {
         }
         // @ts-expect-error - This is a valid check, as the selectedScript will always exist.
         const descriptionScriptContent = selectedScript[0].children[0].data;
-        const description = (0, Helper_1.extractVariableValues)(descriptionScriptContent)?.description ?? 'N/A';
+        const description = (0, Helper_1.extractVariableValues)(descriptionScriptContent)?.description ??
+            'N/A';
         // RealmScans uses markdown to create their descriptions, the following code is meant to disassemble the markdown and create a clean description
         const cleanedDescription = description
             // remove first character of string (it'll be matched as "content")
@@ -21956,7 +21972,7 @@ class MangaStreamParser {
             .replace(/\\r/g, '')
             .replace(/> /g, '')
             .replace(/\\n/g, '\n')
-            .replace(/\\u[\dA - F]{ 4} /gi, match => String.fromCharCode(parseInt(match.slice(2), 16)));
+            .replace(/\\u[\dA - F]{ 4} /gi, (match) => String.fromCharCode(parseInt(match.slice(2), 16)));
         const arrayTags = [];
         for (const tag of $('a', source.manga_tag_selector_box).toArray()) {
             const label = $(tag).text().trim();
@@ -21966,7 +21982,12 @@ class MangaStreamParser {
             }
             arrayTags.push({ id, label });
         }
-        const rawStatus = $(`span:contains(${source.manga_selector_status}), .fmed b:contains(${source.manga_selector_status})+span, .imptdt:contains(${source.manga_selector_status}) i`).contents().remove().last().text().trim();
+        const rawStatus = $(`span:contains(${source.manga_selector_status}), .fmed b:contains(${source.manga_selector_status})+span, .imptdt:contains(${source.manga_selector_status}) i`)
+            .contents()
+            .remove()
+            .last()
+            .text()
+            .trim();
         let status;
         switch (rawStatus.toLowerCase()) {
             case source.manga_StatusTypes.ONGOING.toLowerCase():
@@ -22038,9 +22059,14 @@ class MangaStreamParser {
     }
     parseChapterDetails($, mangaTitle, chapterId) {
         const pages = [];
-        $('#readerarea > img').toArray().forEach(page => {
+        $('#readerarea > img')
+            .toArray()
+            .forEach((page) => {
             const selectorPage = $(page);
-            pages.push(selectorPage.attr('src') ?? selectorPage.attr('data-cfsrc') ?? selectorPage.attr('data-src') ?? '');
+            pages.push(selectorPage.attr('src') ??
+                selectorPage.attr('data-cfsrc') ??
+                selectorPage.attr('data-src') ??
+                '');
         });
         return App.createChapterDetails({
             id: chapterId,
@@ -22104,7 +22130,7 @@ class MangaStreamParser {
             const image = this.getImageSrc($('img', manga)) ?? '';
             const subtitle = section.subtitleSelectorFunc($, manga) ?? '';
             const mangaId = (0, Helper_1.cleanId)($('a', manga).attr('href') ?? '');
-            if (mangaId === '' || !title) {
+            if (mangaId == '' || !title) {
                 console.log(`Failed to parse homepage sections for ${source.baseUrl} title (${title}) mangaId (${mangaId})`);
                 continue;
             }
@@ -22119,19 +22145,19 @@ class MangaStreamParser {
     }
     getImageSrc(imageObj) {
         let image;
-        if ((typeof imageObj?.attr('data-src')) != 'undefined') {
+        if (typeof imageObj?.attr('data-src') != 'undefined') {
             image = imageObj?.attr('data-src');
         }
-        else if ((typeof imageObj?.attr('data-lazy-src')) != 'undefined') {
+        else if (typeof imageObj?.attr('data-lazy-src') != 'undefined') {
             image = imageObj?.attr('data-lazy-src');
         }
-        else if ((typeof imageObj?.attr('srcset')) != 'undefined') {
+        else if (typeof imageObj?.attr('srcset') != 'undefined') {
             image = imageObj?.attr('srcset')?.split(' ')[0] ?? '';
         }
-        else if ((typeof imageObj?.attr('src')) != 'undefined') {
+        else if (typeof imageObj?.attr('src') != 'undefined') {
             image = imageObj?.attr('src');
         }
-        else if ((typeof imageObj?.attr('data-cfsrc')) != 'undefined') {
+        else if (typeof imageObj?.attr('data-cfsrc') != 'undefined') {
             image = imageObj?.attr('data-cfsrc');
         }
         else {
@@ -22262,14 +22288,18 @@ function createHomeSection(id, title, containsMoreItems = true, type = types_1.H
 }
 exports.createHomeSection = createHomeSection;
 function getIncludedTagBySection(section, tags) {
-    return (tags?.find((x) => x.id.startsWith(`${section}:`))?.id.replace(`${section}:`, '') ?? '').replace(' ', '+') ?? '';
+    return ((tags
+        ?.find((x) => x.id.startsWith(`${section}:`))
+        ?.id.replace(`${section}:`, '') ?? '').replace(' ', '+') ?? '');
 }
 exports.getIncludedTagBySection = getIncludedTagBySection;
 function getFilterTagsBySection(section, tags, included, supportsExclusion = false) {
     if (!included && !supportsExclusion) {
         return [];
     }
-    return tags?.filter((x) => x.id.startsWith(`${section}:`)).map((x) => {
+    return tags
+        ?.filter((x) => x.id.startsWith(`${section}:`))
+        .map((x) => {
         let id = x.id.replace(`${section}:`, '');
         if (!included) {
             id = encodeURI(`-${id}`);
@@ -22280,12 +22310,16 @@ function getFilterTagsBySection(section, tags, included, supportsExclusion = fal
 exports.getFilterTagsBySection = getFilterTagsBySection;
 // TODO: auto-fetch and store the preslug content.
 const preSlugContent = 'r2311170';
+// TODO: make a more cleaner protocol for spreading slugs, titles and ids.
+// The target convention is kebab case, e.g. "this-is-a-id"
 function getSlugFromTitle(title) {
-    return preSlugContent + '-' + title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/-s-/, 's-')
-        .replace(/-ll-/, 'll-');
+    return (preSlugContent +
+        '-' +
+        title
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/-s-/, 's-')
+            .replace(/-ll-/, 'll-'));
 }
 exports.getSlugFromTitle = getSlugFromTitle;
 function getTitleFromSlug(slug) {
@@ -22296,8 +22330,12 @@ function getTitleFromSlug(slug) {
         .replace('ll-', 'll ');
 }
 exports.getTitleFromSlug = getTitleFromSlug;
+// Currently this function is ambiguous, as it converts supposedly "IDs", "slugs" and "titles" to a single format.
+// Instead, opt in for getIdFromSlug or getIdFromTitle and then cleanId if necessary, food for thought for the TODO.
 function cleanId(slug) {
-    return (slug.replace(/\/$/, '')
+    return (slug
+        .replace(/\/$/, '')
+        .replace(' ', '-')
         .replace(preSlugContent + '-', '')
         .split('/')
         .pop() ?? '').toLowerCase();
