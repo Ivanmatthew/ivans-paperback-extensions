@@ -21588,7 +21588,7 @@ const Configuration_1 = require("./components/Configuration");
 const Types_1 = require("./components/Types");
 const Helper_1 = require("./components/Helper");
 exports.RizzFablesInfo = {
-    version: '2.0.3',
+    version: '2.0.4',
     name: 'RizzFables',
     description: 'Extension that pulls manga from RizzFables',
     author: 'IvanMatthew',
