@@ -74,7 +74,7 @@ export function cleanId(slug: string): string {
     return (
         slug
             .replace(/\/$/, '')
-            .replace(' ', '-')
+            .replace(/\s/g, '-')
             .replace(preSlugContent + '-', '')
             .split('/')
             .pop() ?? ''
