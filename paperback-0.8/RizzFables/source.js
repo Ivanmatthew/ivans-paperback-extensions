@@ -22335,7 +22335,7 @@ exports.getTitleFromSlug = getTitleFromSlug;
 function cleanId(slug) {
     return (slug
         .replace(/\/$/, '')
-        .replace(' ', '-')
+        .replace(/\s/g, '-')
         .replace(preSlugContent + '-', '')
         .split('/')
         .pop() ?? '').toLowerCase();
