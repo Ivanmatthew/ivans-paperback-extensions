@@ -22322,6 +22322,7 @@ function getSlugFromTitle(title) {
             .replace(/-ll-/, 'll-'));
 }
 exports.getSlugFromTitle = getSlugFromTitle;
+// Currently an approximation
 function getTitleFromSlug(slug) {
     return slug
         .replace(preSlugContent + '-', '')
@@ -22333,12 +22334,18 @@ exports.getTitleFromSlug = getTitleFromSlug;
 // Currently this function is ambiguous, as it converts supposedly "IDs", "slugs" and "titles" to a single format.
 // Instead, opt in for getIdFromSlug or getIdFromTitle and then cleanId if necessary, food for thought for the TODO.
 function cleanId(slug) {
-    return (slug
+    const test = slug
         .replace(/\/$/, '')
-        .replace(/\s/g, '-')
-        .replace(preSlugContent + '-', '')
         .split('/')
-        .pop() ?? '').toLowerCase();
+        .pop()
+        // .replace(/\s/g, '-')
+        .replace(preSlugContent + '-', '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/-s-/, 's-')
+        .replace(/-ll-/, 'll-');
+    console.log(`${slug} -> ${test}`);
+    return test;
 }
 exports.cleanId = cleanId;
 function trimUrl(url) {
