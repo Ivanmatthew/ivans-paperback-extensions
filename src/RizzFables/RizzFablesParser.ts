@@ -11,7 +11,7 @@ import { convertDate } from './components/LanguageUtils'
 
 import { HomeSectionData } from './components/Types'
 
-import entities = require('entities')
+import { decode as decodeHTMLEntity } from 'html-entities'
 
 import * as cheerio from 'cheerio'
 import { cleanId, extractVariableValues, trimUrl } from './components/Helper'
@@ -22,7 +22,7 @@ const source = Source
 export class MangaStreamParser {
     parseMangaDetails($: cheerio.CheerioAPI, mangaTitle: string): SourceManga {
         const titles: string[] = []
-        titles.push(entities.decodeHTML($('h1.entry-title').text().trim()))
+        titles.push(decodeHTMLEntity($('h1.entry-title').text().trim()))
 
         const altTitles = $(
             `span:contains(${source.manga_selector_AlternativeTitles}), b:contains(${source.manga_selector_AlternativeTitles})+span, .imptdt:contains(${source.manga_selector_AlternativeTitles}) i, h1.entry-title+span`
@@ -36,7 +36,7 @@ export class MangaStreamParser {
             if (title == '') {
                 continue
             }
-            titles.push(entities.decodeHTML(title.trim()))
+            titles.push(decodeHTMLEntity(title.trim()))
         }
 
         const author = $(
@@ -77,15 +77,27 @@ export class MangaStreamParser {
             'N/A'
 
         // RealmScans uses markdown to create their descriptions, the following code is meant to disassemble the markdown and create a clean description
-        const cleanedDescription = description
+        const cleanedDescription = decodeHTMLEntity(description)
             // remove first character of string (it'll be matched as "content")
             .slice(1, -1)
+            .replace(/<br>/g, '\n')
+            .replace(/<br\\\/>/g, '\n')
+            .replace(/\\n/g, '\n')
             .replace(/\\r/g, '')
             .replace(/> /g, '')
-            .replace(/\\n/g, '\n')
-            .replace(/\\u[\dA - F]{ 4} /gi, (match) =>
-                String.fromCharCode(parseInt(match.slice(2), 16))
+            .replace(/<p>/g, '')
+            .replace(/<\/p>/g, '\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/<i>/g, '')
+            .replace(/<\/i>/g, '')
+            .replace(/<b>/g, '')
+            .replace(/<\/b>/g, '')
+            .replace(/<strong>/g, '')
+            .replace(/<\/strong>/g, '')
+            .replace(/\\u([\d\w]{4})/gi, (_, grp) =>
+                String.fromCharCode(parseInt(grp, 16))
             )
+            .trim()
 
         const arrayTags: Tag[] = []
         for (const tag of $('a', source.manga_tag_selector_box).toArray()) {
@@ -273,8 +285,8 @@ export class MangaStreamParser {
                 App.createPartialSourceManga({
                     mangaId,
                     image: image,
-                    title: entities.decodeHTML(title),
-                    subtitle: entities.decodeHTML(subtitle)
+                    title: decodeHTMLEntity(title),
+                    subtitle: decodeHTMLEntity(subtitle)
                 })
             )
         }
@@ -314,8 +326,8 @@ export class MangaStreamParser {
                 App.createPartialSourceManga({
                     mangaId,
                     image: image,
-                    title: entities.decodeHTML(title),
-                    subtitle: entities.decodeHTML(subtitle)
+                    title: decodeHTMLEntity(title),
+                    subtitle: decodeHTMLEntity(subtitle)
                 })
             )
         }
@@ -375,6 +387,6 @@ export class MangaStreamParser {
             image = image.replace(/^\//, 'https:/')
         }
 
-        return encodeURI(decodeURI(entities.decodeHTML(image?.trim() ?? '')))
+        return encodeURI(decodeURI(decodeHTMLEntity(image?.trim() ?? '')))
     }
 }

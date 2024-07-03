@@ -39,7 +39,7 @@ import {
 } from './components/Helper'
 
 export const RizzFablesInfo: SourceInfo = {
-    version: '2.0.5',
+    version: '2.0.6',
     name: 'RizzFables',
     description: 'Extension that pulls manga from RizzFables',
     author: 'IvanMatthew',
@@ -433,9 +433,9 @@ export class RizzFables extends SourceConfiguration implements Source {
             default: {
                 const page: number = metadata?.page ?? 1
 
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
                 const param =
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                    // @ts-ignore
                     this.homescreen_sections[
                         homepageSectionId
                     ].getViewMoreItemsFunc(page) ?? undefined
