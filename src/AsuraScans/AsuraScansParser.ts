@@ -12,7 +12,7 @@ import {
 import { decode as decodeHTMLEntity } from 'html-entities'
 import { CheerioAPI } from 'cheerio'
 
-import { getFilter, getMangaId } from './AsuraScansUtils'
+import { getMangaId } from './AsuraScansUtils'
 
 import { Filters } from './interface/Filters'
 import { TextBufferRepr } from './TextBufferRepr'
@@ -58,7 +58,7 @@ export const parseMangaDetails = async (
     const textBufferRepr = parseNextJSData($)
     textBufferRepr.finalize()
 
-    const mangaDetailsObject = textBufferRepr.resolveIndexWithHex('4b', (inp) =>
+    const mangaDetailsObject = textBufferRepr.resolveIndexWithHex('3b', (inp) =>
         recurseParseJSON(inp)
     )
 
@@ -199,9 +199,18 @@ export const parseChapterDetails = async (
     textBufferRepr.finalize()
 
     let toParse: any[] = []
-    const rawPagesObject = textBufferRepr.resolveIndexWithHex('6b', (inp) =>
-        recurseParseJSON(inp)
+    const stableRawPagesObject = textBufferRepr.resolveIndexWithHex(
+        '19',
+        (inp) => recurseParseJSON(inp)
     )
+    let rawPagesObject
+    try {
+        rawPagesObject =
+            stableRawPagesObject[3].children[9][3].children[3].initialChapter
+                .pages
+    } catch (e) {
+        throw new Error('Could not find page images for chapter ' + e)
+    }
     if (Array.isArray(rawPagesObject) === false) {
         toParse = rawPagesObject.pages
     } else {
