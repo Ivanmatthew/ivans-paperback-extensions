@@ -448,7 +448,7 @@ var _Sources = (() => {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.urlEncodeObject = exports.convertTime = exports.Source = void 0;
-      var Source2 = class {
+      var Source = class {
         constructor(cheerio) {
           this.cheerio = cheerio;
         }
@@ -465,7 +465,7 @@ var _Sources = (() => {
           return this.getSearchTags?.();
         }
       };
-      exports.Source = Source2;
+      exports.Source = Source;
       function convertTime(timeAgo) {
         let time;
         let trimmed = Number((/\d*/.exec(timeAgo) ?? [])[0]);
@@ -637,13 +637,13 @@ var _Sources = (() => {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.HomeSectionType = void 0;
-      var HomeSectionType3;
-      (function(HomeSectionType4) {
-        HomeSectionType4["singleRowNormal"] = "singleRowNormal";
-        HomeSectionType4["singleRowLarge"] = "singleRowLarge";
-        HomeSectionType4["doubleRow"] = "doubleRow";
-        HomeSectionType4["featured"] = "featured";
-      })(HomeSectionType3 = exports.HomeSectionType || (exports.HomeSectionType = {}));
+      var HomeSectionType2;
+      (function(HomeSectionType3) {
+        HomeSectionType3["singleRowNormal"] = "singleRowNormal";
+        HomeSectionType3["singleRowLarge"] = "singleRowLarge";
+        HomeSectionType3["doubleRow"] = "doubleRow";
+        HomeSectionType3["featured"] = "featured";
+      })(HomeSectionType2 = exports.HomeSectionType || (exports.HomeSectionType = {}));
     }
   });
 
@@ -718,6 +718,20 @@ var _Sources = (() => {
       __exportStar(require_exports(), exports);
       __exportStar(require_base(), exports);
       __exportStar(require_DyamicUI(), exports);
+    }
+  });
+
+  // node_modules/boolbase/index.js
+  var require_boolbase = __commonJS({
+    "node_modules/boolbase/index.js"(exports, module) {
+      module.exports = {
+        trueFunc: function trueFunc2() {
+          return true;
+        },
+        falseFunc: function falseFunc() {
+          return false;
+        }
+      };
     }
   });
 
@@ -872,538 +886,13 @@ var _Sources = (() => {
     }
   });
 
-  // node_modules/boolbase/index.js
-  var require_boolbase = __commonJS({
-    "node_modules/boolbase/index.js"(exports, module) {
-      module.exports = {
-        trueFunc: function trueFunc2() {
-          return true;
-        },
-        falseFunc: function falseFunc() {
-          return false;
-        }
-      };
-    }
-  });
-
-  // src/RizzFables/RizzFables.ts
-  var RizzFables_exports = {};
-  __export(RizzFables_exports, {
-    RizzFables: () => RizzFables,
-    RizzFablesInfo: () => RizzFablesInfo
+  // src/AsuraScans/AsuraScans.ts
+  var AsuraScans_exports = {};
+  __export(AsuraScans_exports, {
+    AsuraScans: () => AsuraScans,
+    AsuraScansInfo: () => AsuraScansInfo
   });
   var import_types3 = __toESM(require_lib());
-
-  // src/RizzFables/components/Configuration.ts
-  var Configuration = class {
-    static {
-      /**
-       * The URL of the website. Eg. https://mangadark.com without a trailing slash
-       */
-      this.baseUrl = "https://rizzfables.com";
-    }
-    static {
-      /**
-       * The language code which this source supports.
-       */
-      this.language = "\u{1F1EC}\u{1F1E7}";
-    }
-    static {
-      // ----GENERAL SELECTORS----
-      /**
-       * The pathname between the domain and the manga.
-       * Eg. https://mangadark.com/manga/mashle-magic-and-muscles the pathname would be "manga"
-       * Default = "manga"
-       */
-      this.directoryPath = "series";
-    }
-    static {
-      /**
-       * The pathname between the domain and the filter path. (Usually the same but can deviate)
-       */
-      this.filterPath = "series";
-    }
-    static {
-      this.filterEndpoint = "Index/filter_series";
-    }
-    static {
-      this.searchEndpoint = "Index/live_search";
-    }
-    static {
-      /**
-       * Some websites have the Cloudflare defense check enabled on specific parts of the website, these need to be loaded when using the Cloudflare bypass within the app
-       */
-      this.bypassPage = "https://rizzfables.com/chapter/r2311170-the-counts-youngest-son-is-a-player-chapter-54";
-    }
-    static {
-      // ----MANGA DETAILS SELECTORS----
-      /**
-       * The selector for alternative titles.
-       * This can change depending on the language
-       * Leave default if not used!
-       * Default = "b:contains(Alternative Titles)"
-       */
-      this.manga_selector_AlternativeTitles = "Alternative Titles";
-    }
-    static {
-      /**
-       * The selector for authors.
-       * This can change depending on the language
-       * Leave default if not used!
-       * Default = "Author" (English)
-       */
-      this.manga_selector_author = "Author";
-    }
-    static {
-      /**
-       * The selector for artists.
-       * This can change depending on the language
-       * Leave default if not used!
-       * Default = "Artist" (English)
-       */
-      this.manga_selector_artist = "Artist";
-    }
-    static {
-      /**
-       * The selector for status.
-       * This can change depending on the language
-       * Leave default if not used!
-       * Default = "Status" (English)
-       * THESE ARE CASE SENSITIVE!
-      */
-      this.manga_selector_status = "Status";
-    }
-    static {
-      //----MANGA TAG SELECTORS----
-      this.manga_tag_selector_box = "span.mgen";
-    }
-    static {
-      // ----STATUS SELECTORS----
-      /**
-       * The selector for the manga status.
-       * These can change depending on the language
-       * Default = ONGOING: "ONGOING", COMPLETED: "COMPLETED"
-       */
-      this.manga_StatusTypes = {
-        ONGOING: "ONGOING",
-        COMPLETED: "COMPLETED"
-      };
-    }
-    static {
-      // ----DATE SELECTORS----
-      /**
-       * Enter the months for the website's language in correct order, case insensitive.
-       * Default = English Translation
-       */
-      this.dateMonths = {
-        january: "Jan",
-        february: "Feb",
-        march: "Mar",
-        april: "Apr",
-        may: "May",
-        june: "Jun",
-        july: "Jul",
-        august: "Aug",
-        september: "Sep",
-        october: "Oct",
-        november: "Nov",
-        december: "Dec"
-      };
-    }
-  };
-
-  // src/RizzFables/components/LanguageUtils.ts
-  var source = Configuration;
-  function convertDate(dateString) {
-    dateString = dateString.toLowerCase();
-    const dateMonths = source.dateMonths;
-    let date = null;
-    Object.entries(dateMonths).forEach(([key, value]) => {
-      if (dateString.toLowerCase().includes(value?.toLowerCase())) {
-        date = new Date(dateString.replace(value, key ?? ""));
-      }
-    });
-    if (!date || String(date) == "Invalid Date") {
-      console.log("Failed to parse chapter date!");
-      return /* @__PURE__ */ new Date();
-    }
-    return date;
-  }
-
-  // src/RizzFables/RizzFablesParser.ts
-  var import_html_entities = __toESM(require_lib2());
-
-  // src/RizzFables/components/Helper.ts
-  var import_types = __toESM(require_lib());
-  function createHomeSection(id, title, containsMoreItems = true, type = import_types.HomeSectionType.singleRowNormal) {
-    return App.createHomeSection({
-      id,
-      title,
-      type,
-      containsMoreItems
-    });
-  }
-  function getIncludedTagBySection(section, tags) {
-    return (tags?.find((x) => x.id.startsWith(`${section}:`))?.id.replace(`${section}:`, "") ?? "").replace(" ", "+") ?? "";
-  }
-  function getFilterTagsBySection(section, tags, included, supportsExclusion = false) {
-    if (!included && !supportsExclusion) {
-      return [];
-    }
-    return tags?.filter((x) => x.id.startsWith(`${section}:`)).map((x) => {
-      let id = x.id.replace(`${section}:`, "");
-      if (!included) {
-        id = encodeURI(`-${id}`);
-      }
-      return id;
-    });
-  }
-  var preSlugContent = "r2311170";
-  function getSlugFromTitle(title) {
-    return preSlugContent + "-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-s-/, "s-").replace(/-ll-/, "ll-");
-  }
-  function cleanId(slug) {
-    const test = slug.replace(/\/$/, "").split("/").pop().replace(preSlugContent + "-", "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-s-/, "s-").replace(/-ll-/, "ll-");
-    console.log(`${slug} -> ${test}`);
-    return test;
-  }
-  function trimUrl(url) {
-    url = url.replace(/\/$/, "");
-    return url.split("/").pop() ?? "";
-  }
-  function extractVariableValues(chapterData) {
-    const variableRegex = /var\s+(\w+)\s*=\s*([\s\S]*?);/g;
-    const variables = {};
-    let match;
-    while ((match = variableRegex.exec(chapterData)) !== null) {
-      const [, variableName, variableValue] = match;
-      variables[variableName] = variableValue;
-    }
-    return variables;
-  }
-
-  // src/RizzFables/RizzFablesParser.ts
-  var source2 = Configuration;
-  var MangaStreamParser = class {
-    constructor() {
-      this.isLastPage = ($2, id) => {
-        let isLast = true;
-        if (id == "view_more") {
-          const hasNext = Boolean($2("a.r")[0]);
-          if (hasNext) {
-            isLast = false;
-          }
-        }
-        if (id == "search_request") {
-          const hasNext = Boolean($2("a.next.page-numbers")[0]);
-          if (hasNext) {
-            isLast = false;
-          }
-        }
-        return isLast;
-      };
-    }
-    parseMangaDetails($2, mangaTitle) {
-      const titles = [];
-      titles.push((0, import_html_entities.decode)($2("h1.entry-title").text().trim()));
-      const altTitles = $2(
-        `span:contains(${source2.manga_selector_AlternativeTitles}), b:contains(${source2.manga_selector_AlternativeTitles})+span, .imptdt:contains(${source2.manga_selector_AlternativeTitles}) i, h1.entry-title+span`
-      ).contents().remove().last().text().split(",");
-      for (const title of altTitles) {
-        if (title == "") {
-          continue;
-        }
-        titles.push((0, import_html_entities.decode)(title.trim()));
-      }
-      const author = $2(
-        `span:contains(${source2.manga_selector_author}), .fmed b:contains(${source2.manga_selector_author})+span, .imptdt:contains(${source2.manga_selector_author}) i, .tsinfo > div:nth-child(4) > i`
-      ).contents().remove().last().text().trim();
-      const artist = $2(
-        `span:contains(${source2.manga_selector_artist}), .fmed b:contains(${source2.manga_selector_artist})+span, .imptdt:contains(${source2.manga_selector_artist}) i, .tsinfo > div:nth-child(5) > i`
-      ).contents().remove().last().text().trim();
-      const image = this.getImageSrc($2("img", 'div[itemprop="image"]'));
-      const scriptSelection = $2('div[itemprop="description"] script');
-      if (!scriptSelection) {
-        throw new Error(
-          `Could not find description script when getting manga details for title: ${mangaTitle}`
-        );
-      }
-      const selectedScript = scriptSelection.get();
-      if (selectedScript.length == 0) {
-        throw new Error(
-          `Could not parse out description script when getting manga details for title: ${mangaTitle}`
-        );
-      }
-      const descriptionScriptContent = selectedScript[0].children[0].data;
-      const description = extractVariableValues(descriptionScriptContent)?.description ?? "N/A";
-      const cleanedDescription = (0, import_html_entities.decode)(description).slice(1, -1).replace(/<br>/g, "\n").replace(/<br\\\/>/g, "\n").replace(/\\n/g, "\n").replace(/\\r/g, "").replace(/> /g, "").replace(/<p>/g, "").replace(/<\/p>/g, "\n").replace(/\n{3,}/g, "\n\n").replace(/<i>/g, "").replace(/<\/i>/g, "").replace(/<b>/g, "").replace(/<\/b>/g, "").replace(/<strong>/g, "").replace(/<\/strong>/g, "").replace(
-        /\\u([\d\w]{4})/gi,
-        (_, grp) => String.fromCharCode(parseInt(grp, 16))
-      ).trim();
-      const arrayTags = [];
-      for (const tag of $2("a", source2.manga_tag_selector_box).toArray()) {
-        const label = $2(tag).text().trim();
-        const id = trimUrl($2(tag).attr("href") ?? "");
-        if (!id || !label) {
-          continue;
-        }
-        arrayTags.push({ id, label });
-      }
-      const rawStatus = $2(
-        `span:contains(${source2.manga_selector_status}), .fmed b:contains(${source2.manga_selector_status})+span, .imptdt:contains(${source2.manga_selector_status}) i`
-      ).contents().remove().last().text().trim();
-      let status;
-      switch (rawStatus.toLowerCase()) {
-        case source2.manga_StatusTypes.ONGOING.toLowerCase():
-          status = "Ongoing";
-          break;
-        case source2.manga_StatusTypes.COMPLETED.toLowerCase():
-          status = "Completed";
-          break;
-        default:
-          status = "Ongoing";
-          break;
-      }
-      const tagSections = [
-        App.createTagSection({
-          id: "0",
-          label: "genres",
-          tags: arrayTags.map((x) => App.createTag(x))
-        })
-      ];
-      return App.createSourceManga({
-        id: mangaTitle,
-        mangaInfo: App.createMangaInfo({
-          titles,
-          image,
-          status,
-          author: author == "" ? "Unknown" : author,
-          artist: artist == "" ? "Unknown" : artist,
-          tags: tagSections,
-          desc: cleanedDescription
-        })
-      });
-    }
-    parseChapterList($2, mangaTitle) {
-      const chapters = [];
-      let sortingIndex = 0;
-      let language = source2.language;
-      for (const chapter of $2("li", "div#chapterlist").toArray()) {
-        const title = $2("span.chapternum", chapter).text().trim();
-        const date = convertDate(
-          $2("span.chapterdate", chapter).text().trim()
-        );
-        const id = chapter.attribs["data-num"] ?? "";
-        const chapterNumberRegex = id.match(/(\d+\.?\d?)+/);
-        let chapterNumber = 0;
-        if (chapterNumberRegex && chapterNumberRegex[1]) {
-          chapterNumber = Number(chapterNumberRegex[1]);
-        }
-        if (!id || typeof id === "undefined") {
-          throw new Error(
-            `Could not parse out ID when getting chapters for title :${mangaTitle}`
-          );
-        }
-        chapters.push({
-          id,
-          // Store chapterNumber as id
-          langCode: language,
-          chapNum: chapterNumber,
-          name: title,
-          time: date,
-          sortingIndex,
-          volume: 0,
-          group: ""
-        });
-        sortingIndex--;
-      }
-      if (chapters.length == 0) {
-        throw new Error(
-          `Couldn't find any chapters for title: ${mangaTitle}!`
-        );
-      }
-      return chapters.map((chapter) => {
-        chapter.sortingIndex += chapters.length;
-        return App.createChapter(chapter);
-      });
-    }
-    parseChapterDetails($2, mangaTitle, chapterId) {
-      const pages = [];
-      $2("#readerarea > img").toArray().forEach((page) => {
-        const selectorPage = $2(page);
-        pages.push(
-          selectorPage.attr("src") ?? selectorPage.attr("data-cfsrc") ?? selectorPage.attr("data-src") ?? ""
-        );
-      });
-      return App.createChapterDetails({
-        id: chapterId,
-        mangaId: mangaTitle,
-        pages
-      });
-    }
-    parseTags($2) {
-      const tagSections = [
-        { id: "0", label: "genres", tags: [] },
-        { id: "1", label: "status", tags: [] },
-        { id: "2", label: "type", tags: [] },
-        { id: "3", label: "order", tags: [] }
-      ];
-      const sectionDropDowns = $2(
-        "ul.dropdown-menu.c4.genrez, ul.dropdown-menu.c1"
-      ).toArray();
-      for (let i = 0; i < tagSections.length; ++i) {
-        const sectionDropdown = sectionDropDowns[i];
-        if (!sectionDropdown) {
-          continue;
-        }
-        for (const tag of $2("li", sectionDropdown).toArray()) {
-          const label = $2("label", tag).text().trim();
-          const id = `${tagSections[i]?.label}:${$2("input", tag).attr(
-            "value"
-          )}`;
-          if (!id || !label) {
-            continue;
-          }
-          tagSections[i]?.tags.push(App.createTag({ id, label }));
-        }
-      }
-      return tagSections.map((x) => App.createTagSection(x));
-    }
-    async parseViewMore($2, sourceInstance) {
-      const items = [];
-      for (const manga of $2("div.bs", "div.listupd").toArray()) {
-        const title = $2("a", manga).attr("title");
-        const image = this.getImageSrc($2("img", manga));
-        const subtitle = $2("div.epxs", manga).text().trim();
-        const mangaId = cleanId($2("a", manga).attr("href") ?? "");
-        if (!mangaId || !title) {
-          console.log(
-            `Failed to parse homepage sections for ${source2.baseUrl}`
-          );
-          continue;
-        }
-        items.push(
-          App.createPartialSourceManga({
-            mangaId,
-            image,
-            title: (0, import_html_entities.decode)(title),
-            subtitle: (0, import_html_entities.decode)(subtitle)
-          })
-        );
-      }
-      return items;
-    }
-    async parseHomeSection($2, section, sourceInstance) {
-      const items = [];
-      const mangas = section.selectorFunc($2);
-      if (!mangas.length || !section.titleSelectorFunc) {
-        console.log(
-          `Unable to parse valid ${section.section.title} section!`
-        );
-        return items;
-      }
-      for (const manga of mangas.toArray()) {
-        const title = section.titleSelectorFunc($2, manga);
-        const image = this.getImageSrc($2("img", manga)) ?? "";
-        const subtitle = section.subtitleSelectorFunc($2, manga) ?? "";
-        const mangaId = cleanId($2("a", manga).attr("href") ?? "");
-        if (mangaId == "" || !title) {
-          console.log(
-            `Failed to parse homepage sections for ${source2.baseUrl} title (${title}) mangaId (${mangaId})`
-          );
-          continue;
-        }
-        items.push(
-          App.createPartialSourceManga({
-            mangaId,
-            image,
-            title: (0, import_html_entities.decode)(title),
-            subtitle: (0, import_html_entities.decode)(subtitle)
-          })
-        );
-      }
-      return items;
-    }
-    getImageSrc(imageObj) {
-      let image;
-      if (typeof imageObj?.attr("data-src") != "undefined") {
-        image = imageObj?.attr("data-src");
-      } else if (typeof imageObj?.attr("data-lazy-src") != "undefined") {
-        image = imageObj?.attr("data-lazy-src");
-      } else if (typeof imageObj?.attr("srcset") != "undefined") {
-        image = imageObj?.attr("srcset")?.split(" ")[0] ?? "";
-      } else if (typeof imageObj?.attr("src") != "undefined") {
-        image = imageObj?.attr("src");
-      } else if (typeof imageObj?.attr("data-cfsrc") != "undefined") {
-        image = imageObj?.attr("data-cfsrc");
-      } else {
-        image = "";
-      }
-      image = image?.split("?resize")[0] ?? "";
-      if (!image?.startsWith("http")) {
-        if (!source2.baseUrl) {
-          throw new Error(
-            `Unable to parse image source, image src does not have full address, and base url is not supplied!
-Image url: ${image}`
-          );
-        }
-        image = `${source2.baseUrl}${image}`;
-      } else {
-        image = image.replace(/^\/\//, "https://");
-        image = image.replace(/^\//, "https:/");
-      }
-      return encodeURI(decodeURI((0, import_html_entities.decode)(image?.trim() ?? "")));
-    }
-  };
-
-  // src/UrlBuilder.ts
-  var URLBuilder = class {
-    constructor(baseUrl) {
-      this.parameters = {};
-      this.pathComponents = [];
-      this.baseUrl = baseUrl.replace(/(^\/)?(?=.*)(\/$)?/gim, "");
-    }
-    addPathComponent(component) {
-      this.pathComponents.push(component.replace(/(^\/)?(?=.*)(\/$)?/gim, ""));
-      return this;
-    }
-    addQueryParameter(key, value) {
-      if (Array.isArray(value) && !value.length) {
-        return this;
-      }
-      const array = this.parameters[key];
-      if (array?.length) {
-        array.push(value);
-      } else {
-        this.parameters[key] = value;
-      }
-      return this;
-    }
-    buildUrl({ addTrailingSlash, includeUndefinedParameters } = {
-      addTrailingSlash: false,
-      includeUndefinedParameters: false
-    }) {
-      let finalUrl = this.baseUrl + "/";
-      finalUrl += this.pathComponents.join("/");
-      finalUrl += addTrailingSlash ? "/" : "";
-      finalUrl += Object.values(this.parameters).length > 0 ? "?" : "";
-      finalUrl += Object.entries(this.parameters).map((entry) => {
-        if (!entry[1] && !includeUndefinedParameters) {
-          return void 0;
-        }
-        if (Array.isArray(entry[1]) && entry[1].length) {
-          return `${entry[0]}=${entry[1].map(
-            (value) => value || includeUndefinedParameters ? value : void 0
-          ).filter((x) => x !== void 0).join(",")}`;
-        }
-        if (typeof entry[1] === "object") {
-          return Object.keys(entry[1]).map((key) => `${entry[0]}[${key}]=${entry[1][key]}`).join("&");
-        }
-        return `${entry[0]}=${entry[1]}`;
-      }).filter((x) => x !== void 0).join("&");
-      return finalUrl;
-    }
-  };
 
   // node_modules/cheerio/lib/esm/options.js
   var defaultOpts = {
@@ -1499,7 +988,7 @@ Image url: ${image}`
   var Comment = ElementType.Comment;
   var Script = ElementType.Script;
   var Style = ElementType.Style;
-  var Tag2 = ElementType.Tag;
+  var Tag = ElementType.Tag;
   var CDATA = ElementType.CDATA;
   var Doctype = ElementType.Doctype;
 
@@ -2591,7 +2080,7 @@ Image url: ${image}`
         return renderCdata(node);
       case Script:
       case Style:
-      case Tag2:
+      case Tag:
         return renderTag(node, options);
       case Text:
         return renderText(node, options);
@@ -6881,99 +6370,99 @@ Image url: ${image}`
     var _a2;
     return (_a2 = TAG_NAME_TO_ID.get(tagName)) !== null && _a2 !== void 0 ? _a2 : TAG_ID.UNKNOWN;
   }
-  var $ = TAG_ID;
+  var $2 = TAG_ID;
   var SPECIAL_ELEMENTS = {
     [NS.HTML]: /* @__PURE__ */ new Set([
-      $.ADDRESS,
-      $.APPLET,
-      $.AREA,
-      $.ARTICLE,
-      $.ASIDE,
-      $.BASE,
-      $.BASEFONT,
-      $.BGSOUND,
-      $.BLOCKQUOTE,
-      $.BODY,
-      $.BR,
-      $.BUTTON,
-      $.CAPTION,
-      $.CENTER,
-      $.COL,
-      $.COLGROUP,
-      $.DD,
-      $.DETAILS,
-      $.DIR,
-      $.DIV,
-      $.DL,
-      $.DT,
-      $.EMBED,
-      $.FIELDSET,
-      $.FIGCAPTION,
-      $.FIGURE,
-      $.FOOTER,
-      $.FORM,
-      $.FRAME,
-      $.FRAMESET,
-      $.H1,
-      $.H2,
-      $.H3,
-      $.H4,
-      $.H5,
-      $.H6,
-      $.HEAD,
-      $.HEADER,
-      $.HGROUP,
-      $.HR,
-      $.HTML,
-      $.IFRAME,
-      $.IMG,
-      $.INPUT,
-      $.LI,
-      $.LINK,
-      $.LISTING,
-      $.MAIN,
-      $.MARQUEE,
-      $.MENU,
-      $.META,
-      $.NAV,
-      $.NOEMBED,
-      $.NOFRAMES,
-      $.NOSCRIPT,
-      $.OBJECT,
-      $.OL,
-      $.P,
-      $.PARAM,
-      $.PLAINTEXT,
-      $.PRE,
-      $.SCRIPT,
-      $.SECTION,
-      $.SELECT,
-      $.SOURCE,
-      $.STYLE,
-      $.SUMMARY,
-      $.TABLE,
-      $.TBODY,
-      $.TD,
-      $.TEMPLATE,
-      $.TEXTAREA,
-      $.TFOOT,
-      $.TH,
-      $.THEAD,
-      $.TITLE,
-      $.TR,
-      $.TRACK,
-      $.UL,
-      $.WBR,
-      $.XMP
+      $2.ADDRESS,
+      $2.APPLET,
+      $2.AREA,
+      $2.ARTICLE,
+      $2.ASIDE,
+      $2.BASE,
+      $2.BASEFONT,
+      $2.BGSOUND,
+      $2.BLOCKQUOTE,
+      $2.BODY,
+      $2.BR,
+      $2.BUTTON,
+      $2.CAPTION,
+      $2.CENTER,
+      $2.COL,
+      $2.COLGROUP,
+      $2.DD,
+      $2.DETAILS,
+      $2.DIR,
+      $2.DIV,
+      $2.DL,
+      $2.DT,
+      $2.EMBED,
+      $2.FIELDSET,
+      $2.FIGCAPTION,
+      $2.FIGURE,
+      $2.FOOTER,
+      $2.FORM,
+      $2.FRAME,
+      $2.FRAMESET,
+      $2.H1,
+      $2.H2,
+      $2.H3,
+      $2.H4,
+      $2.H5,
+      $2.H6,
+      $2.HEAD,
+      $2.HEADER,
+      $2.HGROUP,
+      $2.HR,
+      $2.HTML,
+      $2.IFRAME,
+      $2.IMG,
+      $2.INPUT,
+      $2.LI,
+      $2.LINK,
+      $2.LISTING,
+      $2.MAIN,
+      $2.MARQUEE,
+      $2.MENU,
+      $2.META,
+      $2.NAV,
+      $2.NOEMBED,
+      $2.NOFRAMES,
+      $2.NOSCRIPT,
+      $2.OBJECT,
+      $2.OL,
+      $2.P,
+      $2.PARAM,
+      $2.PLAINTEXT,
+      $2.PRE,
+      $2.SCRIPT,
+      $2.SECTION,
+      $2.SELECT,
+      $2.SOURCE,
+      $2.STYLE,
+      $2.SUMMARY,
+      $2.TABLE,
+      $2.TBODY,
+      $2.TD,
+      $2.TEMPLATE,
+      $2.TEXTAREA,
+      $2.TFOOT,
+      $2.TH,
+      $2.THEAD,
+      $2.TITLE,
+      $2.TR,
+      $2.TRACK,
+      $2.UL,
+      $2.WBR,
+      $2.XMP
     ]),
-    [NS.MATHML]: /* @__PURE__ */ new Set([$.MI, $.MO, $.MN, $.MS, $.MTEXT, $.ANNOTATION_XML]),
-    [NS.SVG]: /* @__PURE__ */ new Set([$.TITLE, $.FOREIGN_OBJECT, $.DESC]),
+    [NS.MATHML]: /* @__PURE__ */ new Set([$2.MI, $2.MO, $2.MN, $2.MS, $2.MTEXT, $2.ANNOTATION_XML]),
+    [NS.SVG]: /* @__PURE__ */ new Set([$2.TITLE, $2.FOREIGN_OBJECT, $2.DESC]),
     [NS.XLINK]: /* @__PURE__ */ new Set(),
     [NS.XML]: /* @__PURE__ */ new Set(),
     [NS.XMLNS]: /* @__PURE__ */ new Set()
   };
   function isNumberedHeader(tn) {
-    return tn === $.H1 || tn === $.H2 || tn === $.H3 || tn === $.H4 || tn === $.H5 || tn === $.H6;
+    return tn === $2.H1 || tn === $2.H2 || tn === $2.H3 || tn === $2.H4 || tn === $2.H5 || tn === $2.H6;
   }
   var UNESCAPED_TEXT = /* @__PURE__ */ new Set([
     TAG_NAMES.STYLE,
@@ -15256,391 +14745,683 @@ Image url: ${image}`
   var { parseHTML: parseHTML2 } = static_exports;
   var { root: root2 } = static_exports;
 
-  // src/RizzFables/components/SourceRequestManager.ts
-  var getSourceRequestManager = (sourceUrl) => {
-    const self = App.createRequestManager({
-      requestsPerSecond: 5,
-      requestTimeout: 15e3,
-      interceptor: {
-        interceptRequest: async (request) => {
-          request.headers = {
-            ...request.headers ?? {},
-            ...{
-              "user-agent": await self.getDefaultUserAgent(),
-              referer: `${sourceUrl}/`,
-              ...(request.url.includes("wordpress.com") || request.url.includes("wp.com")) && {
-                Accept: "image/avif,image/webp,*/*"
-              }
-              // Used for images hosted on Wordpress blogs
-            }
-          };
-          request.url = request.url.replace(/^http:/, "https:");
-          return request;
-        },
-        interceptResponse: async (response) => {
-          if (response.headers.location) {
-            response.headers.location = response.headers.location.replace(/^http:/, "https:");
-          }
-          return response;
-        }
+  // src/AsuraScans/AsuraScansParser.ts
+  var import_types2 = __toESM(require_lib());
+  var import_html_entities = __toESM(require_lib2());
+
+  // src/AsuraScans/AsuraScansUtils.ts
+  async function setFilters(source, data2) {
+    for (const genre of data2.genres) {
+      await source.stateManager.store(genre.name.toUpperCase(), genre.id);
+    }
+  }
+  async function getMangaId(source, slug) {
+    const id = idCleaner(slug);
+    const gotSlug = await source.stateManager.retrieve(id) ?? "";
+    if (!gotSlug) {
+      await source.stateManager.store(id, slug);
+      return slug;
+    }
+    return gotSlug;
+  }
+  function idCleaner(str) {
+    let cleanId = str;
+    cleanId = cleanId.replace(/\/$/, "");
+    cleanId = cleanId.split("/").pop() ?? null;
+    cleanId = cleanId?.substring(0, cleanId?.lastIndexOf("-")) ?? null;
+    if (!cleanId) {
+      throw new Error(`Unable to parse id for ${str}`);
+    }
+    return cleanId;
+  }
+
+  // src/AsuraScans/TextBufferRepr.ts
+  var TextBufferRepr = class {
+    constructor(initialText = "") {
+      this.buffer = initialText;
+      this.isLocked = false;
+      this.bufferArray = [];
+    }
+    append(text3) {
+      if (this.isLocked) {
+        throw new Error("TextBufferRepr is locked");
       }
+      this.buffer += text3;
+    }
+    finalize() {
+      this.isLocked = true;
+      this.buffer.split("\n").forEach((line) => {
+        const strSplitIndex = line.indexOf(":");
+        if (strSplitIndex === -1) {
+          return;
+        }
+        const hexIndex = line.slice(0, strSplitIndex);
+        const intIndex = parseInt(hexIndex, 16);
+        const value = line.slice(strSplitIndex + 1);
+        this.bufferArray[intIndex] = value;
+      });
+    }
+    get(index2) {
+      return this.bufferArray[index2] ?? null;
+    }
+    getWithHex(hexIndex) {
+      const intIndex = parseInt(hexIndex, 16);
+      return this.get(intIndex);
+    }
+    bufferArrayAsHex() {
+      const bufferArrayHex = {};
+      this.bufferArray.forEach((value, index2) => {
+        if (value) {
+          bufferArrayHex[index2.toString(16)] = value;
+        }
+      });
+      return bufferArrayHex;
+    }
+    replacePointers(text3) {
+      const pointerRegex = /\$[0-9a-fA-F]+/g;
+      let json;
+      try {
+        json = JSON.parse(text3);
+      } catch (error) {
+      }
+      if (json) {
+        return JSON.stringify(json, (key, value) => {
+          if (typeof value === "string") {
+            return this.replacePointers(value);
+          }
+          return value;
+        });
+      }
+      return text3.replace(pointerRegex, (match) => {
+        const hexIndex = match.slice(1);
+        const value = this.getWithHex(hexIndex);
+        if (value?.match(pointerRegex)) {
+          return this.replacePointers(value);
+        }
+        return value ?? match;
+      });
+    }
+    resolveIndex(index2, transformerFunc) {
+      const bufferEntry = this.bufferArray[index2];
+      if (bufferEntry === void 0) {
+        throw new Error(`Index ${index2} not found`);
+      }
+      const endResult = this.replacePointers(bufferEntry);
+      return transformerFunc ? transformerFunc(endResult) : endResult;
+    }
+    resolveIndexWithHex(hexIndex, transformerFunc) {
+      const intIndex = parseInt(hexIndex, 16);
+      return this.resolveIndex(intIndex, transformerFunc);
+    }
+  };
+
+  // src/AsuraScans/AsuraScansHelper.ts
+  function getIncludedTagBySection(section, tags) {
+    return (tags?.find((x) => x.id.startsWith(`${section}:`))?.id.replace(`${section}:`, "") ?? "").replace(" ", "+");
+  }
+  function getFilterTagsBySection(section, tags) {
+    return tags?.filter((x) => x.id.startsWith(`${section}:`)).map((x) => {
+      return x.id.replace(`${section}:`, "");
     });
-    return self;
+  }
+  function recurseParseJSON(value) {
+    if (typeof value === "string") {
+      try {
+        const json = JSON.parse(value);
+        return recurseParseJSON(json);
+      } catch (error) {
+        return value;
+      }
+    } else if (typeof value === "object") {
+      for (const key in value) {
+        ;
+        value[key] = recurseParseJSON(
+          value[key]
+        );
+      }
+    } else if (Array.isArray(value)) {
+      ;
+      value.forEach((element, index2) => {
+        ;
+        value[index2] = recurseParseJSON(element);
+      });
+    }
+    return value;
+  }
+
+  // src/AsuraScans/AsuraScansParser.ts
+  var parseNextJSData = ($) => {
+    const scriptsWithData = $("script").toArray().filter((script) => {
+      const scriptContent2 = $(script).html();
+      return scriptContent2?.includes("self.__next_f.push");
+    });
+    if (scriptsWithData.length === 0) {
+      throw new Error("Could not find script with data");
+    }
+    const collectedData = new TextBufferRepr();
+    for (const scriptWithData of scriptsWithData) {
+      const self = {
+        __next_f: []
+      };
+      const scriptContent = $(scriptWithData).text();
+      if (!scriptContent) continue;
+      eval(scriptContent);
+      self.__next_f.forEach((val2) => {
+        if (val2[0] === 1) {
+          collectedData.append(val2[1]);
+        }
+      });
+    }
+    return collectedData;
+  };
+  var parseMangaDetails = async (source, $3, mangaId) => {
+    const textBufferRepr = parseNextJSData($3);
+    textBufferRepr.finalize();
+    const mangaDetailsObject = textBufferRepr.resolveIndexWithHex(
+      "6b",
+      (inp) => recurseParseJSON(inp)
+    );
+    const title = mangaDetailsObject.name ?? "";
+    const image = mangaDetailsObject.cover ?? "";
+    const uncleanDescription = mangaDetailsObject.summary ?? "";
+    const description = (0, import_html_entities.decode)(uncleanDescription).slice(1, -1).replace(/<br>/g, "\n").replace(/<br\\\/>/g, "\n").replace(/\\n/g, "\n").replace(/\\r/g, "").replace(/> /g, "").replace(/<p>/g, "").replace(/<\/p>/g, "\n").replace(/\n{3,}/g, "\n\n").replace(/<i>/g, "").replace(/<\/i>/g, "").replace(/<b>/g, "").replace(/<\/b>/g, "").replace(/<strong>/g, "").replace(/<\/strong>/g, "").replace(
+      /\\u([\d\w]{4})/gi,
+      (_, grp) => String.fromCharCode(parseInt(grp, 16))
+    ).trim();
+    const author = mangaDetailsObject.author ?? "";
+    const artist = mangaDetailsObject.artist ?? "";
+    const arrayTags = [];
+    for (const tag of mangaDetailsObject.genres ?? []) {
+      const label = tag.name;
+      const id = tag.id;
+      if (!id || !label) continue;
+      arrayTags.push({ id: `genres:${id}`, label });
+    }
+    const tagSections = [
+      App.createTagSection({
+        id: "0",
+        label: "genres",
+        tags: arrayTags.map((x) => App.createTag(x))
+      })
+    ];
+    const status = mangaDetailsObject.status.name ?? "";
+    return App.createSourceManga({
+      id: mangaId,
+      mangaInfo: App.createMangaInfo({
+        titles: [(0, import_html_entities.decode)(title)],
+        image,
+        status,
+        author: (0, import_html_entities.decode)(author),
+        artist: (0, import_html_entities.decode)(artist),
+        tags: tagSections,
+        desc: (0, import_html_entities.decode)(description)
+      })
+    });
+  };
+  var parseChapters = ($3, mangaId) => {
+    const textBufferRepr = parseNextJSData($3);
+    textBufferRepr.finalize();
+    const rawMangaChaptersObject = textBufferRepr.resolveIndexWithHex(
+      "38",
+      (inp) => recurseParseJSON(inp)
+    );
+    const chapters = [];
+    let sortingIndex = 0;
+    for (const chapter of rawMangaChaptersObject[3].chapters) {
+      const id = String(chapter.name);
+      if (!id || isNaN(Number(id))) continue;
+      const date = new Date(chapter.published_at);
+      chapters.push({
+        id,
+        name: `Chapter ${id}`,
+        langCode: "\u{1F1EC}\u{1F1E7}",
+        chapNum: Number(id),
+        volume: 0,
+        time: date,
+        sortingIndex,
+        group: ""
+      });
+      sortingIndex--;
+    }
+    if (chapters.length == 0) {
+      throw new Error(`Couldn't find any chapters for mangaId: ${mangaId}!`);
+    }
+    return chapters.map((chapter) => {
+      chapter.sortingIndex = chapters.indexOf(chapter);
+      return App.createChapter(chapter);
+    });
+  };
+  var parseChapterDetails = async ($3, mangaId, chapterId) => {
+    const textBufferRepr = parseNextJSData($3);
+    textBufferRepr.finalize();
+    let toParse = [];
+    const rawPagesObject = textBufferRepr.resolveIndexWithHex(
+      "6b",
+      (inp) => recurseParseJSON(inp)
+    );
+    if (Array.isArray(rawPagesObject) === false) {
+      toParse = rawPagesObject.pages;
+    } else {
+      toParse = rawPagesObject;
+    }
+    const pages = [];
+    toParse.forEach((page) => {
+      pages.push(page.url);
+    });
+    const chapterDetails = App.createChapterDetails({
+      id: chapterId,
+      mangaId,
+      pages
+    });
+    return chapterDetails;
+  };
+  var parseHomeSections = async (source, $3, sectionCallback) => {
+    const featuedSection = App.createHomeSection({
+      id: "featured",
+      title: "Featured",
+      containsMoreItems: false,
+      type: import_types2.HomeSectionType.singleRowLarge
+    });
+    const updateSection = App.createHomeSection({
+      id: "latest_updates",
+      title: "Latest Updates",
+      containsMoreItems: true,
+      type: import_types2.HomeSectionType.singleRowNormal
+    });
+    const popularSection = App.createHomeSection({
+      id: "popular_today",
+      title: "Popular Today",
+      containsMoreItems: false,
+      type: import_types2.HomeSectionType.singleRowNormal
+    });
+    const featuredSection_Array = [];
+    for (const manga of $3("li.slide", "ul.slider.animated").toArray()) {
+      const slug = $3("a", manga).attr("href")?.replace(/\/$/, "")?.split("/").pop() ?? "";
+      if (!slug) continue;
+      const id = await getMangaId(source, slug);
+      const image = $3("img", manga).first().attr("src") ?? "";
+      const title = $3("a", manga).first().text().trim() ?? "";
+      if (!id || !title) continue;
+      featuredSection_Array.push(
+        App.createPartialSourceManga({
+          image,
+          title: (0, import_html_entities.decode)(title),
+          mangaId: id
+        })
+      );
+    }
+    featuedSection.items = featuredSection_Array;
+    sectionCallback(featuedSection);
+    const updateSection_Array = [];
+    for (const manga of $3("div.w-full", "div.grid.grid-rows-1").toArray()) {
+      const slug = $3("a", manga).attr("href")?.replace(/\/$/, "")?.split("/").pop() ?? "";
+      if (!slug) continue;
+      const id = await getMangaId(source, slug);
+      const image = $3("img", manga).first().attr("src") ?? "";
+      const title = $3(".col-span-9 > .font-medium > a", manga).first().text().trim() ?? "";
+      const subtitle = $3(".flex.flex-col .flex-row a", manga).first().text().trim() ?? "";
+      if (!id || !title) continue;
+      updateSection_Array.push(
+        App.createPartialSourceManga({
+          image,
+          title: (0, import_html_entities.decode)(title),
+          mangaId: id,
+          subtitle: (0, import_html_entities.decode)(subtitle)
+        })
+      );
+    }
+    updateSection.items = updateSection_Array;
+    sectionCallback(updateSection);
+    const popularSection_Array = [];
+    for (const manga of $3("a", "div.flex-wrap.hidden").toArray()) {
+      const slug = $3(manga).attr("href")?.replace(/\/$/, "")?.split("/").pop() ?? "";
+      if (!slug) continue;
+      const id = await getMangaId(source, slug);
+      const image = $3("img", manga).first().attr("src") ?? "";
+      const title = $3("span.block.font-bold", manga).first().text().trim() ?? "";
+      const subtitle = $3("span.block.font-bold", manga).first().next().text().trim() ?? "";
+      if (!id || !title) continue;
+      popularSection_Array.push(
+        App.createPartialSourceManga({
+          image,
+          title: (0, import_html_entities.decode)(title),
+          mangaId: id,
+          subtitle: (0, import_html_entities.decode)(subtitle)
+        })
+      );
+    }
+    popularSection.items = popularSection_Array;
+    sectionCallback(popularSection);
+  };
+  var parseViewMore = async (source, $3) => {
+    const manga = [];
+    const collectedIds = [];
+    for (const item of $3("a", "div.grid.grid-cols-2").toArray()) {
+      const slug = $3(item).attr("href")?.replace(/\/$/, "")?.split("/").pop() ?? "";
+      if (!slug) continue;
+      const id = await getMangaId(source, slug);
+      const image = $3("img", item).first().attr("src") ?? "";
+      const title = $3("span.block.font-bold", item).first().text().trim() ?? "";
+      const subtitle = $3("span.block.font-bold", item).first().next().text().trim() ?? "";
+      if (!id || !title || collectedIds.includes(id)) continue;
+      manga.push(
+        App.createPartialSourceManga({
+          image,
+          title: (0, import_html_entities.decode)(title),
+          mangaId: id,
+          subtitle: (0, import_html_entities.decode)(subtitle)
+        })
+      );
+      collectedIds.push(id);
+    }
+    return manga;
+  };
+  var parseTags = (filters2) => {
+    const createTags = (filterItems, prefix) => {
+      return filterItems.map((item) => ({
+        id: `${prefix}:${item.id ?? item.value}`,
+        label: item.name
+      }));
+    };
+    const tagSections = [
+      // Tag section for genres
+      App.createTagSection({
+        id: "0",
+        label: "genres",
+        tags: createTags(filters2.genres, "genres").map(
+          (x) => App.createTag(x)
+        )
+      }),
+      // Tag section for status
+      App.createTagSection({
+        id: "1",
+        label: "status",
+        tags: createTags(filters2.statuses, "status").map(
+          (x) => App.createTag(x)
+        )
+      }),
+      // Tag section for types
+      App.createTagSection({
+        id: "2",
+        label: "type",
+        tags: createTags(filters2.types, "type").map((x) => App.createTag(x))
+      }),
+      // Tag section for order
+      App.createTagSection({
+        id: "3",
+        label: "order",
+        tags: createTags(
+          filters2.order.map((order) => ({
+            id: order.value,
+            name: order.name
+          })),
+          "order"
+        ).map((x) => App.createTag(x))
+      })
+    ];
+    return tagSections;
+  };
+  var parseSearch = async (source, $3) => {
+    const collectedIds = [];
+    const itemArray = [];
+    for (const item of $3("a", "div.grid.grid-cols-2").toArray()) {
+      const slug = $3(item).attr("href")?.replace(/\/$/, "")?.split("/").pop() ?? "";
+      if (!slug) continue;
+      const id = await getMangaId(source, slug);
+      const image = $3("img", item).first().attr("src") ?? "";
+      const title = $3("span.block.font-bold", item).first().text().trim() ?? "";
+      const subtitle = $3("span.block.font-bold", item).first().next().text().trim() ?? "";
+      itemArray.push(
+        App.createPartialSourceManga({
+          image,
+          title: (0, import_html_entities.decode)(title),
+          mangaId: id,
+          subtitle
+        })
+      );
+      collectedIds.push(id);
+    }
+    return itemArray;
+  };
+  var isLastPage = ($3) => {
+    let isLast = true;
+    const hasItems = $3("a", "div.grid.grid-cols-2").toArray().length > 0;
+    if (hasItems) isLast = false;
+    return isLast;
   };
 
-  // src/RizzFables/components/Types.ts
-  var DefaultHomeSectionData = {
-    titleSelectorFunc: ($2, element) => $2("h2", element).text().trim(),
-    subtitleSelectorFunc: ($2, element) => $2("span a", element).toArray().map((x) => $2(x).text().trim()).join(", "),
-    getViewMoreItemsFunc: () => "",
-    enabled: true
+  // src/UrlBuilder.ts
+  var URLBuilder = class {
+    constructor(baseUrl) {
+      this.parameters = {};
+      this.pathComponents = [];
+      this.baseUrl = baseUrl.replace(/(^\/)?(?=.*)(\/$)?/gim, "");
+    }
+    addPathComponent(component) {
+      this.pathComponents.push(component.replace(/(^\/)?(?=.*)(\/$)?/gim, ""));
+      return this;
+    }
+    addQueryParameter(key, value) {
+      if (Array.isArray(value) && !value.length) {
+        return this;
+      }
+      const array = this.parameters[key];
+      if (array?.length) {
+        array.push(value);
+      } else {
+        this.parameters[key] = value;
+      }
+      return this;
+    }
+    buildUrl({ addTrailingSlash, includeUndefinedParameters } = {
+      addTrailingSlash: false,
+      includeUndefinedParameters: false
+    }) {
+      let finalUrl = this.baseUrl + "/";
+      finalUrl += this.pathComponents.join("/");
+      finalUrl += addTrailingSlash ? "/" : "";
+      finalUrl += Object.values(this.parameters).length > 0 ? "?" : "";
+      finalUrl += Object.entries(this.parameters).map((entry) => {
+        if (!entry[1] && !includeUndefinedParameters) {
+          return void 0;
+        }
+        if (Array.isArray(entry[1]) && entry[1].length) {
+          return `${entry[0]}=${entry[1].map(
+            (value) => value || includeUndefinedParameters ? value : void 0
+          ).filter((x) => x !== void 0).join(",")}`;
+        }
+        if (typeof entry[1] === "object") {
+          return Object.keys(entry[1]).map((key) => `${entry[0]}[${key}]=${entry[1][key]}`).join("&");
+        }
+        return `${entry[0]}=${entry[1]}`;
+      }).filter((x) => x !== void 0).join("&");
+      return finalUrl;
+    }
   };
 
-  // src/RizzFables/RizzFables.ts
-  var RizzFablesInfo = {
-    version: "2.0.6",
-    name: "RizzFables",
-    description: "Extension that pulls manga from RizzFables",
+  // src/AsuraScans/AsuraScans.ts
+  var AS_DOMAIN = "https://asuracomic.net";
+  var AS_API_DOMAIN = "https://gg.asuracomic.net";
+  var AsuraScansInfo = {
+    version: "5.0.0",
+    name: "AsuraScans",
+    description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
-    authorWebsite: "http://github.com/Ivanmatthew",
+    authorWebsite: "https://github.com/Ivanmatthew",
     icon: "icon.png",
     contentRating: import_types3.ContentRating.MATURE,
-    websiteBaseURL: Configuration.baseUrl,
-    // CHANGEIT
+    websiteBaseURL: AS_DOMAIN,
     intents: import_types3.SourceIntents.MANGA_CHAPTERS | import_types3.SourceIntents.HOMEPAGE_SECTIONS | import_types3.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | import_types3.SourceIntents.SETTINGS_UI,
     sourceTags: []
   };
-  var RizzFables = class _RizzFables extends Configuration {
+  var AsuraScans = class _AsuraScans {
     constructor() {
-      super();
-      this.homescreen_sections = {
-        popular_today: {
-          ...DefaultHomeSectionData,
-          section: createHomeSection(
-            "popular_today",
-            "Popular Today",
-            false,
-            import_types3.HomeSectionType.featured
-          ),
-          selectorFunc: ($2) => $2("div.bsx", $2("h2:contains(Popular Today)")?.parent()?.next()),
-          titleSelectorFunc: ($2, element) => $2("a", element).attr("title"),
-          subtitleSelectorFunc: ($2, element) => $2("div.epxs", element).text().trim(),
-          getViewMoreItemsFunc: (page) => `${_RizzFables.directoryPath}/?page=${page}&order=popular`,
-          sortIndex: 10
-        },
-        latest_update: {
-          ...DefaultHomeSectionData,
-          section: createHomeSection("latest_update", "Latest Updates"),
-          selectorFunc: ($2) => $2("div.uta"),
-          titleSelectorFunc: ($2, element) => $2("a", element).attr("title"),
-          subtitleSelectorFunc: ($2, element) => $2("li > a, div.epxs", $2("div.luf, div.bigor", element)).first().text().trim(),
-          // TODO: Remove nicely
-          // getViewMoreItemsFunc: (page: string) => `${RizzFables.directoryPath}/?page=${page}&order=update`,
-          sortIndex: 20
-        },
-        top_alltime: {
-          ...DefaultHomeSectionData,
-          section: createHomeSection("top_alltime", "Top All Time", false),
-          selectorFunc: ($2) => $2("li", $2("div.serieslist.pop.wpop.wpop-alltime")),
-          sortIndex: 40
-        },
-        top_monthly: {
-          ...DefaultHomeSectionData,
-          section: createHomeSection("top_monthly", "Top Monthly", false),
-          selectorFunc: ($2) => $2("li", $2("div.serieslist.pop.wpop.wpop-monthly")),
-          sortIndex: 50
-        },
-        top_weekly: {
-          ...DefaultHomeSectionData,
-          section: createHomeSection("top_weekly", "Top Weekly", false),
-          selectorFunc: ($2) => $2("li", $2("div.serieslist.pop.wpop.wpop-weekly")),
-          sortIndex: 60
+      // ----REQUEST MANAGER----
+      this.requestManager = App.createRequestManager({
+        requestsPerSecond: 4,
+        requestTimeout: 15e3,
+        interceptor: {
+          interceptRequest: async (request) => {
+            request.headers = {
+              ...request.headers ?? {},
+              ...{
+                referer: `${AS_DOMAIN}/`,
+                "user-agent": await this.requestManager.getDefaultUserAgent()
+              }
+            };
+            return request;
+          },
+          interceptResponse: async (response) => {
+            return response;
+          }
         }
-      };
+      });
       this.stateManager = App.createSourceStateManager();
-      this.parser = new MangaStreamParser();
-      this.requestManager = getSourceRequestManager(_RizzFables.baseUrl);
-      this.configureSections();
     }
-    // ----HOMESCREEN SELECTORS----
-    /**
-     * Enable or disable the "Popular Today" section on the homescreen
-     * Some sites don't have this section on this homescreen, if they don't disable this.
-     * Enabled Default = true
-     * Selector Default = "h2:contains(Popular Today)"
-     */
-    configureSections() {
-      return;
+    getMangaShareUrl(mangaId) {
+      return `${AS_DOMAIN}/series/${mangaId}`;
     }
-    getMangaShareUrl(mangaTitle) {
-      return `${_RizzFables.baseUrl}/${_RizzFables.directoryPath}/${getSlugFromTitle(mangaTitle)}/`;
-    }
-    async getMangaDetails(mangaTitle) {
-      const mangaId = getSlugFromTitle(mangaTitle);
+    async getMangaDetails(mangaId) {
       const request = App.createRequest({
-        url: `${_RizzFables.baseUrl}/${_RizzFables.directoryPath}/${mangaId}/`,
+        url: `${AS_DOMAIN}/series/${mangaId}`,
         method: "GET"
       });
       const response = await this.requestManager.schedule(request, 1);
-      this.checkResponseError(response);
-      const $2 = load(response.data);
-      return this.parser.parseMangaDetails($2, mangaTitle);
+      this.CloudFlareError(response.status);
+      const $3 = load(response.data);
+      return await parseMangaDetails(this, $3, mangaId);
     }
-    async getChapters(mangaTitle) {
-      const mangaId = getSlugFromTitle(mangaTitle);
+    async getChapters(mangaId) {
       const request = App.createRequest({
-        url: `${_RizzFables.baseUrl}/${_RizzFables.directoryPath}/${mangaId}/`,
+        url: `${AS_DOMAIN}/series/${mangaId}`,
         method: "GET"
       });
       const response = await this.requestManager.schedule(request, 1);
-      this.checkResponseError(response);
-      const $2 = load(response.data);
-      return this.parser.parseChapterList($2, mangaTitle);
+      this.CloudFlareError(response.status);
+      const $3 = load(response.data);
+      return parseChapters($3, mangaId);
     }
-    async getChapterDetails(mangaTitle, chapterId) {
-      const mangaId = getSlugFromTitle(mangaTitle);
+    async getChapterDetails(mangaId, chapterId) {
       const request = App.createRequest({
-        url: `${_RizzFables.baseUrl}/${_RizzFables.directoryPath}/${mangaId}/`,
+        url: `${AS_DOMAIN}/series/${mangaId}/chapter/${chapterId}`,
         method: "GET"
       });
       const response = await this.requestManager.schedule(request, 1);
-      this.checkResponseError(response);
-      const $2 = load(response.data);
-      const chapter = $2("div#chapterlist").find(
-        'li[data-num="' + chapterId + '"]'
-      );
-      if (!chapter) {
-        throw new Error(
-          `Unable to fetch a chapter for chapter numer: ${chapterId}`
-        );
+      this.CloudFlareError(response.status);
+      const $3 = load(response.data);
+      return parseChapterDetails($3, mangaId, chapterId);
+    }
+    async getHomePageSections(sectionCallback) {
+      const request = App.createRequest({
+        url: AS_DOMAIN,
+        method: "GET"
+      });
+      const response = await this.requestManager.schedule(request, 1);
+      this.CloudFlareError(response.status);
+      const $3 = load(response.data);
+      await parseHomeSections(this, $3, sectionCallback);
+    }
+    async getViewMoreItems(homepageSectionId, metadata) {
+      if (metadata?.completed) return metadata;
+      const page = metadata?.page ?? 1;
+      let param = "";
+      switch (homepageSectionId) {
+        case "latest_updates":
+          param = `series?page=${page}`;
+          break;
+        default:
+          throw new Error(
+            "Requested to getViewMoreItems for a section ID which doesn't exist"
+          );
       }
-      const id = $2("a", chapter).attr("href") ?? "";
-      if (!id || id === "") {
-        throw new Error(
-          `Unable to fetch id for chapter numer: ${chapterId}`
-        );
-      }
-      const _request = App.createRequest({
-        url: id,
+      const request = App.createRequest({
+        url: `${AS_DOMAIN}/${param}`,
         method: "GET"
       });
-      const _response = await this.requestManager.schedule(_request, 1);
-      this.checkResponseError(_response);
-      const _$ = load(_response.data);
-      return this.parser.parseChapterDetails(_$, mangaTitle, chapterId);
+      const response = await this.requestManager.schedule(request, 1);
+      this.CloudFlareError(response.status);
+      const $3 = load(response.data);
+      const manga = await parseViewMore(this, $3);
+      metadata = !isLastPage($3) ? { page: page + 1 } : void 0;
+      return App.createPagedResults({
+        results: manga,
+        metadata
+      });
     }
     async getSearchTags() {
-      const request = App.createRequest({
-        url: `${_RizzFables.baseUrl}/${_RizzFables.filterPath}/`,
-        method: "GET"
-      });
-      const response = await this.requestManager.schedule(request, 1);
-      this.checkResponseError(response);
-      const $2 = load(response.data);
-      return this.parser.parseTags($2);
-    }
-    // We do not use metadata because the search results are single page
-    async getSearchResults(query) {
-      const request = await this.constructSearchRequest(1, query);
-      const response = await this.requestManager.schedule(request, 1);
-      this.checkResponseError(response);
-      const searchResultData = JSON.parse(
-        response.data
-      );
-      const results = [];
-      for (const manga of searchResultData) {
-        results.push(
-          App.createPartialSourceManga({
-            mangaId: cleanId(manga.title),
-            title: manga.title,
-            image: `${_RizzFables.baseUrl}/assets/images/${manga.image_url}`
-          })
-        );
+      try {
+        const request = App.createRequest({
+          url: `${AS_API_DOMAIN}/api/series/filters`,
+          method: "GET"
+        });
+        const response = await this.requestManager.schedule(request, 1);
+        this.CloudFlareError(response.status);
+        const data2 = JSON.parse(response.data);
+        await setFilters(this, data2);
+        return parseTags(data2);
+      } catch (error) {
+        throw new Error(error);
       }
-      return App.createPagedResults({
-        results
-      });
-    }
-    async constructSearchRequest(page, query) {
-      let searchUrl = new URLBuilder(_RizzFables.baseUrl);
-      const headers = {
-        "content-type": "application/x-www-form-urlencoded; charset=UTF-8"
-      };
-      const formData = {};
-      if (query?.title) {
-        searchUrl = searchUrl.addPathComponent(_RizzFables.searchEndpoint);
-        formData["search_value"] = query?.title.replace(/[’–][a-z]*/g, "") ?? "";
-      } else {
-        searchUrl = searchUrl.addPathComponent(_RizzFables.filterEndpoint);
-        const statusValue = getIncludedTagBySection(
-          "status",
-          query?.includedTags
-        );
-        const typeValue = getIncludedTagBySection(
-          "type",
-          query?.includedTags
-        );
-        const orderValue = getIncludedTagBySection(
-          "order",
-          query?.includedTags
-        );
-        formData["genres_checked[]"] = getFilterTagsBySection(
-          "genres",
-          query?.includedTags,
-          true
-        ).join("&genre[]=");
-        formData["StatusValue"] = statusValue !== "" ? statusValue : "all";
-        formData["TypeValue"] = typeValue !== "" ? typeValue : "all";
-        formData["OrderValue"] = orderValue !== "" ? orderValue : "all";
-      }
-      return App.createRequest({
-        url: searchUrl.build({
-          addTrailingSlash: true,
-          includeUndefinedParameters: false
-        }),
-        headers,
-        data: Object.entries(formData).map(
-          ([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(
-            value
-          )}`
-        ).join("&"),
-        method: "POST"
-      });
     }
     async supportsTagExclusion() {
       return false;
     }
-    async getHomePageSections(sectionCallback) {
+    async getSearchResults(query, metadata) {
+      const page = metadata?.page ?? 1;
+      let urlBuilder = new URLBuilder(AS_DOMAIN).addPathComponent("series").addQueryParameter("page", page.toString());
+      if (query?.title) {
+        urlBuilder = urlBuilder.addQueryParameter(
+          "name",
+          encodeURIComponent(
+            query?.title.replace(/[’‘´`'-][a-z]*/g, "%") ?? ""
+          )
+        );
+      }
+      urlBuilder = urlBuilder.addQueryParameter(
+        "genres",
+        getFilterTagsBySection("genres", query?.includedTags)
+      ).addQueryParameter(
+        "status",
+        getIncludedTagBySection("status", query?.includedTags)
+      ).addQueryParameter(
+        "types",
+        getIncludedTagBySection("type", query?.includedTags)
+      ).addQueryParameter(
+        "order",
+        getIncludedTagBySection("order", query?.includedTags)
+      );
       const request = App.createRequest({
-        url: `${_RizzFables.baseUrl}/`,
+        url: urlBuilder.buildUrl(),
         method: "GET"
       });
       const response = await this.requestManager.schedule(request, 1);
-      this.checkResponseError(response);
-      const $2 = load(response.data);
-      const promises = [];
-      const sectionValues = Object.values(this.homescreen_sections).sort(
-        (n1, n2) => n1.sortIndex - n2.sortIndex
-      );
-      for (const section of sectionValues) {
-        if (!section.enabled) {
-          continue;
-        }
-        sectionCallback(section.section);
-      }
-      for (const section of sectionValues) {
-        if (!section.enabled) {
-          continue;
-        }
-        promises.push(
-          new Promise(async () => {
-            section.section.items = await this.parser.parseHomeSection(
-              $2,
-              section,
-              this
-            );
-            sectionCallback(section.section);
-          })
-        );
-      }
-      await Promise.all(promises);
+      const $3 = load(response.data);
+      const items = await parseSearch(this, $3);
+      metadata = !isLastPage($3) ? { page: page + 1 } : void 0;
+      return App.createPagedResults({
+        results: items,
+        metadata
+      });
     }
-    async getViewMoreItems(homepageSectionId, metadata) {
-      switch (homepageSectionId) {
-        case "latest_update": {
-          const headers = {
-            "content-type": "application/x-www-form-urlencoded; charset=UTF-8"
-          };
-          const formData = {
-            StatusValue: "all",
-            TypeValue: "all",
-            OrderValue: "update"
-          };
-          const request = App.createRequest({
-            url: `${_RizzFables.baseUrl}/${_RizzFables.filterEndpoint}`,
-            headers,
-            data: Object.entries(formData).map(
-              ([key, value]) => `${encodeURIComponent(
-                key
-              )}=${encodeURIComponent(value)}`
-            ).join("&"),
-            method: "POST"
-          });
-          const response = await this.requestManager.schedule(request, 1);
-          const pageData = JSON.parse(
-            response.data
-          );
-          const items = [];
-          for (const manga of pageData) {
-            items.push(
-              App.createPartialSourceManga({
-                mangaId: cleanId(manga.title),
-                title: manga.title,
-                image: `${_RizzFables.baseUrl}/assets/images/${manga.image_url}`
-              })
-            );
-          }
-          return App.createPagedResults({
-            results: items
-          });
-        }
-        default: {
-          const page = metadata?.page ?? 1;
-          const param = (
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            this.homescreen_sections[homepageSectionId].getViewMoreItemsFunc(page) ?? void 0
-          );
-          if (!param) {
-            throw new Error(
-              `Invalid homeSectionId: ${homepageSectionId}`
-            );
-          }
-          const request = App.createRequest({
-            url: `${_RizzFables.baseUrl}/${param}`,
-            method: "GET"
-          });
-          const response = await this.requestManager.schedule(request, 1);
-          const $2 = load(response.data);
-          const items = await this.parser.parseViewMore($2, this);
-          metadata = !this.parser.isLastPage($2, "view_more") ? { page: page + 1 } : void 0;
-          return App.createPagedResults({
-            results: items,
-            metadata
-          });
-        }
+    CloudFlareError(status) {
+      if (status == 503 || status == 403) {
+        throw new Error(
+          `CLOUDFLARE BYPASS ERROR:
+Please go to the homepage of <${_AsuraScans.name}> and press the cloud icon.`
+        );
       }
     }
     async getCloudflareBypassRequestAsync() {
-      this.requestManager?.cookieStore?.getAllCookies().forEach((x) => {
-        this.requestManager?.cookieStore?.removeCookie(x);
-      });
       return App.createRequest({
-        url: `${_RizzFables.bypassPage || _RizzFables.baseUrl}/`,
+        url: AS_DOMAIN,
         method: "GET",
         headers: {
-          referer: `${_RizzFables.baseUrl}/`,
-          origin: `${_RizzFables.baseUrl}/`,
+          referer: `${AS_DOMAIN}/`,
           "user-agent": await this.requestManager.getDefaultUserAgent()
         }
       });
     }
-    checkResponseError(response) {
-      const status = response.status;
-      switch (status) {
-        case 403:
-        case 503:
-          throw new Error(
-            `CLOUDFLARE BYPASS ERROR:
-Please go to the homepage of <${_RizzFables.baseUrl}> and press the cloud icon.`
-          );
-        case 404:
-          throw new Error(
-            `The requested page ${response.request.url} was not found!`
-          );
-      }
-    }
   };
-  return __toCommonJS(RizzFables_exports);
+  return __toCommonJS(AsuraScans_exports);
 })();
 this.Sources = _Sources; if (typeof exports === 'object' && typeof module !== 'undefined') {module.exports.Sources = this.Sources;}

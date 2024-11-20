@@ -1618,11 +1618,11 @@ var _Sources = (() => {
   var REAPERSCANS_CDN = "https://media.reaperscans.com/file/4SRBHm";
   var ID_SEP = "|#|";
   var ReaperScansInfo = {
-    version: "5.4.1",
+    version: "5.4.2",
     name: "ReaperScans",
     description: "Reaperscans source for 0.8",
     author: "IvanMatthew",
-    authorWebsite: "http://github.com/ivanmatthew",
+    authorWebsite: "http://github.com/Ivanmatthew",
     icon: "icon.png",
     contentRating: import_types2.ContentRating.EVERYONE,
     websiteBaseURL: REAPERSCANS_DOMAIN,
@@ -1746,6 +1746,18 @@ var _Sources = (() => {
             pages.push(image);
           } else {
             pages.push(`${REAPERSCANS_CDN}/${image}`);
+          }
+        }
+        if (pages.length == 0) {
+          json = json;
+          const dataLatest2 = json.chapter;
+          if (!dataLatest2) throw new Error("No chapter data");
+          for (const image of dataLatest2.chapter_data?.images ?? []) {
+            if (image.startsWith(REAPERSCANS_CDN)) {
+              pages.push(image);
+            } else {
+              pages.push(`${REAPERSCANS_CDN}/${image}`);
+            }
           }
         }
       } else {
