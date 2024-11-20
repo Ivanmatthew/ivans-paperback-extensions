@@ -39,7 +39,7 @@ const ID_SEP = '|#|'
 
 //SECTION - SourceInfo
 export const ReaperScansInfo: SourceInfo = {
-    version: '5.4.1',
+    version: '5.4.2',
     name: 'ReaperScans',
     description: 'Reaperscans source for 0.8',
     author: 'IvanMatthew',
@@ -202,6 +202,22 @@ export class ReaperScans
                     pages.push(image)
                 } else {
                     pages.push(`${REAPERSCANS_CDN}/${image}`)
+                }
+            }
+
+            // If there are no pages, attempt the second method from local
+            if (pages.length == 0) {
+                json = json as RSLocalChapterDetails
+
+                const dataLatest = json.chapter
+                if (!dataLatest) throw new Error('No chapter data')
+
+                for (const image of dataLatest.chapter_data?.images ?? []) {
+                    if (image.startsWith(REAPERSCANS_CDN)) {
+                        pages.push(image)
+                    } else {
+                        pages.push(`${REAPERSCANS_CDN}/${image}`)
+                    }
                 }
             }
         } else {
