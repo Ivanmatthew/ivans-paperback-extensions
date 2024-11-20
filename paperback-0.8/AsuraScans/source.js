@@ -14918,7 +14918,7 @@ var _Sources = (() => {
     const textBufferRepr = parseNextJSData($3);
     textBufferRepr.finalize();
     const mangaDetailsObject = textBufferRepr.resolveIndexWithHex(
-      "6b",
+      "3b",
       (inp) => recurseParseJSON(inp)
     );
     const title = mangaDetailsObject.name ?? "";
