@@ -58,7 +58,7 @@ export const parseMangaDetails = async (
     const textBufferRepr = parseNextJSData($)
     textBufferRepr.finalize()
 
-    const mangaDetailsObject = textBufferRepr.resolveIndexWithHex('3b', (inp) =>
+    const mangaDetailsObject = textBufferRepr.resolveIndexWithHex('4b', (inp) =>
         recurseParseJSON(inp)
     )
 
