@@ -43,7 +43,7 @@ export const ReaperScansInfo: SourceInfo = {
     name: 'ReaperScans',
     description: 'Reaperscans source for 0.8',
     author: 'IvanMatthew',
-    authorWebsite: 'http://github.com/ivanmatthew',
+    authorWebsite: 'http://github.com/Ivanmatthew',
     icon: 'icon.png',
     contentRating: ContentRating.EVERYONE,
     websiteBaseURL: REAPERSCANS_DOMAIN,
