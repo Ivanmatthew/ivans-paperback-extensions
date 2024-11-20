@@ -14918,7 +14918,7 @@ var _Sources = (() => {
     const textBufferRepr = parseNextJSData($3);
     textBufferRepr.finalize();
     const mangaDetailsObject = textBufferRepr.resolveIndexWithHex(
-      "4b",
+      "3b",
       (inp) => recurseParseJSON(inp)
     );
     const title = mangaDetailsObject.name ?? "";
@@ -14995,10 +14995,16 @@ var _Sources = (() => {
     const textBufferRepr = parseNextJSData($3);
     textBufferRepr.finalize();
     let toParse = [];
-    const rawPagesObject = textBufferRepr.resolveIndexWithHex(
-      "6b",
+    const stableRawPagesObject = textBufferRepr.resolveIndexWithHex(
+      "19",
       (inp) => recurseParseJSON(inp)
     );
+    let rawPagesObject;
+    try {
+      rawPagesObject = stableRawPagesObject[3].children[9][3].children[3].initialChapter.pages;
+    } catch (e) {
+      throw new Error("Could not find page images for chapter " + e);
+    }
     if (Array.isArray(rawPagesObject) === false) {
       toParse = rawPagesObject.pages;
     } else {
@@ -15243,7 +15249,7 @@ var _Sources = (() => {
   var AS_DOMAIN = "https://asuracomic.net";
   var AS_API_DOMAIN = "https://gg.asuracomic.net";
   var AsuraScansInfo = {
-    version: "5.0.0",
+    version: "5.0.1",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
