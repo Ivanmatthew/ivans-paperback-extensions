@@ -14755,14 +14755,15 @@ var _Sources = (() => {
       await source.stateManager.store(genre.name.toUpperCase(), genre.id);
     }
   }
+  async function getFilter(source, filter4) {
+    const genre = await source.stateManager.retrieve(
+      filter4.toUpperCase()
+    ) ?? "";
+    return genre.toString();
+  }
   async function getMangaId(source, slug) {
-    const id = idCleaner(slug);
-    const gotSlug = await source.stateManager.retrieve(id) ?? "";
-    if (!gotSlug) {
-      await source.stateManager.store(id, slug);
-      return slug;
-    }
-    return gotSlug;
+    const id = idCleaner(slug) + "-";
+    return id;
   }
   function idCleaner(str) {
     let cleanId = str;
@@ -14788,17 +14789,98 @@ var _Sources = (() => {
       }
       this.buffer += text3;
     }
+    processSerializedBufferLine(line) {
+      const strSplitIndex = line.indexOf(":");
+      if (strSplitIndex === -1) {
+        return;
+      }
+      const hexIndex = line.slice(0, strSplitIndex);
+      const intIndex = parseInt(hexIndex, 16);
+      const value = line.slice(strSplitIndex + 1);
+      this.bufferArray[intIndex] = value;
+    }
     finalize() {
       this.isLocked = true;
+      let currentChunk = "";
+      let expectedLength = 0;
+      let accumulatedLength = 0;
       this.buffer.split("\n").forEach((line) => {
-        const strSplitIndex = line.indexOf(":");
-        if (strSplitIndex === -1) {
-          return;
+        if (expectedLength === 0) {
+          currentChunk += line;
+          const strSplitIndex = currentChunk.indexOf(":");
+          if (strSplitIndex === -1) {
+            return;
+          }
+          if (currentChunk[strSplitIndex + 1] !== "T") {
+            this.processSerializedBufferLine(currentChunk);
+            currentChunk = "";
+            return;
+          } else {
+            const commaIndex = currentChunk.indexOf(",");
+            const length = currentChunk.match(/T(\d+),/)?.[1];
+            if (length && commaIndex !== -1) {
+              expectedLength = parseInt(length, 16);
+              const countableChunk = currentChunk.slice(
+                commaIndex + 1
+              );
+              if (countableChunk.length === expectedLength) {
+                this.processSerializedBufferLine(line);
+                currentChunk = "";
+                expectedLength = 0;
+              } else if (countableChunk.length > expectedLength) {
+                throw new Error(
+                  `An error occurred while processing '${countableChunk}' (${countableChunk.length}), found length: '${length}', commaIndex: '${commaIndex}'`
+                );
+              } else {
+                accumulatedLength = line.length - (commaIndex + 1);
+              }
+            } else {
+              throw new Error(
+                `An error occurred while processing '${currentChunk}', found length: '${length}', commaIndex: '${commaIndex}'`
+              );
+            }
+          }
+        } else {
+          accumulatedLength += line.length;
+          if (accumulatedLength === expectedLength) {
+            this.processSerializedBufferLine(currentChunk);
+            currentChunk = "";
+            expectedLength = 0;
+            accumulatedLength = 0;
+          } else if (accumulatedLength > expectedLength) {
+            const strSplitIndex = line.indexOf(":");
+            if (strSplitIndex !== -1 && strSplitIndex < 10) {
+              const newChunkStartMatch = line.match(
+                /^.*?([0-9a-fA-F]*:).*/
+              );
+              if (!newChunkStartMatch) {
+                throw new Error(
+                  `An error occurred while processing ${line}`
+                );
+              }
+              const newChunkStart = newChunkStartMatch[1];
+              if (!newChunkStart) {
+                throw new Error(
+                  `An error occurred while processing ${line}`
+                );
+              }
+              const newChunkStartIndex = line.indexOf(newChunkStart);
+              const newChunk = line.slice(newChunkStartIndex);
+              currentChunk += line.slice(0, newChunkStartIndex);
+              this.processSerializedBufferLine(currentChunk);
+              this.processSerializedBufferLine(newChunk);
+              currentChunk = "";
+              expectedLength = 0;
+              accumulatedLength = 0;
+            } else {
+              throw new Error(
+                `An error occurred while processing ${currentChunk} (${accumulatedLength}), expected length: ${expectedLength}`
+              );
+            }
+          } else {
+            currentChunk += line;
+          }
         }
-        const hexIndex = line.slice(0, strSplitIndex);
-        const intIndex = parseInt(hexIndex, 16);
-        const value = line.slice(strSplitIndex + 1);
-        this.bufferArray[intIndex] = value;
       });
     }
     get(index2) {
@@ -14807,6 +14889,23 @@ var _Sources = (() => {
     getWithHex(hexIndex) {
       const intIndex = parseInt(hexIndex, 16);
       return this.get(intIndex);
+    }
+    findByString(findString, returnAsHex = false) {
+      if (returnAsHex) {
+        const hexBufferArray = this.bufferArrayAsHex();
+        for (const [index2, entry] of Object.entries(hexBufferArray)) {
+          if (entry && findString.every((str) => entry.includes(str))) {
+            return index2;
+          }
+        }
+      } else {
+        for (const [index2, entry] of this.bufferArray.entries()) {
+          if (entry && findString.every((str) => entry.includes(str))) {
+            return index2.toString();
+          }
+        }
+      }
+      return null;
     }
     bufferArrayAsHex() {
       const bufferArrayHex = {};
@@ -14912,28 +15011,41 @@ var _Sources = (() => {
         }
       });
     }
+    collectedData.finalize();
     return collectedData;
   };
   var parseMangaDetails = async (source, $3, mangaId) => {
     const textBufferRepr = parseNextJSData($3);
-    textBufferRepr.finalize();
-    const mangaDetailsObject = textBufferRepr.resolveIndexWithHex(
-      "3b",
+    const rawMangaDetailsObjectIdx = textBufferRepr.findByString(
+      ["comic", "chapters"],
+      true
+    );
+    if (!rawMangaDetailsObjectIdx) {
+      throw new Error(`Couldn't find manga details for mangaId: ${mangaId}!`);
+    }
+    const rawMangaDetailsObject = textBufferRepr.resolveIndexWithHex(
+      rawMangaDetailsObjectIdx,
       (inp) => recurseParseJSON(inp)
     );
+    const mangaDetailsObject = rawMangaDetailsObject[3].comic;
     const title = mangaDetailsObject.name ?? "";
     const image = mangaDetailsObject.cover ?? "";
-    const uncleanDescription = mangaDetailsObject.summary ?? "";
-    const description = (0, import_html_entities.decode)(uncleanDescription).slice(1, -1).replace(/<br>/g, "\n").replace(/<br\\\/>/g, "\n").replace(/\\n/g, "\n").replace(/\\r/g, "").replace(/> /g, "").replace(/<p>/g, "").replace(/<\/p>/g, "\n").replace(/\n{3,}/g, "\n\n").replace(/<i>/g, "").replace(/<\/i>/g, "").replace(/<b>/g, "").replace(/<\/b>/g, "").replace(/<strong>/g, "").replace(/<\/strong>/g, "").replace(
-      /\\u([\d\w]{4})/gi,
-      (_, grp) => String.fromCharCode(parseInt(grp, 16))
-    ).trim();
+    const uncleanDescription = load(
+      mangaDetailsObject.summary ?? "",
+      null,
+      false
+    );
+    let description = uncleanDescription("div").text().trim() ?? "";
+    if (description === "") {
+      description = uncleanDescription.text().trim() ?? "";
+    }
     const author = mangaDetailsObject.author ?? "";
     const artist = mangaDetailsObject.artist ?? "";
     const arrayTags = [];
     for (const tag of mangaDetailsObject.genres ?? []) {
       const label = tag.name;
-      const id = tag.id;
+      const filterName = label.toLocaleUpperCase();
+      const id = await getFilter(source, filterName);
       if (!id || !label) continue;
       arrayTags.push({ id: `genres:${id}`, label });
     }
@@ -14960,9 +15072,15 @@ var _Sources = (() => {
   };
   var parseChapters = ($3, mangaId) => {
     const textBufferRepr = parseNextJSData($3);
-    textBufferRepr.finalize();
+    const rawMangaChaptersObjectIdx = textBufferRepr.findByString(
+      ["comic", "chapters"],
+      true
+    );
+    if (!rawMangaChaptersObjectIdx) {
+      throw new Error(`Couldn't find chapters for mangaId: ${mangaId}!`);
+    }
     const rawMangaChaptersObject = textBufferRepr.resolveIndexWithHex(
-      "38",
+      rawMangaChaptersObjectIdx,
       (inp) => recurseParseJSON(inp)
     );
     const chapters = [];
@@ -14993,7 +15111,6 @@ var _Sources = (() => {
   };
   var parseChapterDetails = async ($3, mangaId, chapterId) => {
     const textBufferRepr = parseNextJSData($3);
-    textBufferRepr.finalize();
     let toParse = [];
     const stableRawPagesObject = textBufferRepr.resolveIndexWithHex(
       "19",
@@ -15249,7 +15366,7 @@ var _Sources = (() => {
   var AS_DOMAIN = "https://asuracomic.net";
   var AS_API_DOMAIN = "https://gg.asuracomic.net";
   var AsuraScansInfo = {
-    version: "5.0.1",
+    version: "5.1.0",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
