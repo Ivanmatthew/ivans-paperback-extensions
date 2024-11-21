@@ -12,11 +12,13 @@ import {
 import { decode as decodeHTMLEntity } from 'html-entities'
 import { CheerioAPI } from 'cheerio'
 
-import { getMangaId } from './AsuraScansUtils'
+import { getFilter, getMangaId } from './AsuraScansUtils'
 
 import { Filters } from './interface/Filters'
 import { TextBufferRepr } from './TextBufferRepr'
 import { recurseParseJSON } from './AsuraScansHelper'
+
+import * as cheerio from 'cheerio'
 
 export const parseNextJSData = ($: CheerioAPI): TextBufferRepr => {
     const scriptsWithData = $('script')
@@ -47,6 +49,8 @@ export const parseNextJSData = ($: CheerioAPI): TextBufferRepr => {
         })
     }
 
+    collectedData.finalize()
+
     return collectedData
 }
 
@@ -56,36 +60,33 @@ export const parseMangaDetails = async (
     mangaId: string
 ): Promise<SourceManga> => {
     const textBufferRepr = parseNextJSData($)
-    textBufferRepr.finalize()
 
-    const mangaDetailsObject = textBufferRepr.resolveIndexWithHex('3b', (inp) =>
-        recurseParseJSON(inp)
+    const rawMangaDetailsObjectIdx = textBufferRepr.findByString(
+        ['comic', 'chapters'],
+        true
     )
+
+    if (!rawMangaDetailsObjectIdx) {
+        throw new Error(`Couldn't find manga details for mangaId: ${mangaId}!`)
+    }
+
+    const rawMangaDetailsObject = textBufferRepr.resolveIndexWithHex(
+        rawMangaDetailsObjectIdx,
+        (inp) => recurseParseJSON(inp)
+    )
+    const mangaDetailsObject = rawMangaDetailsObject[3].comic
 
     const title = mangaDetailsObject.name ?? ''
     const image = mangaDetailsObject.cover ?? ''
-    const uncleanDescription = mangaDetailsObject.summary ?? ''
-    const description = decodeHTMLEntity(uncleanDescription)
-        // remove first character of string (it'll be matched as "content")
-        .slice(1, -1)
-        .replace(/<br>/g, '\n')
-        .replace(/<br\\\/>/g, '\n')
-        .replace(/\\n/g, '\n')
-        .replace(/\\r/g, '')
-        .replace(/> /g, '')
-        .replace(/<p>/g, '')
-        .replace(/<\/p>/g, '\n')
-        .replace(/\n{3,}/g, '\n\n')
-        .replace(/<i>/g, '')
-        .replace(/<\/i>/g, '')
-        .replace(/<b>/g, '')
-        .replace(/<\/b>/g, '')
-        .replace(/<strong>/g, '')
-        .replace(/<\/strong>/g, '')
-        .replace(/\\u([\d\w]{4})/gi, (_, grp) =>
-            String.fromCharCode(parseInt(grp, 16))
-        )
-        .trim()
+    const uncleanDescription = cheerio.load(
+        mangaDetailsObject.summary ?? '',
+        null,
+        false
+    )
+    let description = uncleanDescription('div').text().trim() ?? ''
+    if (description === '') {
+        description = uncleanDescription.text().trim() ?? ''
+    }
 
     const author = mangaDetailsObject.author ?? ''
     const artist = mangaDetailsObject.artist ?? ''
@@ -93,9 +94,10 @@ export const parseMangaDetails = async (
     const arrayTags: Tag[] = []
     for (const tag of mangaDetailsObject.genres ?? []) {
         const label = tag.name
-        // const filterName = label
+        const filterName = label.toLocaleUpperCase()
 
-        const id = tag.id //await getFilter(source, filterName)
+        // const id = tag.id // TODO: Transfer to new ID system (Maybe?)
+        const id = await getFilter(source, filterName)
 
         if (!id || !label) continue
         arrayTags.push({ id: `genres:${id}`, label: label })
@@ -148,10 +150,17 @@ export const parseMangaDetails = async (
 
 export const parseChapters = ($: CheerioAPI, mangaId: string): Chapter[] => {
     const textBufferRepr = parseNextJSData($)
-    textBufferRepr.finalize()
+
+    const rawMangaChaptersObjectIdx = textBufferRepr.findByString(
+        ['comic', 'chapters'],
+        true
+    )
+    if (!rawMangaChaptersObjectIdx) {
+        throw new Error(`Couldn't find chapters for mangaId: ${mangaId}!`)
+    }
 
     const rawMangaChaptersObject = textBufferRepr.resolveIndexWithHex(
-        '38',
+        rawMangaChaptersObjectIdx,
         (inp) => recurseParseJSON(inp)
     )
 
@@ -196,7 +205,6 @@ export const parseChapterDetails = async (
     chapterId: string
 ): Promise<ChapterDetails> => {
     const textBufferRepr = parseNextJSData($)
-    textBufferRepr.finalize()
 
     let toParse: any[] = []
     const stableRawPagesObject = textBufferRepr.resolveIndexWithHex(

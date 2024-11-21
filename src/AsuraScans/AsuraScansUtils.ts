@@ -7,20 +7,35 @@ export async function setFilters(source: any, data: Filters) {
 }
 
 export async function getFilter(source: any, filter: string): Promise<string> {
-    const genre = await source.stateManager.retrieve(filter.toUpperCase()) as string ?? ''
+    const genre =
+        ((await source.stateManager.retrieve(
+            filter.toUpperCase()
+        )) as string) ?? ''
     return genre.toString()
 }
 
+export async function invalidateMangaId(
+    source: any,
+    id: string
+): Promise<void> {
+    await source.stateManager.store(id, null)
+}
+
 export async function getMangaId(source: any, slug: string): Promise<string> {
-    const id = idCleaner(slug)
+    const id = idCleaner(slug) + '-'
 
-    const gotSlug = await source.stateManager.retrieve(id) as string ?? ''
-    if (!gotSlug) {
-        await source.stateManager.store(id, slug)
-        return slug
-    }
+    return id
 
-    return gotSlug
+    // const gotSlug = ((await source.stateManager.retrieve(id)) as string) ?? ''
+    // if (!gotSlug) {
+    //     await source.stateManager.store(id, slug)
+    //     return slug
+    // } else if (idCleaner(gotSlug) !== id) {
+    //     await invalidateMangaId(source, id)
+    //     return getMangaId(source, slug)
+    // }
+
+    // return gotSlug
 }
 
 function idCleaner(str: string): string {
