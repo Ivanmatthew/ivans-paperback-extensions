@@ -158,7 +158,9 @@ export class MangaStreamParser {
         let language = source.language
 
         for (const chapter of $('li', 'div#chapterlist').toArray()) {
-            const title = $('span.chapternum', chapter).text().trim()
+            const title = (
+                $('i.epn-name', chapter).text().trim() ?? ''
+            ).replace(/^\s*-\s*/g, '')
             const date = convertDate(
                 $('span.chapterdate', chapter).text().trim()
             )

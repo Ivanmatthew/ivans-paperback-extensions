@@ -8,7 +8,7 @@ const defaultBuildParameters: BuildParameters = {
 }
 
 export class URLBuilder {
-    parameters: Record<string, any | any[]> = {}
+    parameters: Record<string, string | string[]> = {}
     pathComponents: string[] = []
     baseUrl: string
 
@@ -21,26 +21,28 @@ export class URLBuilder {
         return this
     }
 
-    addQueryParameter(key: string, value: any | any[]): URLBuilder {
-        if (Array.isArray(value) && !value.length) {
+    addQueryParameter(key: string, value: string | string[]): URLBuilder {
+        if (Array.isArray(value) && (!value.length || value.length === 0)) {
             return this
         }
 
-        const array = this.parameters[key] as any[]
+        const array = this.parameters[key] as string[]
         if (array?.length) {
-            array.push(value)
+            if (Array.isArray(value)) {
+                array.push(...value)
+            } else {
+                array.push(value)
+            }
         } else {
             this.parameters[key] = value
         }
         return this
     }
 
-    buildUrl(
-        { addTrailingSlash, includeUndefinedParameters } = {
-            addTrailingSlash: false,
-            includeUndefinedParameters: false
-        }
-    ): string {
+    build({
+        addTrailingSlash,
+        includeUndefinedParameters
+    }: BuildParameters = defaultBuildParameters): string {
         let finalUrl = this.baseUrl + '/'
 
         finalUrl += this.pathComponents.join('/')
@@ -48,24 +50,18 @@ export class URLBuilder {
         finalUrl += Object.values(this.parameters).length > 0 ? '?' : ''
         finalUrl += Object.entries(this.parameters)
             .map((entry) => {
-                if (!entry[1] && !includeUndefinedParameters) {
+                if (entry[1] == null && !includeUndefinedParameters) {
                     return undefined
                 }
 
                 if (Array.isArray(entry[1]) && entry[1].length) {
-                    return `${entry[0]}=${entry[1]
+                    return entry[1]
                         .map((value) =>
                             value || includeUndefinedParameters
-                                ? value
+                                ? `${entry[0]}${encodeURI('[]')}=${value}`
                                 : undefined
                         )
                         .filter((x) => x !== undefined)
-                        .join(',')}`
-                }
-
-                if (typeof entry[1] === 'object') {
-                    return Object.keys(entry[1])
-                        .map((key) => `${entry[0]}[${key}]=${entry[1][key]}`)
                         .join('&')
                 }
 
