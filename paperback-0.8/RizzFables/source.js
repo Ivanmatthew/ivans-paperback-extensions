@@ -1189,7 +1189,7 @@ var _Sources = (() => {
       let sortingIndex = 0;
       let language = source2.language;
       for (const chapter of $2("li", "div#chapterlist").toArray()) {
-        const title = $2("span.chapternum", chapter).text().trim();
+        const title = ($2("i.epn-name", chapter).text().trim() ?? "").replace(/^\s*-\s*/g, "");
         const date = convertDate(
           $2("span.chapterdate", chapter).text().trim()
         );
@@ -1357,6 +1357,10 @@ Image url: ${image}`
   };
 
   // src/UrlBuilder.ts
+  var defaultBuildParameters = {
+    addTrailingSlash: false,
+    includeUndefinedParameters: false
+  };
   var URLBuilder = class {
     constructor(baseUrl) {
       this.parameters = {};
@@ -1368,36 +1372,37 @@ Image url: ${image}`
       return this;
     }
     addQueryParameter(key, value) {
-      if (Array.isArray(value) && !value.length) {
+      if (Array.isArray(value) && (!value.length || value.length === 0)) {
         return this;
       }
       const array = this.parameters[key];
       if (array?.length) {
-        array.push(value);
+        if (Array.isArray(value)) {
+          array.push(...value);
+        } else {
+          array.push(value);
+        }
       } else {
         this.parameters[key] = value;
       }
       return this;
     }
-    buildUrl({ addTrailingSlash, includeUndefinedParameters } = {
-      addTrailingSlash: false,
-      includeUndefinedParameters: false
-    }) {
+    build({
+      addTrailingSlash,
+      includeUndefinedParameters
+    } = defaultBuildParameters) {
       let finalUrl = this.baseUrl + "/";
       finalUrl += this.pathComponents.join("/");
       finalUrl += addTrailingSlash ? "/" : "";
       finalUrl += Object.values(this.parameters).length > 0 ? "?" : "";
       finalUrl += Object.entries(this.parameters).map((entry) => {
-        if (!entry[1] && !includeUndefinedParameters) {
+        if (entry[1] == null && !includeUndefinedParameters) {
           return void 0;
         }
         if (Array.isArray(entry[1]) && entry[1].length) {
-          return `${entry[0]}=${entry[1].map(
-            (value) => value || includeUndefinedParameters ? value : void 0
-          ).filter((x) => x !== void 0).join(",")}`;
-        }
-        if (typeof entry[1] === "object") {
-          return Object.keys(entry[1]).map((key) => `${entry[0]}[${key}]=${entry[1][key]}`).join("&");
+          return entry[1].map(
+            (value) => value || includeUndefinedParameters ? `${entry[0]}${encodeURI("[]")}=${value}` : void 0
+          ).filter((x) => x !== void 0).join("&");
         }
         return `${entry[0]}=${entry[1]}`;
       }).filter((x) => x !== void 0).join("&");
@@ -15298,9 +15303,9 @@ Image url: ${image}`
 
   // src/RizzFables/RizzFables.ts
   var RizzFablesInfo = {
-    version: "2.0.6",
+    version: "2.0.7",
     name: "RizzFables",
-    description: "Extension that pulls manga from RizzFables",
+    description: "Extension that pulls manga from RizzFables or it's derivatives.",
     author: "IvanMatthew",
     authorWebsite: "http://github.com/Ivanmatthew",
     icon: "icon.png",
