@@ -1,8 +1,8 @@
 {
     "name": "ivans-paperback-extensions",
-    "version": "0.8.8",
-    "repositoryName": "Paperback 0.8 Extensions",
-    "description": "Paperback extensions for 0.8!",
+    "version": "0.8.9",
+    "repositoryName": "Ivan's Paperback 0.8 Extensions",
+    "description": "Paperback extensions from Ivanmatthew for Paperback version 0.8!",
     "main": "index.js",
     "scripts": {
         "bundle": "npx paperback bundle",
