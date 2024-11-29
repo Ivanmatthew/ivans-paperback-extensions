@@ -14598,7 +14598,7 @@ var _Sources = (() => {
   var FLAMECOMICS_DOMAIN = "https://flamecomics.xyz";
   var FLAMECOMICS_CDN_DOMAIN = "https://cdn.flamecomics.xyz";
   var FlameComicsInfo = {
-    version: "1.0.0",
+    version: "1.0.1",
     name: "FlameComics",
     description: "Flame comics source for 0.8",
     author: "IvanMatthew",
@@ -14813,7 +14813,7 @@ var _Sources = (() => {
           chapNum: parseFloat(chapter.chapter),
           langCode: this.convertLanguageNameToCode(chapter.language),
           name: chapter.title,
-          time: new Date(chapter.release_date)
+          time: new Date(Number(chapter.release_date) * 1e3)
         });
       });
     }
@@ -14834,12 +14834,13 @@ var _Sources = (() => {
       if (!chapter) {
         throw new Error("Chapter not found");
       }
+      const images = Object.entries(chapter.images).map(([index2, image]) => {
+        return `${FLAMECOMICS_CDN_DOMAIN}/series/${mangaId}/${chapter.token}/${image.name}`;
+      });
       return App.createChapterDetails({
         id: chapter.chapter_id.toString(),
         mangaId,
-        pages: chapter.images.map((image) => {
-          return `${FLAMECOMICS_CDN_DOMAIN}/series/${mangaId}/${chapter.token}/${image.name}`;
-        })
+        pages: images
       });
     }
     /// Searching
