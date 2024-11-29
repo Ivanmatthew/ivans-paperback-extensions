@@ -10,7 +10,6 @@ export class RSCDataProcessor {
     private currentChunk: string
     private currentChunkInByteArray: number[]
     private expectedByteArrayLength: number
-    private amntCalled: number = 0
 
     constructor(initialText: string = '') {
         this.textEncoder = new TextEncoder()
@@ -52,15 +51,8 @@ export class RSCDataProcessor {
     }
 
     private transformSerializedBufferLine(line: string): void {
-        // console.log('HEY!')
-        // console.log(
-        //     `The line is: ${line.length}, the expected length is: ${this.expectedByteArrayLength}, the current chunk is: ${this.currentChunk.length}, the current chunk in byte array is: ${this.currentChunkInByteArray.length}`
-        // )
-        this.amntCalled++
         line += '\n'
-        // Initiation, starting chunk, we considerr expectedLength the control variable from which we can tell if this is the "first chunk"
         if (this.expectedByteArrayLength === 0) {
-            // console.log(`Supposedly first encounter, no byte array length yet!`)
             const strSplitIndex = line.indexOf(':')
             if (strSplitIndex === -1) {
                 console.log(
@@ -71,7 +63,6 @@ export class RSCDataProcessor {
                 )
             }
             if (line[strSplitIndex + 1] !== 'T') {
-                // console.log('hmm?')
                 this.processSerializedBufferLine(line)
             } else {
                 const commaIndex = line.indexOf(',')
@@ -98,25 +89,10 @@ export class RSCDataProcessor {
                                 Array.from(countableByteArray)
                             )
                         this.currentChunk += line
-                        // console.log(
-                        //     `The expected length is: ${this.expectedByteArrayLength}\n The length of the line is: ${line.length}, the length of countable is ${countableByteArray.length}, with length of ${this.currentChunkInByteArray.length}\n currentChunk: ${this.currentChunk}`
-                        // )
 
                         const toTraverseLength =
                             this.expectedByteArrayLength -
                             this.currentChunkInByteArray.length
-                        // console.log(
-                        //     `Legnth to traverse (146): ${toTraverseLength}`
-                        // )
-                        // console.log(
-                        //     `Your toTraverseLength: ${toTraverseLength}, expectedLength: ${
-                        //         this.expectedByteArrayLength
-                        //     }, accumulatedLength: ${
-                        //         this.currentChunkInByteArray.length
-                        //     }, amount of newLine characters: ${
-                        //         line.match(/\n/g)?.length
-                        //     }`
-                        // )
                         const actualChunkByteArray =
                             this.currentChunkInByteArray.slice(
                                 0,
@@ -132,9 +108,6 @@ export class RSCDataProcessor {
                                 )
                             )
                         )
-                        // console.log(
-                        //     `So it has actually become ${actualChunk}, ${otherChunk}`
-                        // )
                         this.processSerializedBufferLine(
                             actualChunk,
                             parseInt(
@@ -159,12 +132,6 @@ export class RSCDataProcessor {
                 }
             }
         } else {
-            // console.log(
-            //     `Follow up of byte array encounter! ${this.currentChunk.slice(
-            //         0,
-            //         15
-            //     )}`
-            // )
             this.currentChunkInByteArray = this.currentChunkInByteArray.concat(
                 Array.from(this.textEncoder.encode(line))
             )
@@ -188,7 +155,6 @@ export class RSCDataProcessor {
                 const toTraverseLength =
                     this.expectedByteArrayLength -
                     this.currentChunkInByteArray.length
-                // console.log(`Length to traverse (221): ${toTraverseLength}`)
                 const actualChunkByteArray = this.currentChunkInByteArray.slice(
                     0,
                     toTraverseLength
@@ -201,9 +167,6 @@ export class RSCDataProcessor {
                         this.currentChunkInByteArray.slice(toTraverseLength)
                     )
                 )
-                // console.log(
-                //     `Actual chunk: ${actualChunk}\nOther chunk: ${otherChunk}`
-                // )
                 const strSplitIndex = this.currentChunk.indexOf(':')
                 this.processSerializedBufferLine(
                     actualChunk,
@@ -212,14 +175,8 @@ export class RSCDataProcessor {
                 this.expectedByteArrayLength = 0
                 this.currentChunk = ''
                 this.currentChunkInByteArray = []
-                // console.log('I call transform last branch!')
                 this.transformSerializedBufferLine(otherChunk)
             }
-            // else {
-            //     console.log(
-            //         `lol less than! ${this.currentChunkInByteArray.length}, ${this.expectedByteArrayLength}, ${this.currentChunk}`
-            //     )
-            // }
         }
     }
 
@@ -233,10 +190,8 @@ export class RSCDataProcessor {
             if (line === '') {
                 return
             }
-            // console.log(`I call from the foreach ${idx}`)
             this.transformSerializedBufferLine(line)
         })
-        // console.log(`Amount of times called: ${this.amntCalled}`)
     }
 
     public get(index: number): string | null {
