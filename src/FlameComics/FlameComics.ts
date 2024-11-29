@@ -26,7 +26,7 @@ import * as cheerio from 'cheerio'
 const FLAMECOMICS_DOMAIN = 'https://flamecomics.xyz'
 const FLAMECOMICS_CDN_DOMAIN = 'https://cdn.flamecomics.xyz'
 export const FlameComicsInfo: SourceInfo = {
-    version: '1.0.0',
+    version: '1.0.1',
     name: 'FlameComics',
     description: 'Flame comics source for 0.8',
     author: 'IvanMatthew',
@@ -392,7 +392,7 @@ export class FlameComics
                 chapNum: parseFloat(chapter.chapter),
                 langCode: this.convertLanguageNameToCode(chapter.language),
                 name: chapter.title,
-                time: new Date(chapter.release_date)
+                time: new Date(Number(chapter.release_date) * 1000)
             })
         })
     }
@@ -423,12 +423,16 @@ export class FlameComics
             throw new Error('Chapter not found')
         }
 
+        // images is an object with keys as index and values as image object
+        // re-cast iamges
+        const images = Object.entries(chapter.images).map(([index, image]) => {
+            return `${FLAMECOMICS_CDN_DOMAIN}/series/${mangaId}/${chapter.token}/${image.name}`
+        })
+
         return App.createChapterDetails({
             id: chapter.chapter_id.toString(),
             mangaId: mangaId,
-            pages: chapter.images.map((image) => {
-                return `${FLAMECOMICS_CDN_DOMAIN}/series/${mangaId}/${chapter.token}/${image.name}`
-            })
+            pages: images
         })
     }
 
