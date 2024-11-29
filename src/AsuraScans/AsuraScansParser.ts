@@ -15,12 +15,12 @@ import { CheerioAPI } from 'cheerio'
 import { getFilter, getMangaId } from './AsuraScansUtils'
 
 import { Filters } from './interface/Filters'
-import { TextBufferRepr } from './TextBufferRepr'
+import { RSCDataProcessor } from './RSCDataProcessor'
 import { recurseParseJSON } from './AsuraScansHelper'
 
 import * as cheerio from 'cheerio'
 
-export const parseNextJSData = ($: CheerioAPI): TextBufferRepr => {
+export const parseNextJSData = ($: CheerioAPI): RSCDataProcessor => {
     const scriptsWithData = $('script')
         .toArray()
         .filter((script) => {
@@ -32,7 +32,7 @@ export const parseNextJSData = ($: CheerioAPI): TextBufferRepr => {
         throw new Error('Could not find script with data')
     }
 
-    const collectedData: TextBufferRepr = new TextBufferRepr()
+    const rscDataProcessor: RSCDataProcessor = new RSCDataProcessor()
 
     for (const scriptWithData of scriptsWithData) {
         const self = {
@@ -44,14 +44,14 @@ export const parseNextJSData = ($: CheerioAPI): TextBufferRepr => {
 
         self.__next_f.forEach((val: [number, undefined | null | string]) => {
             if (val[0] === 1) {
-                collectedData.append(val[1] as unknown as string)
+                rscDataProcessor.append(val[1] as unknown as string)
             }
         })
     }
 
-    collectedData.finalize()
+    rscDataProcessor.process()
 
-    return collectedData
+    return rscDataProcessor
 }
 
 export const parseMangaDetails = async (
@@ -110,29 +110,7 @@ export const parseMangaDetails = async (
         })
     ]
 
-    // const rawStatus = $('h3:contains("Status")').next().text().trim() ?? ''
-    // let status = 'ONGOING'
-    // switch (rawStatus.toUpperCase()) {
-    //     case 'ONGOING':
-    //         status = 'Ongoing'
-    //         break
-    //     case 'COMPLETED':
-    //         status = 'Completed'
-    //         break
-    //     case 'HIATUS':
-    //         status = 'Hiatus'
-    //         break
-    //     case 'SEASON END':
-    //         status = 'Season End'
-    //         break
-    //     case 'COMING SOON':
-    //         status = 'Coming Soon'
-    //         break
-    //     default:
-    //         status = 'Ongoing'
-    //         break
-    // }
-    const status = mangaDetailsObject.status.name ?? ''
+    const status = mangaDetailsObject.status?.name ?? ''
 
     return App.createSourceManga({
         id: mangaId,
@@ -207,8 +185,17 @@ export const parseChapterDetails = async (
     const textBufferRepr = parseNextJSData($)
 
     let toParse: any[] = []
+    const rawPagesObjectIdx = textBufferRepr.findByString(
+        ['initialChapter', 'pages'],
+        true
+    )
+
+    if (!rawPagesObjectIdx) {
+        throw new Error(`Couldn't find pages for chapterId: ${chapterId}!`)
+    }
+
     const stableRawPagesObject = textBufferRepr.resolveIndexWithHex(
-        '19',
+        rawPagesObjectIdx,
         (inp) => recurseParseJSON(inp)
     )
     let rawPagesObject
