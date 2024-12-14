@@ -16995,9 +16995,15 @@ var _Sources = (() => {
         continue;
       }
       const date = new Date(chapter.published_at);
+      let title = chapter?.title;
+      if (!title || typeof title === "undefined") {
+        title = `Ch. ${id}`;
+      } else {
+        title = `Ch. ${id} - ${title}`;
+      }
       chapters.push({
         id,
-        name: `Chapter ${id}`,
+        name: title,
         langCode: "\u{1F1EC}\u{1F1E7}",
         chapNum: Number(id),
         volume: 0,
@@ -17230,7 +17236,7 @@ var _Sources = (() => {
   var AS_DOMAIN = "https://asuracomic.net";
   var AS_API_DOMAIN = "https://gg.asuracomic.net";
   var AsuraScansInfo = {
-    version: "5.2.2",
+    version: "5.2.3",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
