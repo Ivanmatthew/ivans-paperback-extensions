@@ -149,6 +149,9 @@ export const parseChapters = ($: CheerioAPI, mangaId: string): Chapter[] => {
         const id = String(chapter.name) // TODO: This is not the actual chapter ID, but rather the chapter name (e.g. "Chapter 1"). This was from the previous implementation, so I'm keeping it as is for now for backwards compatibility.
 
         if (!id || isNaN(Number(id))) continue
+        if (chapter.is_early_access) {
+            continue
+        }
 
         // const rawDate = $('h3', chapter).last().text().trim() ?? ''
         // const date = new Date(rawDate.replace(/\b(\d+)(st|nd|rd|th)\b/g, '$1'))
