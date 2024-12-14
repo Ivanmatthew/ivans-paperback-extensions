@@ -157,9 +157,16 @@ export const parseChapters = ($: CheerioAPI, mangaId: string): Chapter[] => {
         // const date = new Date(rawDate.replace(/\b(\d+)(st|nd|rd|th)\b/g, '$1'))
         const date = new Date(chapter.published_at)
 
+        let title = chapter?.title
+        if (!title || typeof title === 'undefined') {
+            title = `Ch. ${id}`
+        } else {
+            title = `Ch. ${id} - ${title}`
+        }
+
         chapters.push({
             id: id,
-            name: `Chapter ${id}`,
+            name: title,
             langCode: '🇬🇧',
             chapNum: Number(id),
             volume: 0,
