@@ -158,23 +158,34 @@ export class MangaStreamParser {
         let language = source.language
 
         for (const chapter of $('li', 'div#chapterlist').toArray()) {
-            const title = (
-                $('i.epn-name', chapter).text().trim() ?? ''
-            ).replace(/^\s*-\s*/g, '')
+            let title = ($('i.epn-name', chapter).text().trim() ?? '').replace(
+                /^\s*-\s*/g,
+                ''
+            )
             const date = convertDate(
                 $('span.chapterdate', chapter).text().trim()
             )
             const id = chapter.attribs['data-num'] ?? '' // Set data-num attribute as id
             const chapterNumberRegex = id.match(/(\d+\.?\d?)+/)
-            let chapterNumber = 0
+            let chapterNumber = -1
             if (chapterNumberRegex && chapterNumberRegex[1]) {
                 chapterNumber = Number(chapterNumberRegex[1])
+            } else {
+                throw new Error(
+                    `Could not parse out chapterNumber when getting chapters for title :${mangaTitle}`
+                )
             }
 
             if (!id || typeof id === 'undefined') {
                 throw new Error(
                     `Could not parse out ID when getting chapters for title :${mangaTitle}`
                 )
+            }
+
+            if (!title || typeof title === 'undefined') {
+                title = `Ch. ${chapterNumber}`
+            } else {
+                title = `Ch. ${chapterNumber} - ${title}`
             }
 
             chapters.push({

@@ -387,11 +387,15 @@ export class FlameComics
         ).pageProps
 
         return mangaDetailsPageProps.chapters.map((chapter) => {
+            const chapterNumber = parseFloat(chapter.chapter)
             return App.createChapter({
                 id: chapter.chapter_id.toString(),
-                chapNum: parseFloat(chapter.chapter),
+                chapNum: chapterNumber,
                 langCode: this.convertLanguageNameToCode(chapter.language),
-                name: chapter.title,
+                name:
+                    chapter.title !== ''
+                        ? `Ch. ${chapterNumber} - ${chapter.title}`
+                        : `Ch. ${chapterNumber}`,
                 time: new Date(Number(chapter.release_date) * 1000)
             })
         })
