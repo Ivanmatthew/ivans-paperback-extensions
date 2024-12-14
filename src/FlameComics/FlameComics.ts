@@ -26,7 +26,7 @@ import * as cheerio from 'cheerio'
 const FLAMECOMICS_DOMAIN = 'https://flamecomics.xyz'
 const FLAMECOMICS_CDN_DOMAIN = 'https://cdn.flamecomics.xyz'
 export const FlameComicsInfo: SourceInfo = {
-    version: '1.0.1',
+    version: '1.1.1',
     name: 'FlameComics',
     description: 'Flame comics source for 0.8',
     author: 'IvanMatthew',
@@ -40,7 +40,10 @@ export const FlameComicsInfo: SourceInfo = {
             type: BadgeColor.GREY
         }
     ],
-    intents: SourceIntents.MANGA_CHAPTERS | SourceIntents.HOMEPAGE_SECTIONS
+    intents:
+        SourceIntents.MANGA_CHAPTERS |
+        SourceIntents.HOMEPAGE_SECTIONS |
+        SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
 }
 
 type FlameComicsImageObject = {
@@ -148,7 +151,29 @@ export class FlameComics
     constructor() {
         this.requestManager = App.createRequestManager({
             requestsPerSecond: 2,
-            requestTimeout: 30000
+            requestTimeout: 30000,
+            interceptor: {
+                interceptRequest: async (
+                    request: Request
+                ): Promise<Request> => {
+                    request.headers = {
+                        ...(request.headers ?? {}),
+                        ...{
+                            referer: `${FLAMECOMICS_DOMAIN}/`,
+                            origin: `${FLAMECOMICS_DOMAIN}/`,
+                            'user-agent':
+                                await this.requestManager.getDefaultUserAgent()
+                        }
+                    }
+
+                    return request
+                },
+                interceptResponse: async (
+                    response: Response
+                ): Promise<Response> => {
+                    return response
+                }
+            }
         })
         this.stateManager = App.createSourceStateManager()
     }
@@ -169,7 +194,13 @@ export class FlameComics
         )
 
         if (response.status != 200 || !response.data) {
-            throw new Error('Failed to fetch build id, site unavailable')
+            throw new Error(
+                `Failed to fetch build id, site unavailable. Response code: ${
+                    response.status
+                }, with request - response cookies: ${response.request.cookies.join(
+                    ', '
+                )} - ${JSON.stringify(response.headers['set-cookie'])}`
+            )
         }
 
         const $ = cheerio.load(response.data)
@@ -542,5 +573,17 @@ export class FlameComics
     }
     async supportsSearchOperators?(): Promise<boolean> {
         return false
+    }
+
+    async getCloudflareBypassRequestAsync(): Promise<Request> {
+        return App.createRequest({
+            url: FLAMECOMICS_DOMAIN,
+            method: 'GET',
+            headers: {
+                referer: `${FLAMECOMICS_DOMAIN}/`,
+                origin: `${FLAMECOMICS_DOMAIN}/`,
+                'user-agent': await this.requestManager.getDefaultUserAgent()
+            }
+        })
     }
 }

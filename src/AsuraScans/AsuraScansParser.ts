@@ -186,7 +186,7 @@ export const parseChapterDetails = async (
 
     let toParse: any[] = []
     const rawPagesObjectIdx = textBufferRepr.findByString(
-        ['initialChapter', 'pages'],
+        ['initialComic', 'initialChapter'],
         true
     )
 
@@ -201,7 +201,7 @@ export const parseChapterDetails = async (
     let rawPagesObject
     try {
         rawPagesObject =
-            stableRawPagesObject[3].children[9][3].children[3].initialChapter
+            stableRawPagesObject[3].children[9][3].children[1][3].initialChapter
                 .pages
     } catch (e) {
         throw new Error('Could not find page images for chapter ' + e)
