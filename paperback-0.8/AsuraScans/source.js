@@ -16991,6 +16991,9 @@ var _Sources = (() => {
     for (const chapter of rawMangaChaptersObject[3].chapters) {
       const id = String(chapter.name);
       if (!id || isNaN(Number(id))) continue;
+      if (chapter.is_early_access) {
+        continue;
+      }
       const date = new Date(chapter.published_at);
       chapters.push({
         id,
@@ -17227,7 +17230,7 @@ var _Sources = (() => {
   var AS_DOMAIN = "https://asuracomic.net";
   var AS_API_DOMAIN = "https://gg.asuracomic.net";
   var AsuraScansInfo = {
-    version: "5.2.1",
+    version: "5.2.2",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
