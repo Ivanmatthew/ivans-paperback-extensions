@@ -1189,20 +1189,32 @@ var _Sources = (() => {
       let sortingIndex = 0;
       let language = source2.language;
       for (const chapter of $2("li", "div#chapterlist").toArray()) {
-        const title = ($2("i.epn-name", chapter).text().trim() ?? "").replace(/^\s*-\s*/g, "");
+        let title = ($2("i.epn-name", chapter).text().trim() ?? "").replace(
+          /^\s*-\s*/g,
+          ""
+        );
         const date = convertDate(
           $2("span.chapterdate", chapter).text().trim()
         );
         const id = chapter.attribs["data-num"] ?? "";
         const chapterNumberRegex = id.match(/(\d+\.?\d?)+/);
-        let chapterNumber = 0;
+        let chapterNumber = -1;
         if (chapterNumberRegex && chapterNumberRegex[1]) {
           chapterNumber = Number(chapterNumberRegex[1]);
+        } else {
+          throw new Error(
+            `Could not parse out chapterNumber when getting chapters for title :${mangaTitle}`
+          );
         }
         if (!id || typeof id === "undefined") {
           throw new Error(
             `Could not parse out ID when getting chapters for title :${mangaTitle}`
           );
+        }
+        if (!title || typeof title === "undefined") {
+          title = `Ch. ${chapterNumber}`;
+        } else {
+          title = `Ch. ${chapterNumber} - ${title}`;
         }
         chapters.push({
           id,
@@ -15303,7 +15315,7 @@ Image url: ${image}`
 
   // src/RizzFables/RizzFables.ts
   var RizzFablesInfo = {
-    version: "2.0.7",
+    version: "2.0.8",
     name: "RizzFables",
     description: "Extension that pulls manga from RizzFables or it's derivatives.",
     author: "IvanMatthew",

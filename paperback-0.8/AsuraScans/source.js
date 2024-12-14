@@ -17016,7 +17016,7 @@ var _Sources = (() => {
     const textBufferRepr = parseNextJSData($3);
     let toParse = [];
     const rawPagesObjectIdx = textBufferRepr.findByString(
-      ["initialChapter", "pages"],
+      ["initialComic", "initialChapter"],
       true
     );
     if (!rawPagesObjectIdx) {
@@ -17028,7 +17028,7 @@ var _Sources = (() => {
     );
     let rawPagesObject;
     try {
-      rawPagesObject = stableRawPagesObject[3].children[9][3].children[3].initialChapter.pages;
+      rawPagesObject = stableRawPagesObject[3].children[9][3].children[1][3].initialChapter.pages;
     } catch (e) {
       throw new Error("Could not find page images for chapter " + e);
     }
@@ -17227,7 +17227,7 @@ var _Sources = (() => {
   var AS_DOMAIN = "https://asuracomic.net";
   var AS_API_DOMAIN = "https://gg.asuracomic.net";
   var AsuraScansInfo = {
-    version: "5.2.0",
+    version: "5.2.1",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",

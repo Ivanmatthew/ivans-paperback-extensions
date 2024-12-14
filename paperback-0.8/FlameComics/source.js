@@ -14598,7 +14598,7 @@ var _Sources = (() => {
   var FLAMECOMICS_DOMAIN = "https://flamecomics.xyz";
   var FLAMECOMICS_CDN_DOMAIN = "https://cdn.flamecomics.xyz";
   var FlameComicsInfo = {
-    version: "1.0.1",
+    version: "1.1.1",
     name: "FlameComics",
     description: "Flame comics source for 0.8",
     author: "IvanMatthew",
@@ -14612,7 +14612,7 @@ var _Sources = (() => {
         type: import_types2.BadgeColor.GREY
       }
     ],
-    intents: import_types2.SourceIntents.MANGA_CHAPTERS | import_types2.SourceIntents.HOMEPAGE_SECTIONS
+    intents: import_types2.SourceIntents.MANGA_CHAPTERS | import_types2.SourceIntents.HOMEPAGE_SECTIONS | import_types2.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
   };
   var FlameComics = class {
     constructor() {
@@ -14631,7 +14631,11 @@ var _Sources = (() => {
           1
         );
         if (response.status != 200 || !response.data) {
-          throw new Error("Failed to fetch build id, site unavailable");
+          throw new Error(
+            `Failed to fetch build id, site unavailable. Response code: ${response.status}, with request - response cookies: ${response.request.cookies.join(
+              ", "
+            )} - ${JSON.stringify(response.headers["set-cookie"])}`
+          );
         }
         const $2 = load(response.data);
         const nextData = $2("script#__NEXT_DATA__");
@@ -14675,7 +14679,23 @@ var _Sources = (() => {
       };
       this.requestManager = App.createRequestManager({
         requestsPerSecond: 2,
-        requestTimeout: 3e4
+        requestTimeout: 3e4,
+        interceptor: {
+          interceptRequest: async (request) => {
+            request.headers = {
+              ...request.headers ?? {},
+              ...{
+                referer: `${FLAMECOMICS_DOMAIN}/`,
+                origin: `${FLAMECOMICS_DOMAIN}/`,
+                "user-agent": await this.requestManager.getDefaultUserAgent()
+              }
+            };
+            return request;
+          },
+          interceptResponse: async (response) => {
+            return response;
+          }
+        }
       });
       this.stateManager = App.createSourceStateManager();
     }
@@ -14808,11 +14828,12 @@ var _Sources = (() => {
         )).data
       ).pageProps;
       return mangaDetailsPageProps.chapters.map((chapter) => {
+        const chapterNumber = parseFloat(chapter.chapter);
         return App.createChapter({
           id: chapter.chapter_id.toString(),
-          chapNum: parseFloat(chapter.chapter),
+          chapNum: chapterNumber,
           langCode: this.convertLanguageNameToCode(chapter.language),
-          name: chapter.title,
+          name: chapter.title !== "" ? `Ch. ${chapterNumber} - ${chapter.title}` : `Ch. ${chapterNumber}`,
           time: new Date(Number(chapter.release_date) * 1e3)
         });
       });
@@ -14921,6 +14942,17 @@ var _Sources = (() => {
     }
     async supportsSearchOperators() {
       return false;
+    }
+    async getCloudflareBypassRequestAsync() {
+      return App.createRequest({
+        url: FLAMECOMICS_DOMAIN,
+        method: "GET",
+        headers: {
+          referer: `${FLAMECOMICS_DOMAIN}/`,
+          origin: `${FLAMECOMICS_DOMAIN}/`,
+          "user-agent": await this.requestManager.getDefaultUserAgent()
+        }
+      });
     }
   };
   return __toCommonJS(FlameComics_exports);
