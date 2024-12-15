@@ -16986,6 +16986,25 @@ var _Sources = (() => {
       rawMangaChaptersObjectIdx,
       (inp) => recurseParseJSON(inp)
     );
+    if (!rawMangaChaptersObject) {
+      throw new Error(
+        `Couldn't find chapters for: ${mangaId}. (Missing rawMangaChaptersObject)`
+      );
+    }
+    if (!rawMangaChaptersObject[3]) {
+      throw new Error(
+        `Couldn't find chapters for: ${mangaId}. (Missing expected 3rd index, got '${JSON.stringify(
+          rawMangaChaptersObject
+        )}')`
+      );
+    }
+    if (!rawMangaChaptersObject[3].chapters) {
+      throw new Error(
+        `Couldn't find chapters for: ${mangaId}. (Missing chapters array, got '${JSON.stringify(
+          rawMangaChaptersObject[3]
+        )}')`
+      );
+    }
     const chapters = [];
     let sortingIndex = 0;
     for (const chapter of rawMangaChaptersObject[3].chapters) {
@@ -17236,7 +17255,7 @@ var _Sources = (() => {
   var AS_DOMAIN = "https://asuracomic.net";
   var AS_API_DOMAIN = "https://gg.asuracomic.net";
   var AsuraScansInfo = {
-    version: "5.2.3",
+    version: "5.2.4",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
