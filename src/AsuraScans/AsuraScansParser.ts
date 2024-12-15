@@ -141,6 +141,25 @@ export const parseChapters = ($: CheerioAPI, mangaId: string): Chapter[] => {
         rawMangaChaptersObjectIdx,
         (inp) => recurseParseJSON(inp)
     )
+    if (!rawMangaChaptersObject) {
+        throw new Error(
+            `Couldn't find chapters for: ${mangaId}. (Missing rawMangaChaptersObject)`
+        )
+    }
+    if (!rawMangaChaptersObject[3]) {
+        throw new Error(
+            `Couldn't find chapters for: ${mangaId}. (Missing expected 3rd index, got '${JSON.stringify(
+                rawMangaChaptersObject
+            )}')`
+        )
+    }
+    if (!rawMangaChaptersObject[3].chapters) {
+        throw new Error(
+            `Couldn't find chapters for: ${mangaId}. (Missing chapters array, got '${JSON.stringify(
+                rawMangaChaptersObject[3]
+            )}')`
+        )
+    }
 
     const chapters: Chapter[] = []
     let sortingIndex = 0

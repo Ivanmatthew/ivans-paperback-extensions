@@ -8,7 +8,7 @@
         "bundle": "npx paperback bundle",
         "serve": "npx paperback serve",
         "test": "npx paperback test",
-        "buntest": "bun test ./"
+        "buntest": "bun test ."
     },
     "author": "Ivanmatthew",
     "homepage": "https://ivanmatthew.github.io/ivans-paperback-extensions/paperback-0.8",
