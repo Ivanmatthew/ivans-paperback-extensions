@@ -16783,17 +16783,21 @@ var _Sources = (() => {
       const intIndex = parseInt(hexIndex, 16);
       return this.get(intIndex);
     }
-    findByString(findString, returnAsHex = false) {
+    findByString(findString, exludeString, returnAsHex = false) {
       if (returnAsHex) {
         const hexBufferArray = this.bufferArrayAsHex();
         for (const [index2, entry] of Object.entries(hexBufferArray)) {
-          if (entry && findString.every((str) => entry.includes(str))) {
+          if (entry && findString.every(
+            (str) => entry.includes(str) && !exludeString.some((exStr) => entry.includes(exStr))
+          )) {
             return index2;
           }
         }
       } else {
         for (const [index2, entry] of this.bufferArray.entries()) {
-          if (entry && findString.every((str) => entry.includes(str))) {
+          if (entry && findString.every(
+            (str) => entry.includes(str) && !exludeString.some((exStr) => entry.includes(exStr))
+          )) {
             return index2.toString();
           }
         }
@@ -16920,7 +16924,8 @@ var _Sources = (() => {
   var parseMangaDetails = async (source, $3, mangaId) => {
     const textBufferRepr = parseNextJSData($3);
     const rawMangaDetailsObjectIdx = textBufferRepr.findByString(
-      ["comic", "chapters"],
+      ["comic", "chapters", "loading"],
+      ["chevron"],
       true
     );
     if (!rawMangaDetailsObjectIdx) {
@@ -16930,6 +16935,25 @@ var _Sources = (() => {
       rawMangaDetailsObjectIdx,
       (inp) => recurseParseJSON(inp)
     );
+    if (!rawMangaDetailsObject) {
+      throw new Error(
+        `Couldn't find manga details for: ${mangaId}. (Missing rawMangaDetailsObject)`
+      );
+    }
+    if (!rawMangaDetailsObject[3]) {
+      throw new Error(
+        `Couldn't find manga details for: ${mangaId}. (Missing expected 3rd index, got '${JSON.stringify(
+          rawMangaDetailsObject
+        )}')`
+      );
+    }
+    if (!rawMangaDetailsObject[3].comic) {
+      throw new Error(
+        `Couldn't find manga details for: ${mangaId}. (Missing comic object, got '${JSON.stringify(
+          rawMangaDetailsObject[3]
+        )}')`
+      );
+    }
     const mangaDetailsObject = rawMangaDetailsObject[3].comic;
     const title = mangaDetailsObject.name ?? "";
     const image = mangaDetailsObject.cover ?? "";
@@ -16976,7 +17000,8 @@ var _Sources = (() => {
   var parseChapters = ($3, mangaId) => {
     const textBufferRepr = parseNextJSData($3);
     const rawMangaChaptersObjectIdx = textBufferRepr.findByString(
-      ["comic", "chapters"],
+      ["comic", "chapters", "loading"],
+      ["chevron"],
       true
     );
     if (!rawMangaChaptersObjectIdx) {
@@ -17045,6 +17070,7 @@ var _Sources = (() => {
     let toParse = [];
     const rawPagesObjectIdx = textBufferRepr.findByString(
       ["initialComic", "initialChapter"],
+      [],
       true
     );
     if (!rawPagesObjectIdx) {
@@ -17255,7 +17281,7 @@ var _Sources = (() => {
   var AS_DOMAIN = "https://asuracomic.net";
   var AS_API_DOMAIN = "https://gg.asuracomic.net";
   var AsuraScansInfo = {
-    version: "5.2.4",
+    version: "5.2.5",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
