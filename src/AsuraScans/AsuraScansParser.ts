@@ -62,7 +62,8 @@ export const parseMangaDetails = async (
     const textBufferRepr = parseNextJSData($)
 
     const rawMangaDetailsObjectIdx = textBufferRepr.findByString(
-        ['comic', 'chapters'],
+        ['comic', 'chapters', 'loading'],
+        ['chevron'],
         true
     )
 
@@ -74,6 +75,26 @@ export const parseMangaDetails = async (
         rawMangaDetailsObjectIdx,
         (inp) => recurseParseJSON(inp)
     )
+    if (!rawMangaDetailsObject) {
+        throw new Error(
+            `Couldn't find manga details for: ${mangaId}. (Missing rawMangaDetailsObject)`
+        )
+    }
+    if (!rawMangaDetailsObject[3]) {
+        throw new Error(
+            `Couldn't find manga details for: ${mangaId}. (Missing expected 3rd index, got '${JSON.stringify(
+                rawMangaDetailsObject
+            )}')`
+        )
+    }
+    if (!rawMangaDetailsObject[3].comic) {
+        throw new Error(
+            `Couldn't find manga details for: ${mangaId}. (Missing comic object, got '${JSON.stringify(
+                rawMangaDetailsObject[3]
+            )}')`
+        )
+    }
+
     const mangaDetailsObject = rawMangaDetailsObject[3].comic
 
     const title = mangaDetailsObject.name ?? ''
@@ -130,7 +151,8 @@ export const parseChapters = ($: CheerioAPI, mangaId: string): Chapter[] => {
     const textBufferRepr = parseNextJSData($)
 
     const rawMangaChaptersObjectIdx = textBufferRepr.findByString(
-        ['comic', 'chapters'],
+        ['comic', 'chapters', 'loading'],
+        ['chevron'],
         true
     )
     if (!rawMangaChaptersObjectIdx) {
@@ -216,6 +238,7 @@ export const parseChapterDetails = async (
     let toParse: any[] = []
     const rawPagesObjectIdx = textBufferRepr.findByString(
         ['initialComic', 'initialChapter'],
+        [],
         true
     )
 

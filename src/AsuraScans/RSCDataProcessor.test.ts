@@ -52,7 +52,8 @@ describe.each([
     ['3', 214],
     ['4', 194],
     ['5', 244],
-    ['6', 169]
+    ['6', 169],
+    ['7', 203]
 ])('RSCDataProcessor Test Case %s', async (casenumstr, expected) => {
     let textBuffer: RSCDataProcessor
     let caseData: string = await Bun.file(
@@ -80,14 +81,22 @@ describe.each([
 
     it('should have a comic and chapter idx', () => {
         expect(
-            textBuffer.findByString(['comic', 'chapters'], true)
+            textBuffer.findByString(
+                ['comic', 'chapters', 'loading'],
+                ['chevron'],
+                true
+            )
         ).not.toBeNull()
     })
 
     it('should have a non-error comic and chapter containing data line', () => {
         expect(() => {
             textBuffer.resolveIndexWithHex(
-                textBuffer.findByString(['comic', 'chapters'], true) as string
+                textBuffer.findByString(
+                    ['comic', 'chapters', 'loading'],
+                    ['chevron'],
+                    true
+                ) as string
             )
         }).not.toThrowError()
     })
@@ -95,7 +104,8 @@ describe.each([
     it('should have a proper populated comic and chapter containing data line', () => {
         // console.log(`${JSON.stringify(textBuffer.bufferArrayAsHex())}`)
         const hexIdx = textBuffer.findByString(
-            ['comic', 'chapters'],
+            ['comic', 'chapters', 'loading'],
+            ['chevron'],
             true
         ) as string
         const comicChapterData = textBuffer.resolveIndexWithHex(hexIdx, (inp) =>

@@ -41,7 +41,7 @@ const AS_DOMAIN = 'https://asuracomic.net'
 const AS_API_DOMAIN = 'https://gg.asuracomic.net'
 
 export const AsuraScansInfo: SourceInfo = {
-    version: '5.2.4',
+    version: '5.2.5',
     name: 'AsuraScans',
     description: 'Extension that pulls manga from AsuraScans',
     author: 'IvanMatthew',

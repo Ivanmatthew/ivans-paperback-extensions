@@ -205,19 +205,34 @@ export class RSCDataProcessor {
 
     public findByString(
         findString: string[],
+        exludeString: string[],
         returnAsHex: boolean = false
     ): string | null {
         // Find whether the findStrings are contained in a bufferarray entry and if so, return the entry
         if (returnAsHex) {
             const hexBufferArray = this.bufferArrayAsHex()
             for (const [index, entry] of Object.entries(hexBufferArray)) {
-                if (entry && findString.every((str) => entry.includes(str))) {
+                if (
+                    entry &&
+                    findString.every(
+                        (str) =>
+                            entry.includes(str) &&
+                            !exludeString.some((exStr) => entry.includes(exStr))
+                    )
+                ) {
                     return index
                 }
             }
         } else {
             for (const [index, entry] of this.bufferArray.entries()) {
-                if (entry && findString.every((str) => entry.includes(str))) {
+                if (
+                    entry &&
+                    findString.every(
+                        (str) =>
+                            entry.includes(str) &&
+                            !exludeString.some((exStr) => entry.includes(exStr))
+                    )
+                ) {
                     return index.toString()
                 }
             }
