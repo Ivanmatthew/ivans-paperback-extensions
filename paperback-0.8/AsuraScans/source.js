@@ -17069,7 +17069,7 @@ var _Sources = (() => {
     const textBufferRepr = parseNextJSData($3);
     let toParse = [];
     const rawPagesObjectIdx = textBufferRepr.findByString(
-      ["initialComic", "initialChapter"],
+      ["pages", "is_early_access"],
       [],
       true
     );
@@ -17082,18 +17082,13 @@ var _Sources = (() => {
     );
     let rawPagesObject;
     try {
-      rawPagesObject = stableRawPagesObject[3].children[9][3].children[1][3].initialChapter.pages;
+      rawPagesObject = stableRawPagesObject.pages;
     } catch (e) {
       throw new Error("Could not find page images for chapter " + e);
     }
-    if (Array.isArray(rawPagesObject) === false) {
-      toParse = rawPagesObject.pages;
-    } else {
-      toParse = rawPagesObject;
-    }
     const pages = [];
     toParse.forEach((page) => {
-      pages.push(page.url);
+      pages[page.order - 1] = page.url;
     });
     const chapterDetails = App.createChapterDetails({
       id: chapterId,
@@ -17103,7 +17098,7 @@ var _Sources = (() => {
     return chapterDetails;
   };
   var parseHomeSections = async (source, $3, sectionCallback) => {
-    const featuedSection = App.createHomeSection({
+    const featuredSection = App.createHomeSection({
       id: "featured",
       title: "Featured",
       containsMoreItems: false,
@@ -17137,8 +17132,8 @@ var _Sources = (() => {
         })
       );
     }
-    featuedSection.items = featuredSection_Array;
-    sectionCallback(featuedSection);
+    featuredSection.items = featuredSection_Array;
+    sectionCallback(featuredSection);
     const updateSection_Array = [];
     for (const manga of $3("div.w-full", "div.grid.grid-rows-1").toArray()) {
       const slug = $3("a", manga).attr("href")?.replace(/\/$/, "")?.split("/").pop() ?? "";
@@ -17146,7 +17141,11 @@ var _Sources = (() => {
       const id = await getMangaId(source, slug);
       const image = $3("img", manga).first().attr("src") ?? "";
       const title = $3(".col-span-9 > .font-medium > a", manga).first().text().trim() ?? "";
-      const subtitle = $3(".flex.flex-col .flex-row a", manga).first().text().trim() ?? "";
+      let subtitle = $3(".flex.flex-col .flex-row a", manga).first().text().trim() ?? "";
+      let subtitleContext = $3("p.flex.items-end", manga).text().trim() ?? "";
+      if (subtitleContext.indexOf("Public in") !== -1) {
+        subtitle = "(Early Access) " + subtitle;
+      }
       if (!id || !title) continue;
       updateSection_Array.push(
         App.createPartialSourceManga({
@@ -17281,7 +17280,7 @@ var _Sources = (() => {
   var AS_DOMAIN = "https://asuracomic.net";
   var AS_API_DOMAIN = "https://gg.asuracomic.net";
   var AsuraScansInfo = {
-    version: "5.2.5",
+    version: "5.3.0",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
