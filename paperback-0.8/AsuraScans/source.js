@@ -17067,9 +17067,16 @@ var _Sources = (() => {
   };
   var parseChapterDetails = async ($3, mangaId, chapterId) => {
     const textBufferRepr = parseNextJSData($3);
-    let toParse = [];
+    const randomChapterImageObjectIdx = textBufferRepr.findByString(
+      ["order", "url"],
+      [],
+      true
+    );
+    if (!randomChapterImageObjectIdx) {
+      throw new Error(`Couldn't find pages for chapterId: ${chapterId}!`);
+    }
     const rawPagesObjectIdx = textBufferRepr.findByString(
-      ["pages", "is_early_access"],
+      ["$" + randomChapterImageObjectIdx, "[", "]\n"],
       [],
       true
     );
@@ -17080,14 +17087,13 @@ var _Sources = (() => {
       rawPagesObjectIdx,
       (inp) => recurseParseJSON(inp)
     );
-    let rawPagesObject;
-    try {
-      rawPagesObject = stableRawPagesObject.pages;
-    } catch (e) {
-      throw new Error("Could not find page images for chapter " + e);
+    if (!Array.isArray(stableRawPagesObject)) {
+      throw new Error(
+        `Couldn't find pages for chapterId: ${chapterId}! (Not an array)`
+      );
     }
     const pages = [];
-    toParse.forEach((page) => {
+    stableRawPagesObject.forEach((page) => {
       pages[page.order - 1] = page.url;
     });
     const chapterDetails = App.createChapterDetails({
@@ -17280,7 +17286,7 @@ var _Sources = (() => {
   var AS_DOMAIN = "https://asuracomic.net";
   var AS_API_DOMAIN = "https://gg.asuracomic.net";
   var AsuraScansInfo = {
-    version: "5.3.0",
+    version: "5.3.1",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
