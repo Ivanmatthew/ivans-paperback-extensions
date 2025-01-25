@@ -237,7 +237,7 @@ export const parseChapterDetails = async (
 
     let toParse: any[] = []
     const rawPagesObjectIdx = textBufferRepr.findByString(
-        ['initialComic', 'initialChapter'],
+        ['pages', 'is_early_access'],
         [],
         true
     )
@@ -252,21 +252,14 @@ export const parseChapterDetails = async (
     )
     let rawPagesObject
     try {
-        rawPagesObject =
-            stableRawPagesObject[3].children[9][3].children[1][3].initialChapter
-                .pages
+        rawPagesObject = stableRawPagesObject.pages
     } catch (e) {
         throw new Error('Could not find page images for chapter ' + e)
-    }
-    if (Array.isArray(rawPagesObject) === false) {
-        toParse = rawPagesObject.pages
-    } else {
-        toParse = rawPagesObject
     }
 
     const pages: string[] = []
     toParse.forEach((page: { order: number; url: string }) => {
-        pages.push(page.url)
+        pages[page.order - 1] = page.url
     })
 
     const chapterDetails = App.createChapterDetails({
@@ -283,7 +276,7 @@ export const parseHomeSections = async (
     $: CheerioAPI,
     sectionCallback: (section: HomeSection) => void
 ): Promise<void> => {
-    const featuedSection = App.createHomeSection({
+    const featuredSection = App.createHomeSection({
         id: 'featured',
         title: 'Featured',
         containsMoreItems: false,
@@ -327,8 +320,8 @@ export const parseHomeSections = async (
             })
         )
     }
-    featuedSection.items = featuredSection_Array
-    sectionCallback(featuedSection)
+    featuredSection.items = featuredSection_Array
+    sectionCallback(featuredSection)
 
     // Latest Updates
     const updateSection_Array: PartialSourceManga[] = []
@@ -344,8 +337,13 @@ export const parseHomeSections = async (
         const title: string =
             $('.col-span-9 > .font-medium > a', manga).first().text().trim() ??
             ''
-        const subtitle: string =
+        let subtitle: string =
             $('.flex.flex-col .flex-row a', manga).first().text().trim() ?? ''
+        let subtitleContext: string =
+            $('p.flex.items-end', manga).text().trim() ?? ''
+        if (subtitleContext.indexOf('Public in') !== -1) {
+            subtitle = '(Early Access) ' + subtitle
+        }
 
         if (!id || !title) continue
         updateSection_Array.push(
