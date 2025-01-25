@@ -235,9 +235,16 @@ export const parseChapterDetails = async (
 ): Promise<ChapterDetails> => {
     const textBufferRepr = parseNextJSData($)
 
-    let toParse: any[] = []
+    const randomChapterImageObjectIdx = textBufferRepr.findByString(
+        ['order', 'url'],
+        [],
+        true
+    )
+    if (!randomChapterImageObjectIdx) {
+        throw new Error(`Couldn't find pages for chapterId: ${chapterId}!`)
+    }
     const rawPagesObjectIdx = textBufferRepr.findByString(
-        ['pages', 'is_early_access'],
+        ['$' + randomChapterImageObjectIdx, '[', ']\n'],
         [],
         true
     )
@@ -250,15 +257,14 @@ export const parseChapterDetails = async (
         rawPagesObjectIdx,
         (inp) => recurseParseJSON(inp)
     )
-    let rawPagesObject
-    try {
-        rawPagesObject = stableRawPagesObject.pages
-    } catch (e) {
-        throw new Error('Could not find page images for chapter ' + e)
+    if (!Array.isArray(stableRawPagesObject)) {
+        throw new Error(
+            `Couldn't find pages for chapterId: ${chapterId}! (Not an array)`
+        )
     }
 
     const pages: string[] = []
-    toParse.forEach((page: { order: number; url: string }) => {
+    stableRawPagesObject.forEach((page: { order: number; url: string }) => {
         pages[page.order - 1] = page.url
     })
 
