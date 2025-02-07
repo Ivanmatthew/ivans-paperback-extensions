@@ -15376,7 +15376,7 @@ Image url: ${image}`
 
   // src/Realm/Realm.ts
   var RealmInfo = {
-    version: "3.0.0",
+    version: "3.0.1",
     name: "Realm",
     description: "Extension that pulls manga from the Realm scanlation group.",
     author: "IvanMatthew",
@@ -15420,7 +15420,8 @@ Image url: ${image}`
           getFunc: async () => {
             const request = App.createRequest({
               url: `${_Realm.baseUrl}/load-more-series`,
-              method: "POST"
+              method: "POST",
+              data: new URLBuilder("").addQueryParameter("offset", "0").addQueryParameter("limit", "12").buildQueryParameters()
             });
             const response = await this.requestManager.schedule(request, 1);
             this.checkResponseError(response);
