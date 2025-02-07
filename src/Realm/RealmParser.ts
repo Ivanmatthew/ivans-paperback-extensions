@@ -9,18 +9,22 @@ import {
 
 import { convertDate } from './components/LanguageUtils'
 
-import { HomeSectionData } from './components/Types'
+import { AltHomeSectionHandler, HomeSectionData } from './components/Types'
 
 import { decode as decodeHTMLEntity } from 'html-entities'
 
 import * as cheerio from 'cheerio'
-import { cleanId, extractVariableValues, trimUrl } from './components/Helper'
+import {
+    extractLink,
+    extractVariableValues,
+    trimUrl
+} from './components/Helper'
 import { Configuration as Source } from './components/Configuration'
-import { RizzFables } from './RizzFables'
+import { Realm } from './Realm'
 
 const source = Source
-export class MangaStreamParser {
-    parseMangaDetails($: cheerio.CheerioAPI, mangaTitle: string): SourceManga {
+export class RealmParser {
+    parseMangaDetails($: cheerio.CheerioAPI, mangaId: string): SourceManga {
         const titles: string[] = []
         titles.push(decodeHTMLEntity($('h1.entry-title').text().trim()))
 
@@ -61,13 +65,13 @@ export class MangaStreamParser {
         const scriptSelection = $('div[itemprop="description"] script')
         if (!scriptSelection) {
             throw new Error(
-                `Could not find description script when getting manga details for title: ${mangaTitle}`
+                `Could not find description script when getting manga details for ID: ${mangaId}`
             )
         }
         const selectedScript = scriptSelection.get()
         if (selectedScript.length == 0) {
             throw new Error(
-                `Could not parse out description script when getting manga details for title: ${mangaTitle}`
+                `Could not parse out description script when getting manga details for ID: ${mangaId}`
             )
         }
         // @ts-expect-error - This is a valid check, as the selectedScript will always exist.
@@ -139,7 +143,7 @@ export class MangaStreamParser {
         ]
 
         return App.createSourceManga({
-            id: mangaTitle,
+            id: mangaId,
             mangaInfo: App.createMangaInfo({
                 titles,
                 image: image,
@@ -152,7 +156,7 @@ export class MangaStreamParser {
         })
     }
 
-    parseChapterList($: cheerio.CheerioAPI, mangaTitle: string): Chapter[] {
+    parseChapterList($: cheerio.CheerioAPI, mangaId: string): Chapter[] {
         const chapters: Chapter[] = []
         let sortingIndex = 0
         let language = source.language
@@ -165,20 +169,37 @@ export class MangaStreamParser {
             const date = convertDate(
                 $('span.chapterdate', chapter).text().trim()
             )
-            const id = chapter.attribs['data-num'] ?? '' // Set data-num attribute as id
-            const chapterNumberRegex = id.match(/(\d+\.?\d?)+/)
+
+            // get the a
+            const chapterLink = $('a', chapter)
+            if (!chapterLink) {
+                throw new Error(
+                    `Could not find chapter link when getting chapters for manga ID :${mangaId}`
+                )
+            }
+            const extractedChapterLink = extractLink(
+                chapterLink.attr('href') ?? ''
+            )
+            if (!extractedChapterLink) {
+                throw new Error(
+                    `Could not extract chapter link when getting chapters for manga ID :${mangaId}`
+                )
+            }
+
+            const rawChapterNumber = chapter.attribs['data-num'] ?? '' // Set data-num attribute as id
+            if (!rawChapterNumber || typeof rawChapterNumber === 'undefined') {
+                throw new Error(
+                    `Could not parse out ID when getting chapters for manga ID :${mangaId}`
+                )
+            }
+
+            const chapterNumberRegex = rawChapterNumber.match(/(\d+\.?\d?)+/)
             let chapterNumber = -1
             if (chapterNumberRegex && chapterNumberRegex[1]) {
                 chapterNumber = Number(chapterNumberRegex[1])
             } else {
                 throw new Error(
-                    `Could not parse out chapterNumber when getting chapters for title :${mangaTitle}`
-                )
-            }
-
-            if (!id || typeof id === 'undefined') {
-                throw new Error(
-                    `Could not parse out ID when getting chapters for title :${mangaTitle}`
+                    `Could not parse out chapterNumber when getting chapters for manga ID :${mangaId}`
                 )
             }
 
@@ -189,7 +210,7 @@ export class MangaStreamParser {
             }
 
             chapters.push({
-                id: id, // Store chapterNumber as id
+                id: extractedChapterLink.chapterId, // Store chapterNumber as id
                 langCode: language,
                 chapNum: chapterNumber,
                 name: title,
@@ -203,9 +224,7 @@ export class MangaStreamParser {
 
         // If there are no chapters, throw error to avoid losing progress
         if (chapters.length == 0) {
-            throw new Error(
-                `Couldn't find any chapters for title: ${mangaTitle}!`
-            )
+            throw new Error(`Couldn't find any chapters for title: ${mangaId}!`)
         }
 
         return chapters.map((chapter) => {
@@ -216,7 +235,7 @@ export class MangaStreamParser {
 
     parseChapterDetails(
         $: cheerio.CheerioAPI,
-        mangaTitle: string,
+        mangaId: string,
         chapterId: string
     ): ChapterDetails {
         const pages: string[] = []
@@ -235,7 +254,7 @@ export class MangaStreamParser {
 
         return App.createChapterDetails({
             id: chapterId,
-            mangaId: mangaTitle,
+            mangaId: mangaId,
             pages: pages
         })
     }
@@ -274,75 +293,61 @@ export class MangaStreamParser {
         return tagSections.map((x) => App.createTagSection(x))
     }
 
-    async parseViewMore(
-        $: cheerio.CheerioAPI,
-        sourceInstance: RizzFables
-    ): Promise<PartialSourceManga[]> {
-        const items: PartialSourceManga[] = []
-
-        for (const manga of $('div.bs', 'div.listupd').toArray()) {
-            const title = $('a', manga).attr('title')
-            const image = this.getImageSrc($('img', manga))
-            const subtitle = $('div.epxs', manga).text().trim()
-
-            const mangaId: string = cleanId($('a', manga).attr('href') ?? '')
-
-            if (!mangaId || !title) {
-                console.log(
-                    `Failed to parse homepage sections for ${source.baseUrl}`
-                )
-                continue
-            }
-
-            items.push(
-                App.createPartialSourceManga({
-                    mangaId,
-                    image: image,
-                    title: decodeHTMLEntity(title),
-                    subtitle: decodeHTMLEntity(subtitle)
-                })
-            )
-        }
-
-        return items
-    }
-
     async parseHomeSection(
         $: cheerio.CheerioAPI,
-        section: HomeSectionData,
-        sourceInstance: RizzFables
+        section: HomeSectionData | AltHomeSectionHandler,
+        sourceInstance: Realm
     ): Promise<PartialSourceManga[]> {
         const items: PartialSourceManga[] = []
 
-        const mangas = section.selectorFunc($)
-        if (!mangas.length || !section.titleSelectorFunc) {
-            console.log(
-                `Unable to parse valid ${section.section.title} section!`
-            )
-            return items
-        }
-
-        for (const manga of mangas.toArray()) {
-            const title = section.titleSelectorFunc($, manga)
-
-            const image = this.getImageSrc($('img', manga)) ?? ''
-            const subtitle = section.subtitleSelectorFunc($, manga) ?? ''
-
-            const mangaId: string = cleanId($('a', manga).attr('href') ?? '')
-            if (mangaId == '' || !title) {
+        if ('selectorFunc' in section) {
+            const mangas = section.selectorFunc($)
+            if (!mangas.length || !section.titleSelectorFunc) {
                 console.log(
-                    `Failed to parse homepage sections for ${source.baseUrl} title (${title}) mangaId (${mangaId})`
+                    `Unable to parse valid ${section.section.title} section!`
                 )
-                continue
+                return items
             }
-            items.push(
-                App.createPartialSourceManga({
-                    mangaId,
-                    image: image,
-                    title: decodeHTMLEntity(title),
-                    subtitle: decodeHTMLEntity(subtitle)
-                })
-            )
+
+            for (const manga of mangas.toArray()) {
+                const title = section.titleSelectorFunc($, manga)
+
+                const image = this.getImageSrc($('img', manga)) ?? ''
+                let subtitle = section.subtitleSelectorFunc($, manga) ?? ''
+                subtitle = subtitle.replace(/\s+/g, ' ').trim()
+
+                const extractedLink = extractLink(
+                    $('a', manga).attr('href') ?? ''
+                )
+                if (!title) {
+                    console.log(
+                        `Failed to parse homepage sections for ${source.baseUrl} title (${title}) mangaId (${extractedLink.seriesId})`
+                    )
+                    continue
+                }
+                items.push(
+                    App.createPartialSourceManga({
+                        mangaId: extractedLink.seriesId,
+                        image: image,
+                        title: decodeHTMLEntity(title),
+                        subtitle: decodeHTMLEntity(subtitle)
+                    })
+                )
+            }
+        } else if ('getFunc' in section) {
+            const mangas = await section.getFunc()
+            for (const manga of mangas) {
+                items.push(
+                    App.createPartialSourceManga({
+                        mangaId: manga.id,
+                        image: Realm.baseAssetUrl + '/' + manga.image_url,
+                        title: manga.title,
+                        subtitle: `Chapter ${manga.chapters[0]?.chapter_title}`
+                    })
+                )
+            }
+        } else {
+            throw new Error('Invalid section type!')
         }
 
         return items

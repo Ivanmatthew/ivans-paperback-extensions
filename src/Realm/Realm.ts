@@ -13,10 +13,11 @@ import {
     SourceInfo,
     SourceIntents,
     SourceManga,
+    SourceStateManager,
     TagSection
 } from '@paperback/types'
 
-import { MangaStreamParser } from './RizzFablesParser'
+import { RealmParser } from './RealmParser'
 import { URLBuilder } from '../UrlBuilder'
 
 import * as cheerio from 'cheerio'
@@ -28,26 +29,29 @@ import {
     Metadata,
     ComicResult,
     HomeSectionData,
-    DefaultHomeSectionData
+    DefaultHomeSectionData,
+    AltHomeSectionHandler,
+    ChapterObject,
+    SeriesObject
 } from './components/Types'
 import {
-    cleanId,
     createHomeSection,
     getFilterTagsBySection,
     getIncludedTagBySection,
-    getSlugFromTitle
+    getPrefixSlug,
+    generateSeriesLink,
+    generateChapterLink
 } from './components/Helper'
 
-export const RizzFablesInfo: SourceInfo = {
-    version: '2.0.8',
-    name: 'RizzFables',
-    description:
-        "Extension that pulls manga from RizzFables or it's derivatives.",
+export const RealmInfo: SourceInfo = {
+    version: '3.0.0',
+    name: 'Realm',
+    description: 'Extension that pulls manga from the Realm scanlation group.',
     author: 'IvanMatthew',
     authorWebsite: 'http://github.com/Ivanmatthew',
     icon: 'icon.png',
     contentRating: ContentRating.MATURE,
-    websiteBaseURL: SourceConfiguration.baseUrl, // CHANGEIT
+    websiteBaseURL: SourceConfiguration.baseUrl,
     intents:
         SourceIntents.MANGA_CHAPTERS |
         SourceIntents.HOMEPAGE_SECTIONS |
@@ -56,14 +60,34 @@ export const RizzFablesInfo: SourceInfo = {
     sourceTags: []
 }
 
-export class RizzFables extends SourceConfiguration implements Source {
-    requestManager: RequestManager
+export class Realm extends SourceConfiguration implements Source {
+    requestManager: RequestManager = getSourceRequestManager(Realm.baseUrl)
+    stateManager: SourceStateManager = App.createSourceStateManager()
+    parser: RealmParser = new RealmParser()
 
     constructor() {
         super()
-        this.requestManager = getSourceRequestManager(RizzFables.baseUrl)
 
         this.configureSections()
+    }
+
+    // We have to figure out how to cache this and when it is invalidated!
+    async getDynamicSiteSlug(): Promise<string> {
+        const request = App.createRequest({
+            url: Realm.baseUrl,
+            method: 'GET'
+        })
+
+        const response = await this.requestManager.schedule(request, 1)
+        this.checkResponseError(response)
+        const $ = cheerio.load(response.data as string)
+
+        const prefixSlug = getPrefixSlug($)
+        if (prefixSlug === '') {
+            throw new Error('Unable to find prefix slug')
+        }
+
+        return prefixSlug
     }
 
     // ----HOMESCREEN SELECTORS----
@@ -79,12 +103,8 @@ export class RizzFables extends SourceConfiguration implements Source {
     }
 
     homescreen_sections: Record<
-        | 'popular_today'
-        | 'latest_update'
-        | 'top_alltime'
-        | 'top_monthly'
-        | 'top_weekly',
-        HomeSectionData
+        'popular_today' | 'latest_update',
+        HomeSectionData | AltHomeSectionHandler
     > = {
         popular_today: {
             ...DefaultHomeSectionData,
@@ -104,66 +124,79 @@ export class RizzFables extends SourceConfiguration implements Source {
                 $: cheerio.CheerioAPI,
                 element: cheerio.Element
             ) => $('div.epxs', element).text().trim(),
-            getViewMoreItemsFunc: (page: string) =>
-                `${RizzFables.directoryPath}/?page=${page}&order=popular`,
-            sortIndex: 10
+            getViewMoreItemsFunc: (page: number) =>
+                `${Realm.directoryPath}/?page=${page}&order=popular`,
+            sortIndex: 0
         },
         latest_update: {
-            ...DefaultHomeSectionData,
-            section: createHomeSection('latest_update', 'Latest Updates'),
-            selectorFunc: ($: cheerio.CheerioAPI) => $('div.uta'),
-            titleSelectorFunc: (
-                $: cheerio.CheerioAPI,
-                element: cheerio.Element
-            ) => $('a', element).attr('title'),
-            subtitleSelectorFunc: (
-                $: cheerio.CheerioAPI,
-                element: cheerio.Element
-            ) =>
-                $('li > a, div.epxs', $('div.luf, div.bigor', element))
-                    .first()
-                    .text()
-                    .trim(),
-            // TODO: Remove nicely
-            // getViewMoreItemsFunc: (page: string) => `${RizzFables.directoryPath}/?page=${page}&order=update`,
-            sortIndex: 20
-        },
-        top_alltime: {
-            ...DefaultHomeSectionData,
-            section: createHomeSection('top_alltime', 'Top All Time', false),
-            selectorFunc: ($: cheerio.CheerioAPI) =>
-                $('li', $('div.serieslist.pop.wpop.wpop-alltime')),
-            sortIndex: 40
-        },
-        top_monthly: {
-            ...DefaultHomeSectionData,
-            section: createHomeSection('top_monthly', 'Top Monthly', false),
-            selectorFunc: ($: cheerio.CheerioAPI) =>
-                $('li', $('div.serieslist.pop.wpop.wpop-monthly')),
-            sortIndex: 50
-        },
-        top_weekly: {
-            ...DefaultHomeSectionData,
-            section: createHomeSection('top_weekly', 'Top Weekly', false),
-            selectorFunc: ($: cheerio.CheerioAPI) =>
-                $('li', $('div.serieslist.pop.wpop.wpop-weekly')),
-            sortIndex: 60
+            enabled: true,
+            sortIndex: 1,
+            section: createHomeSection(
+                'latest_update',
+                'Latest Update',
+                true,
+                HomeSectionType.singleRowNormal
+            ),
+            getFunc: async () => {
+                const request = App.createRequest({
+                    url: `${Realm.baseUrl}/load-more-series`,
+                    method: 'POST'
+                })
+
+                const response = await this.requestManager.schedule(request, 1)
+                this.checkResponseError(response)
+
+                const items: SeriesObject[] = JSON.parse(
+                    response.data as string
+                )
+
+                return items
+            },
+            // Offset being the length of the array (amount of items in it)
+            getMoreFunc: async (offset: number) => {
+                const urlBuilder = new URLBuilder(Realm.baseUrl)
+                    .addPathComponent('/load-more-series')
+                    .addQueryParameter('offset', offset.toString())
+                    .addQueryParameter('limit', '3')
+                const request = App.createRequest({
+                    url: `${Realm.baseUrl}/load-more-series`,
+                    method: 'POST',
+                    headers: {
+                        'Content-Type':
+                            'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    data: urlBuilder.buildQueryParameters()
+                })
+
+                const response = await this.requestManager.schedule(request, 1)
+                this.checkResponseError(response)
+
+                const items: SeriesObject[] = JSON.parse(
+                    response.data as string
+                )
+
+                return {
+                    series: items,
+                    hasMore: items.length === 3
+                }
+            }
         }
     }
 
-    stateManager = App.createSourceStateManager()
-    parser = new MangaStreamParser()
-
-    getMangaShareUrl(mangaTitle: string): string {
-        return `${RizzFables.baseUrl}/${
-            RizzFables.directoryPath
-        }/${getSlugFromTitle(mangaTitle)}/`
+    // @ts-ignore Apparently this is supported but not relayed in types.
+    async getMangaShareUrl(mangaId: string): Promise<string> {
+        return await generateSeriesLink(
+            await this.getDynamicSiteSlug(),
+            mangaId
+        )
     }
 
-    async getMangaDetails(mangaTitle: string): Promise<SourceManga> {
-        const mangaId = getSlugFromTitle(mangaTitle)
+    async getMangaDetails(mangaId: string): Promise<SourceManga> {
         const request = App.createRequest({
-            url: `${RizzFables.baseUrl}/${RizzFables.directoryPath}/${mangaId}/`,
+            url: await generateSeriesLink(
+                await this.getDynamicSiteSlug(),
+                mangaId
+            ),
             method: 'GET'
         })
 
@@ -171,13 +204,12 @@ export class RizzFables extends SourceConfiguration implements Source {
         this.checkResponseError(response)
         const $ = cheerio.load(response.data as string)
 
-        return this.parser.parseMangaDetails($, mangaTitle)
+        return this.parser.parseMangaDetails($, mangaId)
     }
 
-    async getChapters(mangaTitle: string): Promise<Chapter[]> {
-        const mangaId = getSlugFromTitle(mangaTitle)
+    async getChapters(mangaId: string): Promise<Chapter[]> {
         const request = App.createRequest({
-            url: `${RizzFables.baseUrl}/${RizzFables.directoryPath}/${mangaId}/`,
+            url: generateSeriesLink(await this.getDynamicSiteSlug(), mangaId),
             method: 'GET'
         })
 
@@ -185,43 +217,20 @@ export class RizzFables extends SourceConfiguration implements Source {
         this.checkResponseError(response)
         const $ = cheerio.load(response.data as string)
 
-        return this.parser.parseChapterList($, mangaTitle)
+        return this.parser.parseChapterList($, mangaId)
     }
 
     async getChapterDetails(
-        mangaTitle: string,
+        mangaId: string,
         chapterId: string
     ): Promise<ChapterDetails> {
-        const mangaId = getSlugFromTitle(mangaTitle)
-        // Request the manga page
-        const request = App.createRequest({
-            url: `${RizzFables.baseUrl}/${RizzFables.directoryPath}/${mangaId}/`,
-            method: 'GET'
-        })
-
-        const response = await this.requestManager.schedule(request, 1)
-        this.checkResponseError(response)
-        const $ = cheerio.load(response.data as string)
-
-        const chapter = $('div#chapterlist').find(
-            'li[data-num="' + chapterId + '"]'
-        )
-        if (!chapter) {
-            throw new Error(
-                `Unable to fetch a chapter for chapter numer: ${chapterId}`
-            )
-        }
-
-        // Fetch the ID (URL) of the chapter
-        const id = $('a', chapter).attr('href') ?? ''
-        if (!id || id === '') {
-            throw new Error(
-                `Unable to fetch id for chapter numer: ${chapterId}`
-            )
-        }
         // Request the chapter page
         const _request = App.createRequest({
-            url: id,
+            url: await generateChapterLink(
+                await this.getDynamicSiteSlug(),
+                mangaId,
+                chapterId
+            ),
             method: 'GET'
         })
 
@@ -229,12 +238,12 @@ export class RizzFables extends SourceConfiguration implements Source {
         this.checkResponseError(_response)
         const _$ = cheerio.load(_response.data as string)
 
-        return this.parser.parseChapterDetails(_$, mangaTitle, chapterId)
+        return this.parser.parseChapterDetails(_$, mangaId, chapterId)
     }
 
     async getSearchTags(): Promise<TagSection[]> {
         const request = App.createRequest({
-            url: `${RizzFables.baseUrl}/${RizzFables.filterPath}/`,
+            url: `${Realm.baseUrl}/${Realm.filterPath}/`,
             method: 'GET'
         })
 
@@ -258,9 +267,10 @@ export class RizzFables extends SourceConfiguration implements Source {
         for (const manga of searchResultData) {
             results.push(
                 App.createPartialSourceManga({
-                    mangaId: cleanId(manga.title),
+                    mangaId: manga.id,
+                    image: `${Realm.baseAssetUrl}/${manga.image_url}`,
                     title: manga.title,
-                    image: `${RizzFables.baseUrl}/assets/images/${manga.image_url}`
+                    subtitle: `Chapter ${manga.latest_chapter_title}`
                 })
             )
         }
@@ -275,18 +285,18 @@ export class RizzFables extends SourceConfiguration implements Source {
         page: number,
         query: SearchRequest
     ): Promise<Request> {
-        let searchUrl: URLBuilder = new URLBuilder(RizzFables.baseUrl)
+        let searchUrl: URLBuilder = new URLBuilder(Realm.baseUrl)
         const headers: Record<string, string> = {
             'content-type': 'application/x-www-form-urlencoded; charset=UTF-8'
         }
         const formData: Record<string, string> = {}
 
         if (query?.title) {
-            searchUrl = searchUrl.addPathComponent(RizzFables.searchEndpoint)
+            searchUrl = searchUrl.addPathComponent(Realm.searchEndpoint)
             formData['search_value'] =
                 query?.title.replace(/[’–][a-z]*/g, '') ?? ''
         } else {
-            searchUrl = searchUrl.addPathComponent(RizzFables.filterEndpoint)
+            searchUrl = searchUrl.addPathComponent(Realm.filterEndpoint)
 
             const statusValue = getIncludedTagBySection(
                 'status',
@@ -337,7 +347,7 @@ export class RizzFables extends SourceConfiguration implements Source {
         sectionCallback: (section: HomeSection) => void
     ): Promise<void> {
         const request = App.createRequest({
-            url: `${RizzFables.baseUrl}/`,
+            url: `${Realm.baseUrl}/`,
             method: 'GET'
         })
 
@@ -376,7 +386,7 @@ export class RizzFables extends SourceConfiguration implements Source {
             )
         }
 
-        // Make sure the function completes
+        // Ensure the functions complete
         await Promise.all(promises)
     }
 
@@ -386,83 +396,46 @@ export class RizzFables extends SourceConfiguration implements Source {
     ): Promise<PagedResults> {
         switch (homepageSectionId) {
             case 'latest_update': {
-                const headers: Record<string, string> = {
-                    'content-type':
-                        'application/x-www-form-urlencoded; charset=UTF-8'
-                }
-                const formData: Record<string, string> = {
-                    StatusValue: 'all',
-                    TypeValue: 'all',
-                    OrderValue: 'update'
+                // TODO: Give constant a better place
+                let offset = 0
+
+                // Note to self: if metadata is null, that is page 1 and page 1 is actually page 2 and so forth...
+                if (metadata && metadata.page) {
+                    offset = metadata.page * 3
                 }
 
-                const request = App.createRequest({
-                    url: `${RizzFables.baseUrl}/${RizzFables.filterEndpoint}`,
-                    headers: headers,
-                    data: Object.entries(formData)
-                        .map(
-                            ([key, value]) =>
-                                `${encodeURIComponent(
-                                    key
-                                )}=${encodeURIComponent(value)}`
-                        )
-                        .join('&'),
-                    method: 'POST'
-                })
-
-                const response = await this.requestManager.schedule(request, 1)
-                const pageData: ComicResult[] = JSON.parse(
-                    response.data as string
-                )
+                const comicResults = await (
+                    this.homescreen_sections[
+                        homepageSectionId
+                    ] as AltHomeSectionHandler
+                ).getMoreFunc(offset)
 
                 const items: PartialSourceManga[] = []
 
-                for (const manga of pageData) {
+                for (const manga of comicResults.series) {
+                    const subtitle = manga.chapters[0]?.chapter_title
+                        ? `Chapter ${manga.chapters[0]?.chapter_title}`
+                        : 'N/A'
+
                     items.push(
                         App.createPartialSourceManga({
-                            mangaId: cleanId(manga.title),
+                            mangaId: manga.id,
                             title: manga.title,
-                            image: `${RizzFables.baseUrl}/assets/images/${manga.image_url}`
+                            subtitle: subtitle,
+                            image: `${Realm.baseAssetUrl}/${manga.image_url}`
                         })
                     )
                 }
 
                 return App.createPagedResults({
-                    results: items
+                    results: items,
+                    metadata: comicResults.hasMore
+                        ? { page: (offset + 3) / 3 }
+                        : undefined
                 })
             }
             default: {
-                const page: number = metadata?.page ?? 1
-
-                const param =
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-ignore
-                    this.homescreen_sections[
-                        homepageSectionId
-                    ].getViewMoreItemsFunc(page) ?? undefined
-                if (!param) {
-                    throw new Error(
-                        `Invalid homeSectionId: ${homepageSectionId}`
-                    )
-                }
-
-                const request = App.createRequest({
-                    url: `${RizzFables.baseUrl}/${param}`,
-                    method: 'GET'
-                })
-
-                const response = await this.requestManager.schedule(request, 1)
-                const $ = cheerio.load(response.data as string)
-
-                const items: PartialSourceManga[] =
-                    await this.parser.parseViewMore($, this)
-                metadata = !this.parser.isLastPage($, 'view_more')
-                    ? { page: page + 1 }
-                    : undefined
-                return App.createPagedResults({
-                    results: items,
-                    metadata
-                })
+                throw new Error(`Invalid homeSectionId '${homepageSectionId}'`)
             }
         }
     }
@@ -473,11 +446,11 @@ export class RizzFables extends SourceConfiguration implements Source {
         })
 
         return App.createRequest({
-            url: `${RizzFables.bypassPage || RizzFables.baseUrl}/`,
+            url: `${Realm.bypassPage || Realm.baseUrl}/`,
             method: 'GET',
             headers: {
-                referer: `${RizzFables.baseUrl}/`,
-                origin: `${RizzFables.baseUrl}/`,
+                referer: `${Realm.baseUrl}/`,
+                origin: `${Realm.baseUrl}/`,
                 'user-agent': await this.requestManager.getDefaultUserAgent()
             }
         })
@@ -488,13 +461,16 @@ export class RizzFables extends SourceConfiguration implements Source {
 
         switch (status) {
             case 403:
+                throw new Error(
+                    `[Forbidden] CLOUDFLARE BYPASS ERROR:\nPlease go to the homepage of <${Realm.baseUrl}> and press the cloud icon.`
+                )
             case 503:
                 throw new Error(
-                    `CLOUDFLARE BYPASS ERROR:\nPlease go to the homepage of <${RizzFables.baseUrl}> and press the cloud icon.`
+                    `[Service Unavailable] CLOUDFLARE BYPASS ERROR:\nPlease go to the homepage of <${Realm.baseUrl}> and press the cloud icon.`
                 )
             case 404:
                 throw new Error(
-                    `The requested page ${response.request.url} was not found!`
+                    `[Not Found] The requested page ${response.request.url} was not found!`
                 )
         }
     }

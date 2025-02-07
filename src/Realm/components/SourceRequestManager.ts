@@ -1,7 +1,4 @@
-import {
-    Request,
-    Response
-} from '@paperback/types';
+import { Request, Response } from '@paperback/types'
 
 export const getSourceRequestManager = (sourceUrl: string) => {
     const self = App.createRequestManager({
@@ -10,9 +7,12 @@ export const getSourceRequestManager = (sourceUrl: string) => {
         interceptor: {
             interceptRequest: async (request: Request): Promise<Request> => {
                 request.headers = {
-                    ...(request.headers ?? {}), ...{
+                    ...(request.headers ?? {}),
+                    ...{
                         'user-agent': await self.getDefaultUserAgent(),
-                        referer: `${sourceUrl}/`, ...((request.url.includes('wordpress.com') || request.url.includes('wp.com')) && {
+                        referer: `${sourceUrl}/`,
+                        ...((request.url.includes('wordpress.com') ||
+                            request.url.includes('wp.com')) && {
                             Accept: 'image/avif,image/webp,*/*'
                         }) // Used for images hosted on Wordpress blogs
                     }
@@ -23,14 +23,17 @@ export const getSourceRequestManager = (sourceUrl: string) => {
                 return request
             },
 
-            interceptResponse: async (response: Response): Promise<Response> => {
+            interceptResponse: async (
+                response: Response
+            ): Promise<Response> => {
                 if (response.headers.location) {
-                    response.headers.location = response.headers.location.replace(/^http:/, 'https:')
+                    response.headers.location =
+                        response.headers.location.replace(/^http:/, 'https:')
                 }
                 return response
             }
         }
-    });
+    })
 
-    return self;
+    return self
 }

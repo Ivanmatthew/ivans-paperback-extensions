@@ -1,4 +1,4 @@
-import { Configuration as Source } from '../components/Configuration'
+import { Configuration as Source } from './Configuration'
 import { Months } from './Types'
 
 const source = Source

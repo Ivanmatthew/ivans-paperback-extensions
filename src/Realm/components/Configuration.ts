@@ -4,7 +4,17 @@ export class Configuration {
     /**
      * The URL of the website. Eg. https://mangadark.com without a trailing slash
      */
-    static baseUrl = 'https://rizzfables.com'
+    static baseUrl = 'https://realmoasis.com'
+
+    /**
+     * The URL of the website's (static) assets. E.g. https://realmoasis.com/assets/images
+     */
+    static baseAssetUrl = Configuration.baseUrl + '/assets/images'
+
+    /**
+     * The slug of the website. Eg. https://realmoasis.com/674173849760087/vgj2sd7ps71607h2eadws9dws9dws9 where the prefix slug is "674173849760087"
+     */
+    static prefixSlug = '664173858400087'
 
     /**
      * The language code which this source supports.
@@ -18,21 +28,21 @@ export class Configuration {
      * Eg. https://mangadark.com/manga/mashle-magic-and-muscles the pathname would be "manga"
      * Default = "manga"
      */
-    static directoryPath = 'series'
+    static directoryPath = 'comics'
 
     /**
      * The pathname between the domain and the filter path. (Usually the same but can deviate)
      */
-    static filterPath = 'series'
+    static filterPath = 'comics'
 
     static filterEndpoint = 'Index/filter_series'
 
-    static searchEndpoint = 'Index/live_search'
+    static searchEndpoint = 'search'
 
     /**
      * Some websites have the Cloudflare defense check enabled on specific parts of the website, these need to be loaded when using the Cloudflare bypass within the app
      */
-    static bypassPage = 'https://rizzfables.com/chapter/r2311170-the-counts-youngest-son-is-a-player-chapter-54'
+    static bypassPage = 'https://realmoasis.com/comics'
 
     // ----MANGA DETAILS SELECTORS----
     /**
@@ -62,7 +72,7 @@ export class Configuration {
      * Leave default if not used!
      * Default = "Status" (English)
      * THESE ARE CASE SENSITIVE!
-    */
+     */
     static manga_selector_status = 'Status'
 
     //----MANGA TAG SELECTORS----

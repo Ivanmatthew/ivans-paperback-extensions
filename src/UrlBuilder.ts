@@ -39,6 +39,33 @@ export class URLBuilder {
         return this
     }
 
+    buildQueryParameters(): string {
+        if (Object.values(this.parameters).length === 0) {
+            return ''
+        } else if (Object.values(this.parameters).length === 1) {
+            const key: string = Object.keys(this.parameters)[0] as string
+            const value = this.parameters[key]
+
+            if (Array.isArray(value)) {
+                return value.map((value) => `${key}[]=${value}`).join('&')
+            }
+
+            return `${key}=${value}`
+        }
+
+        return Object.entries(this.parameters)
+            .map((entry) => {
+                if (Array.isArray(entry[1])) {
+                    return entry[1]
+                        .map((value) => `${entry[0]}[]=${value}`)
+                        .join('&')
+                }
+
+                return `${entry[0]}=${entry[1]}`
+            })
+            .join('&')
+    }
+
     build({
         addTrailingSlash,
         includeUndefinedParameters
@@ -48,27 +75,7 @@ export class URLBuilder {
         finalUrl += this.pathComponents.join('/')
         finalUrl += addTrailingSlash ? '/' : ''
         finalUrl += Object.values(this.parameters).length > 0 ? '?' : ''
-        finalUrl += Object.entries(this.parameters)
-            .map((entry) => {
-                if (entry[1] == null && !includeUndefinedParameters) {
-                    return undefined
-                }
-
-                if (Array.isArray(entry[1]) && entry[1].length) {
-                    return entry[1]
-                        .map((value) =>
-                            value || includeUndefinedParameters
-                                ? `${entry[0]}${encodeURI('[]')}=${value}`
-                                : undefined
-                        )
-                        .filter((x) => x !== undefined)
-                        .join('&')
-                }
-
-                return `${entry[0]}=${entry[1]}`
-            })
-            .filter((x) => x !== undefined)
-            .join('&')
+        finalUrl += this.buildQueryParameters()
 
         return finalUrl
     }

@@ -10,5 +10,8 @@
     "[typescript]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
-    "npm.packageManager": "bun", // set as "true" to run 'prettier' last not first
+    "npm.packageManager": "bun",
+    "yaml.schemas": {
+        "https://www.artillery.io/schema.json": []
+    }, // set as "true" to run 'prettier' last not first
 }
