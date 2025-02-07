@@ -44,7 +44,7 @@ import {
 } from './components/Helper'
 
 export const RealmInfo: SourceInfo = {
-    version: '3.0.0',
+    version: '3.0.1',
     name: 'Realm',
     description: 'Extension that pulls manga from the Realm scanlation group.',
     author: 'IvanMatthew',
@@ -140,7 +140,11 @@ export class Realm extends SourceConfiguration implements Source {
             getFunc: async () => {
                 const request = App.createRequest({
                     url: `${Realm.baseUrl}/load-more-series`,
-                    method: 'POST'
+                    method: 'POST',
+                    data: new URLBuilder('')
+                        .addQueryParameter('offset', '0')
+                        .addQueryParameter('limit', '12')
+                        .buildQueryParameters()
                 })
 
                 const response = await this.requestManager.schedule(request, 1)
