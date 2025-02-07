@@ -44,7 +44,7 @@ import {
 } from './components/Helper'
 
 export const RealmInfo: SourceInfo = {
-    version: '3.0.1',
+    version: '3.0.2',
     name: 'Realm',
     description: 'Extension that pulls manga from the Realm scanlation group.',
     author: 'IvanMatthew',
@@ -274,7 +274,7 @@ export class Realm extends SourceConfiguration implements Source {
                     mangaId: manga.id,
                     image: `${Realm.baseAssetUrl}/${manga.image_url}`,
                     title: manga.title,
-                    subtitle: `Chapter ${manga.latest_chapter_title}`
+                    subtitle: `Chapter ${manga.chapter_title}`
                 })
             )
         }

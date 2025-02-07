@@ -55,9 +55,23 @@ export interface ComicResult {
     id: string
     title: string
     image_url: string
+    rating: string
+    description: string
+    upload_date: null | string
+    update_date: string
+    genre_id: string
     status: string
-    chapters_count: string
-    latest_chapter_title: string
+    type: string
+    released: string
+    serialization: string
+    posted_by: null | string
+    long_description: string
+    artist: string
+    author: string
+    cover_img: string
+    views: string
+    chapter_title: null | string
+    chapter_time: null | string
 }
 // From homepage API
 export interface ChapterObject {
