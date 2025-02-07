@@ -15376,7 +15376,7 @@ Image url: ${image}`
 
   // src/Realm/Realm.ts
   var RealmInfo = {
-    version: "3.0.1",
+    version: "3.0.2",
     name: "Realm",
     description: "Extension that pulls manga from the Realm scanlation group.",
     author: "IvanMatthew",
@@ -15549,7 +15549,7 @@ Image url: ${image}`
             mangaId: manga.id,
             image: `${_Realm.baseAssetUrl}/${manga.image_url}`,
             title: manga.title,
-            subtitle: `Chapter ${manga.latest_chapter_title}`
+            subtitle: `Chapter ${manga.chapter_title}`
           })
         );
       }
