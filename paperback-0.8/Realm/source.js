@@ -886,21 +886,33 @@ var _Sources = (() => {
     }
   });
 
-  // src/RizzFables/RizzFables.ts
-  var RizzFables_exports = {};
-  __export(RizzFables_exports, {
-    RizzFables: () => RizzFables,
-    RizzFablesInfo: () => RizzFablesInfo
+  // src/Realm/Realm.ts
+  var Realm_exports = {};
+  __export(Realm_exports, {
+    Realm: () => Realm,
+    RealmInfo: () => RealmInfo
   });
   var import_types3 = __toESM(require_lib());
 
-  // src/RizzFables/components/Configuration.ts
-  var Configuration = class {
+  // src/Realm/components/Configuration.ts
+  var Configuration = class _Configuration {
     static {
       /**
        * The URL of the website. Eg. https://mangadark.com without a trailing slash
        */
-      this.baseUrl = "https://rizzfables.com";
+      this.baseUrl = "https://realmoasis.com";
+    }
+    static {
+      /**
+       * The URL of the website's (static) assets. E.g. https://realmoasis.com/assets/images
+       */
+      this.baseAssetUrl = _Configuration.baseUrl + "/assets/images";
+    }
+    static {
+      /**
+       * The slug of the website. Eg. https://realmoasis.com/674173849760087/vgj2sd7ps71607h2eadws9dws9dws9 where the prefix slug is "674173849760087"
+       */
+      this.prefixSlug = "664173858400087";
     }
     static {
       /**
@@ -915,25 +927,25 @@ var _Sources = (() => {
        * Eg. https://mangadark.com/manga/mashle-magic-and-muscles the pathname would be "manga"
        * Default = "manga"
        */
-      this.directoryPath = "series";
+      this.directoryPath = "comics";
     }
     static {
       /**
        * The pathname between the domain and the filter path. (Usually the same but can deviate)
        */
-      this.filterPath = "series";
+      this.filterPath = "comics";
     }
     static {
       this.filterEndpoint = "Index/filter_series";
     }
     static {
-      this.searchEndpoint = "Index/live_search";
+      this.searchEndpoint = "search";
     }
     static {
       /**
        * Some websites have the Cloudflare defense check enabled on specific parts of the website, these need to be loaded when using the Cloudflare bypass within the app
        */
-      this.bypassPage = "https://rizzfables.com/chapter/r2311170-the-counts-youngest-son-is-a-player-chapter-54";
+      this.bypassPage = "https://realmoasis.com/comics";
     }
     static {
       // ----MANGA DETAILS SELECTORS----
@@ -970,7 +982,7 @@ var _Sources = (() => {
        * Leave default if not used!
        * Default = "Status" (English)
        * THESE ARE CASE SENSITIVE!
-      */
+       */
       this.manga_selector_status = "Status";
     }
     static {
@@ -1012,7 +1024,7 @@ var _Sources = (() => {
     }
   };
 
-  // src/RizzFables/components/LanguageUtils.ts
+  // src/Realm/components/LanguageUtils.ts
   var source = Configuration;
   function convertDate(dateString) {
     dateString = dateString.toLowerCase();
@@ -1030,10 +1042,10 @@ var _Sources = (() => {
     return date;
   }
 
-  // src/RizzFables/RizzFablesParser.ts
+  // src/Realm/RealmParser.ts
   var import_html_entities = __toESM(require_lib2());
 
-  // src/RizzFables/components/Helper.ts
+  // src/Realm/components/Helper.ts
   var import_types = __toESM(require_lib());
   function createHomeSection(id, title, containsMoreItems = true, type = import_types.HomeSectionType.singleRowNormal) {
     return App.createHomeSection({
@@ -1058,15 +1070,6 @@ var _Sources = (() => {
       return id;
     });
   }
-  var preSlugContent = "r2311170";
-  function getSlugFromTitle(title) {
-    return preSlugContent + "-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-s-/, "s-").replace(/-ll-/, "ll-");
-  }
-  function cleanId(slug) {
-    const test = slug.replace(/\/$/, "").split("/").pop().replace(preSlugContent + "-", "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-s-/, "s-").replace(/-ll-/, "ll-");
-    console.log(`${slug} -> ${test}`);
-    return test;
-  }
   function trimUrl(url) {
     url = url.replace(/\/$/, "");
     return url.split("/").pop() ?? "";
@@ -1081,10 +1084,53 @@ var _Sources = (() => {
     }
     return variables;
   }
+  function getRandomString(length) {
+    return Math.random().toString(36).substring(2, length + 2);
+  }
+  function generateLink(prefixSlug, contentType, seriesId, chapterId = null) {
+    let base = `${Configuration.baseUrl}/${prefixSlug}/` + getRandomString(4) + contentType + getRandomString(4) + seriesId.toString().padStart(5, "0") + getRandomString(4);
+    return chapterId ? base + chapterId.toString().padStart(6, "0") + getRandomString(4) : base + getRandomString(4).repeat(3);
+  }
+  function generateSeriesLink(prefixSlug, seriesId) {
+    return generateLink(prefixSlug, "s", seriesId);
+  }
+  function generateChapterLink(prefixSlug, seriesId, chapterId) {
+    return generateLink(prefixSlug, "c", seriesId, chapterId);
+  }
+  function extractLink(link) {
+    const linkRegex = new RegExp(`/\\d+/.{4}(c|s).{4}(.{5}).{4}(.{6}).{4}`);
+    const regexResult = linkRegex.exec(link);
+    if (!regexResult) {
+      throw new Error("[1] Link does not match the expected format: " + link);
+    }
+    const [, contentType, seriesId, chapterId] = regexResult;
+    if (!contentType || !seriesId || !chapterId) {
+      throw new Error("[2] Link does not match the expected format: " + link);
+    }
+    return {
+      contentType,
+      seriesId,
+      chapterId
+    };
+  }
+  function getPrefixSlug($2) {
+    let responsePrefixSlug = "";
+    $2("#content script").each((_i, elem) => {
+      const text3 = $2(elem).text();
+      if (text3.includes('var base = "')) {
+        const prefixSlugRegex = /var base = \"\/(.*)\/\"/;
+        const match = text3.match(prefixSlugRegex);
+        if (match) {
+          responsePrefixSlug = match[1] ?? "";
+        }
+      }
+    });
+    return responsePrefixSlug;
+  }
 
-  // src/RizzFables/RizzFablesParser.ts
+  // src/Realm/RealmParser.ts
   var source2 = Configuration;
-  var MangaStreamParser = class {
+  var RealmParser = class {
     constructor() {
       this.isLastPage = ($2, id) => {
         let isLast = true;
@@ -1103,7 +1149,7 @@ var _Sources = (() => {
         return isLast;
       };
     }
-    parseMangaDetails($2, mangaTitle) {
+    parseMangaDetails($2, mangaId) {
       const titles = [];
       titles.push((0, import_html_entities.decode)($2("h1.entry-title").text().trim()));
       const altTitles = $2(
@@ -1125,13 +1171,13 @@ var _Sources = (() => {
       const scriptSelection = $2('div[itemprop="description"] script');
       if (!scriptSelection) {
         throw new Error(
-          `Could not find description script when getting manga details for title: ${mangaTitle}`
+          `Could not find description script when getting manga details for ID: ${mangaId}`
         );
       }
       const selectedScript = scriptSelection.get();
       if (selectedScript.length == 0) {
         throw new Error(
-          `Could not parse out description script when getting manga details for title: ${mangaTitle}`
+          `Could not parse out description script when getting manga details for ID: ${mangaId}`
         );
       }
       const descriptionScriptContent = selectedScript[0].children[0].data;
@@ -1172,7 +1218,7 @@ var _Sources = (() => {
         })
       ];
       return App.createSourceManga({
-        id: mangaTitle,
+        id: mangaId,
         mangaInfo: App.createMangaInfo({
           titles,
           image,
@@ -1184,7 +1230,7 @@ var _Sources = (() => {
         })
       });
     }
-    parseChapterList($2, mangaTitle) {
+    parseChapterList($2, mangaId) {
       const chapters = [];
       let sortingIndex = 0;
       let language = source2.language;
@@ -1196,19 +1242,33 @@ var _Sources = (() => {
         const date = convertDate(
           $2("span.chapterdate", chapter).text().trim()
         );
-        const id = chapter.attribs["data-num"] ?? "";
-        const chapterNumberRegex = id.match(/(\d+\.?\d?)+/);
+        const chapterLink = $2("a", chapter);
+        if (!chapterLink) {
+          throw new Error(
+            `Could not find chapter link when getting chapters for manga ID :${mangaId}`
+          );
+        }
+        const extractedChapterLink = extractLink(
+          chapterLink.attr("href") ?? ""
+        );
+        if (!extractedChapterLink) {
+          throw new Error(
+            `Could not extract chapter link when getting chapters for manga ID :${mangaId}`
+          );
+        }
+        const rawChapterNumber = chapter.attribs["data-num"] ?? "";
+        if (!rawChapterNumber || typeof rawChapterNumber === "undefined") {
+          throw new Error(
+            `Could not parse out ID when getting chapters for manga ID :${mangaId}`
+          );
+        }
+        const chapterNumberRegex = rawChapterNumber.match(/(\d+\.?\d?)+/);
         let chapterNumber = -1;
         if (chapterNumberRegex && chapterNumberRegex[1]) {
           chapterNumber = Number(chapterNumberRegex[1]);
         } else {
           throw new Error(
-            `Could not parse out chapterNumber when getting chapters for title :${mangaTitle}`
-          );
-        }
-        if (!id || typeof id === "undefined") {
-          throw new Error(
-            `Could not parse out ID when getting chapters for title :${mangaTitle}`
+            `Could not parse out chapterNumber when getting chapters for manga ID :${mangaId}`
           );
         }
         if (!title || typeof title === "undefined") {
@@ -1217,7 +1277,7 @@ var _Sources = (() => {
           title = `Ch. ${chapterNumber} - ${title}`;
         }
         chapters.push({
-          id,
+          id: extractedChapterLink.chapterId,
           // Store chapterNumber as id
           langCode: language,
           chapNum: chapterNumber,
@@ -1230,16 +1290,14 @@ var _Sources = (() => {
         sortingIndex--;
       }
       if (chapters.length == 0) {
-        throw new Error(
-          `Couldn't find any chapters for title: ${mangaTitle}!`
-        );
+        throw new Error(`Couldn't find any chapters for title: ${mangaId}!`);
       }
       return chapters.map((chapter) => {
         chapter.sortingIndex += chapters.length;
         return App.createChapter(chapter);
       });
     }
-    parseChapterDetails($2, mangaTitle, chapterId) {
+    parseChapterDetails($2, mangaId, chapterId) {
       const pages = [];
       $2("#readerarea > img").toArray().forEach((page) => {
         const selectorPage = $2(page);
@@ -1249,7 +1307,7 @@ var _Sources = (() => {
       });
       return App.createChapterDetails({
         id: chapterId,
-        mangaId: mangaTitle,
+        mangaId,
         pages
       });
     }
@@ -1281,58 +1339,53 @@ var _Sources = (() => {
       }
       return tagSections.map((x) => App.createTagSection(x));
     }
-    async parseViewMore($2, sourceInstance) {
-      const items = [];
-      for (const manga of $2("div.bs", "div.listupd").toArray()) {
-        const title = $2("a", manga).attr("title");
-        const image = this.getImageSrc($2("img", manga));
-        const subtitle = $2("div.epxs", manga).text().trim();
-        const mangaId = cleanId($2("a", manga).attr("href") ?? "");
-        if (!mangaId || !title) {
-          console.log(
-            `Failed to parse homepage sections for ${source2.baseUrl}`
-          );
-          continue;
-        }
-        items.push(
-          App.createPartialSourceManga({
-            mangaId,
-            image,
-            title: (0, import_html_entities.decode)(title),
-            subtitle: (0, import_html_entities.decode)(subtitle)
-          })
-        );
-      }
-      return items;
-    }
     async parseHomeSection($2, section, sourceInstance) {
       const items = [];
-      const mangas = section.selectorFunc($2);
-      if (!mangas.length || !section.titleSelectorFunc) {
-        console.log(
-          `Unable to parse valid ${section.section.title} section!`
-        );
-        return items;
-      }
-      for (const manga of mangas.toArray()) {
-        const title = section.titleSelectorFunc($2, manga);
-        const image = this.getImageSrc($2("img", manga)) ?? "";
-        const subtitle = section.subtitleSelectorFunc($2, manga) ?? "";
-        const mangaId = cleanId($2("a", manga).attr("href") ?? "");
-        if (mangaId == "" || !title) {
+      if ("selectorFunc" in section) {
+        const mangas = section.selectorFunc($2);
+        if (!mangas.length || !section.titleSelectorFunc) {
           console.log(
-            `Failed to parse homepage sections for ${source2.baseUrl} title (${title}) mangaId (${mangaId})`
+            `Unable to parse valid ${section.section.title} section!`
           );
-          continue;
+          return items;
         }
-        items.push(
-          App.createPartialSourceManga({
-            mangaId,
-            image,
-            title: (0, import_html_entities.decode)(title),
-            subtitle: (0, import_html_entities.decode)(subtitle)
-          })
-        );
+        for (const manga of mangas.toArray()) {
+          const title = section.titleSelectorFunc($2, manga);
+          const image = this.getImageSrc($2("img", manga)) ?? "";
+          let subtitle = section.subtitleSelectorFunc($2, manga) ?? "";
+          subtitle = subtitle.replace(/\s+/g, " ").trim();
+          const extractedLink = extractLink(
+            $2("a", manga).attr("href") ?? ""
+          );
+          if (!title) {
+            console.log(
+              `Failed to parse homepage sections for ${source2.baseUrl} title (${title}) mangaId (${extractedLink.seriesId})`
+            );
+            continue;
+          }
+          items.push(
+            App.createPartialSourceManga({
+              mangaId: extractedLink.seriesId,
+              image,
+              title: (0, import_html_entities.decode)(title),
+              subtitle: (0, import_html_entities.decode)(subtitle)
+            })
+          );
+        }
+      } else if ("getFunc" in section) {
+        const mangas = await section.getFunc();
+        for (const manga of mangas) {
+          items.push(
+            App.createPartialSourceManga({
+              mangaId: manga.id,
+              image: Realm.baseAssetUrl + "/" + manga.image_url,
+              title: manga.title,
+              subtitle: `Chapter ${manga.chapters[0]?.chapter_title}`
+            })
+          );
+        }
+      } else {
+        throw new Error("Invalid section type!");
       }
       return items;
     }
@@ -1399,6 +1452,24 @@ Image url: ${image}`
       }
       return this;
     }
+    buildQueryParameters() {
+      if (Object.values(this.parameters).length === 0) {
+        return "";
+      } else if (Object.values(this.parameters).length === 1) {
+        const key = Object.keys(this.parameters)[0];
+        const value = this.parameters[key];
+        if (Array.isArray(value)) {
+          return value.map((value2) => `${key}[]=${value2}`).join("&");
+        }
+        return `${key}=${value}`;
+      }
+      return Object.entries(this.parameters).map((entry) => {
+        if (Array.isArray(entry[1])) {
+          return entry[1].map((value) => `${entry[0]}[]=${value}`).join("&");
+        }
+        return `${entry[0]}=${entry[1]}`;
+      }).join("&");
+    }
     build({
       addTrailingSlash,
       includeUndefinedParameters
@@ -1407,17 +1478,7 @@ Image url: ${image}`
       finalUrl += this.pathComponents.join("/");
       finalUrl += addTrailingSlash ? "/" : "";
       finalUrl += Object.values(this.parameters).length > 0 ? "?" : "";
-      finalUrl += Object.entries(this.parameters).map((entry) => {
-        if (entry[1] == null && !includeUndefinedParameters) {
-          return void 0;
-        }
-        if (Array.isArray(entry[1]) && entry[1].length) {
-          return entry[1].map(
-            (value) => value || includeUndefinedParameters ? `${entry[0]}${encodeURI("[]")}=${value}` : void 0
-          ).filter((x) => x !== void 0).join("&");
-        }
-        return `${entry[0]}=${entry[1]}`;
-      }).filter((x) => x !== void 0).join("&");
+      finalUrl += this.buildQueryParameters();
       return finalUrl;
     }
   };
@@ -15273,7 +15334,7 @@ Image url: ${image}`
   var { parseHTML: parseHTML2 } = static_exports;
   var { root: root2 } = static_exports;
 
-  // src/RizzFables/components/SourceRequestManager.ts
+  // src/Realm/components/SourceRequestManager.ts
   var getSourceRequestManager = (sourceUrl) => {
     const self = App.createRequestManager({
       requestsPerSecond: 5,
@@ -15305,7 +15366,7 @@ Image url: ${image}`
     return self;
   };
 
-  // src/RizzFables/components/Types.ts
+  // src/Realm/components/Types.ts
   var DefaultHomeSectionData = {
     titleSelectorFunc: ($2, element) => $2("h2", element).text().trim(),
     subtitleSelectorFunc: ($2, element) => $2("span a", element).toArray().map((x) => $2(x).text().trim()).join(", "),
@@ -15313,23 +15374,25 @@ Image url: ${image}`
     enabled: true
   };
 
-  // src/RizzFables/RizzFables.ts
-  var RizzFablesInfo = {
-    version: "2.0.8",
-    name: "RizzFables",
-    description: "Extension that pulls manga from RizzFables or it's derivatives.",
+  // src/Realm/Realm.ts
+  var RealmInfo = {
+    version: "3.0.0",
+    name: "Realm",
+    description: "Extension that pulls manga from the Realm scanlation group.",
     author: "IvanMatthew",
     authorWebsite: "http://github.com/Ivanmatthew",
     icon: "icon.png",
     contentRating: import_types3.ContentRating.MATURE,
     websiteBaseURL: Configuration.baseUrl,
-    // CHANGEIT
     intents: import_types3.SourceIntents.MANGA_CHAPTERS | import_types3.SourceIntents.HOMEPAGE_SECTIONS | import_types3.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | import_types3.SourceIntents.SETTINGS_UI,
     sourceTags: []
   };
-  var RizzFables = class _RizzFables extends Configuration {
+  var Realm = class _Realm extends Configuration {
     constructor() {
       super();
+      this.requestManager = getSourceRequestManager(_Realm.baseUrl);
+      this.stateManager = App.createSourceStateManager();
+      this.parser = new RealmParser();
       this.homescreen_sections = {
         popular_today: {
           ...DefaultHomeSectionData,
@@ -15342,42 +15405,69 @@ Image url: ${image}`
           selectorFunc: ($2) => $2("div.bsx", $2("h2:contains(Popular Today)")?.parent()?.next()),
           titleSelectorFunc: ($2, element) => $2("a", element).attr("title"),
           subtitleSelectorFunc: ($2, element) => $2("div.epxs", element).text().trim(),
-          getViewMoreItemsFunc: (page) => `${_RizzFables.directoryPath}/?page=${page}&order=popular`,
-          sortIndex: 10
+          getViewMoreItemsFunc: (page) => `${_Realm.directoryPath}/?page=${page}&order=popular`,
+          sortIndex: 0
         },
         latest_update: {
-          ...DefaultHomeSectionData,
-          section: createHomeSection("latest_update", "Latest Updates"),
-          selectorFunc: ($2) => $2("div.uta"),
-          titleSelectorFunc: ($2, element) => $2("a", element).attr("title"),
-          subtitleSelectorFunc: ($2, element) => $2("li > a, div.epxs", $2("div.luf, div.bigor", element)).first().text().trim(),
-          // TODO: Remove nicely
-          // getViewMoreItemsFunc: (page: string) => `${RizzFables.directoryPath}/?page=${page}&order=update`,
-          sortIndex: 20
-        },
-        top_alltime: {
-          ...DefaultHomeSectionData,
-          section: createHomeSection("top_alltime", "Top All Time", false),
-          selectorFunc: ($2) => $2("li", $2("div.serieslist.pop.wpop.wpop-alltime")),
-          sortIndex: 40
-        },
-        top_monthly: {
-          ...DefaultHomeSectionData,
-          section: createHomeSection("top_monthly", "Top Monthly", false),
-          selectorFunc: ($2) => $2("li", $2("div.serieslist.pop.wpop.wpop-monthly")),
-          sortIndex: 50
-        },
-        top_weekly: {
-          ...DefaultHomeSectionData,
-          section: createHomeSection("top_weekly", "Top Weekly", false),
-          selectorFunc: ($2) => $2("li", $2("div.serieslist.pop.wpop.wpop-weekly")),
-          sortIndex: 60
+          enabled: true,
+          sortIndex: 1,
+          section: createHomeSection(
+            "latest_update",
+            "Latest Update",
+            true,
+            import_types3.HomeSectionType.singleRowNormal
+          ),
+          getFunc: async () => {
+            const request = App.createRequest({
+              url: `${_Realm.baseUrl}/load-more-series`,
+              method: "POST"
+            });
+            const response = await this.requestManager.schedule(request, 1);
+            this.checkResponseError(response);
+            const items = JSON.parse(
+              response.data
+            );
+            return items;
+          },
+          // Offset being the length of the array (amount of items in it)
+          getMoreFunc: async (offset) => {
+            const urlBuilder = new URLBuilder(_Realm.baseUrl).addPathComponent("/load-more-series").addQueryParameter("offset", offset.toString()).addQueryParameter("limit", "3");
+            const request = App.createRequest({
+              url: `${_Realm.baseUrl}/load-more-series`,
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
+              },
+              data: urlBuilder.buildQueryParameters()
+            });
+            const response = await this.requestManager.schedule(request, 1);
+            this.checkResponseError(response);
+            const items = JSON.parse(
+              response.data
+            );
+            return {
+              series: items,
+              hasMore: items.length === 3
+            };
+          }
         }
       };
-      this.stateManager = App.createSourceStateManager();
-      this.parser = new MangaStreamParser();
-      this.requestManager = getSourceRequestManager(_RizzFables.baseUrl);
       this.configureSections();
+    }
+    // We have to figure out how to cache this and when it is invalidated!
+    async getDynamicSiteSlug() {
+      const request = App.createRequest({
+        url: _Realm.baseUrl,
+        method: "GET"
+      });
+      const response = await this.requestManager.schedule(request, 1);
+      this.checkResponseError(response);
+      const $2 = load(response.data);
+      const prefixSlug = getPrefixSlug($2);
+      if (prefixSlug === "") {
+        throw new Error("Unable to find prefix slug");
+      }
+      return prefixSlug;
     }
     // ----HOMESCREEN SELECTORS----
     /**
@@ -15389,66 +15479,53 @@ Image url: ${image}`
     configureSections() {
       return;
     }
-    getMangaShareUrl(mangaTitle) {
-      return `${_RizzFables.baseUrl}/${_RizzFables.directoryPath}/${getSlugFromTitle(mangaTitle)}/`;
-    }
-    async getMangaDetails(mangaTitle) {
-      const mangaId = getSlugFromTitle(mangaTitle);
-      const request = App.createRequest({
-        url: `${_RizzFables.baseUrl}/${_RizzFables.directoryPath}/${mangaId}/`,
-        method: "GET"
-      });
-      const response = await this.requestManager.schedule(request, 1);
-      this.checkResponseError(response);
-      const $2 = load(response.data);
-      return this.parser.parseMangaDetails($2, mangaTitle);
-    }
-    async getChapters(mangaTitle) {
-      const mangaId = getSlugFromTitle(mangaTitle);
-      const request = App.createRequest({
-        url: `${_RizzFables.baseUrl}/${_RizzFables.directoryPath}/${mangaId}/`,
-        method: "GET"
-      });
-      const response = await this.requestManager.schedule(request, 1);
-      this.checkResponseError(response);
-      const $2 = load(response.data);
-      return this.parser.parseChapterList($2, mangaTitle);
-    }
-    async getChapterDetails(mangaTitle, chapterId) {
-      const mangaId = getSlugFromTitle(mangaTitle);
-      const request = App.createRequest({
-        url: `${_RizzFables.baseUrl}/${_RizzFables.directoryPath}/${mangaId}/`,
-        method: "GET"
-      });
-      const response = await this.requestManager.schedule(request, 1);
-      this.checkResponseError(response);
-      const $2 = load(response.data);
-      const chapter = $2("div#chapterlist").find(
-        'li[data-num="' + chapterId + '"]'
+    // @ts-ignore Apparently this is supported but not relayed in types.
+    async getMangaShareUrl(mangaId) {
+      return await generateSeriesLink(
+        await this.getDynamicSiteSlug(),
+        mangaId
       );
-      if (!chapter) {
-        throw new Error(
-          `Unable to fetch a chapter for chapter numer: ${chapterId}`
-        );
-      }
-      const id = $2("a", chapter).attr("href") ?? "";
-      if (!id || id === "") {
-        throw new Error(
-          `Unable to fetch id for chapter numer: ${chapterId}`
-        );
-      }
+    }
+    async getMangaDetails(mangaId) {
+      const request = App.createRequest({
+        url: await generateSeriesLink(
+          await this.getDynamicSiteSlug(),
+          mangaId
+        ),
+        method: "GET"
+      });
+      const response = await this.requestManager.schedule(request, 1);
+      this.checkResponseError(response);
+      const $2 = load(response.data);
+      return this.parser.parseMangaDetails($2, mangaId);
+    }
+    async getChapters(mangaId) {
+      const request = App.createRequest({
+        url: generateSeriesLink(await this.getDynamicSiteSlug(), mangaId),
+        method: "GET"
+      });
+      const response = await this.requestManager.schedule(request, 1);
+      this.checkResponseError(response);
+      const $2 = load(response.data);
+      return this.parser.parseChapterList($2, mangaId);
+    }
+    async getChapterDetails(mangaId, chapterId) {
       const _request = App.createRequest({
-        url: id,
+        url: await generateChapterLink(
+          await this.getDynamicSiteSlug(),
+          mangaId,
+          chapterId
+        ),
         method: "GET"
       });
       const _response = await this.requestManager.schedule(_request, 1);
       this.checkResponseError(_response);
       const _$ = load(_response.data);
-      return this.parser.parseChapterDetails(_$, mangaTitle, chapterId);
+      return this.parser.parseChapterDetails(_$, mangaId, chapterId);
     }
     async getSearchTags() {
       const request = App.createRequest({
-        url: `${_RizzFables.baseUrl}/${_RizzFables.filterPath}/`,
+        url: `${_Realm.baseUrl}/${_Realm.filterPath}/`,
         method: "GET"
       });
       const response = await this.requestManager.schedule(request, 1);
@@ -15468,9 +15545,10 @@ Image url: ${image}`
       for (const manga of searchResultData) {
         results.push(
           App.createPartialSourceManga({
-            mangaId: cleanId(manga.title),
+            mangaId: manga.id,
+            image: `${_Realm.baseAssetUrl}/${manga.image_url}`,
             title: manga.title,
-            image: `${_RizzFables.baseUrl}/assets/images/${manga.image_url}`
+            subtitle: `Chapter ${manga.latest_chapter_title}`
           })
         );
       }
@@ -15479,16 +15557,16 @@ Image url: ${image}`
       });
     }
     async constructSearchRequest(page, query) {
-      let searchUrl = new URLBuilder(_RizzFables.baseUrl);
+      let searchUrl = new URLBuilder(_Realm.baseUrl);
       const headers = {
         "content-type": "application/x-www-form-urlencoded; charset=UTF-8"
       };
       const formData = {};
       if (query?.title) {
-        searchUrl = searchUrl.addPathComponent(_RizzFables.searchEndpoint);
+        searchUrl = searchUrl.addPathComponent(_Realm.searchEndpoint);
         formData["search_value"] = query?.title.replace(/[’–][a-z]*/g, "") ?? "";
       } else {
-        searchUrl = searchUrl.addPathComponent(_RizzFables.filterEndpoint);
+        searchUrl = searchUrl.addPathComponent(_Realm.filterEndpoint);
         const statusValue = getIncludedTagBySection(
           "status",
           query?.includedTags
@@ -15529,7 +15607,7 @@ Image url: ${image}`
     }
     async getHomePageSections(sectionCallback) {
       const request = App.createRequest({
-        url: `${_RizzFables.baseUrl}/`,
+        url: `${_Realm.baseUrl}/`,
         method: "GET"
       });
       const response = await this.requestManager.schedule(request, 1);
@@ -15565,66 +15643,30 @@ Image url: ${image}`
     async getViewMoreItems(homepageSectionId, metadata) {
       switch (homepageSectionId) {
         case "latest_update": {
-          const headers = {
-            "content-type": "application/x-www-form-urlencoded; charset=UTF-8"
-          };
-          const formData = {
-            StatusValue: "all",
-            TypeValue: "all",
-            OrderValue: "update"
-          };
-          const request = App.createRequest({
-            url: `${_RizzFables.baseUrl}/${_RizzFables.filterEndpoint}`,
-            headers,
-            data: Object.entries(formData).map(
-              ([key, value]) => `${encodeURIComponent(
-                key
-              )}=${encodeURIComponent(value)}`
-            ).join("&"),
-            method: "POST"
-          });
-          const response = await this.requestManager.schedule(request, 1);
-          const pageData = JSON.parse(
-            response.data
-          );
+          let offset = 0;
+          if (metadata && metadata.page) {
+            offset = metadata.page * 3;
+          }
+          const comicResults = await this.homescreen_sections[homepageSectionId].getMoreFunc(offset);
           const items = [];
-          for (const manga of pageData) {
+          for (const manga of comicResults.series) {
+            const subtitle = manga.chapters[0]?.chapter_title ? `Chapter ${manga.chapters[0]?.chapter_title}` : "N/A";
             items.push(
               App.createPartialSourceManga({
-                mangaId: cleanId(manga.title),
+                mangaId: manga.id,
                 title: manga.title,
-                image: `${_RizzFables.baseUrl}/assets/images/${manga.image_url}`
+                subtitle,
+                image: `${_Realm.baseAssetUrl}/${manga.image_url}`
               })
             );
           }
           return App.createPagedResults({
-            results: items
+            results: items,
+            metadata: comicResults.hasMore ? { page: (offset + 3) / 3 } : void 0
           });
         }
         default: {
-          const page = metadata?.page ?? 1;
-          const param = (
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            this.homescreen_sections[homepageSectionId].getViewMoreItemsFunc(page) ?? void 0
-          );
-          if (!param) {
-            throw new Error(
-              `Invalid homeSectionId: ${homepageSectionId}`
-            );
-          }
-          const request = App.createRequest({
-            url: `${_RizzFables.baseUrl}/${param}`,
-            method: "GET"
-          });
-          const response = await this.requestManager.schedule(request, 1);
-          const $2 = load(response.data);
-          const items = await this.parser.parseViewMore($2, this);
-          metadata = !this.parser.isLastPage($2, "view_more") ? { page: page + 1 } : void 0;
-          return App.createPagedResults({
-            results: items,
-            metadata
-          });
+          throw new Error(`Invalid homeSectionId '${homepageSectionId}'`);
         }
       }
     }
@@ -15633,11 +15675,11 @@ Image url: ${image}`
         this.requestManager?.cookieStore?.removeCookie(x);
       });
       return App.createRequest({
-        url: `${_RizzFables.bypassPage || _RizzFables.baseUrl}/`,
+        url: `${_Realm.bypassPage || _Realm.baseUrl}/`,
         method: "GET",
         headers: {
-          referer: `${_RizzFables.baseUrl}/`,
-          origin: `${_RizzFables.baseUrl}/`,
+          referer: `${_Realm.baseUrl}/`,
+          origin: `${_Realm.baseUrl}/`,
           "user-agent": await this.requestManager.getDefaultUserAgent()
         }
       });
@@ -15646,18 +15688,22 @@ Image url: ${image}`
       const status = response.status;
       switch (status) {
         case 403:
+          throw new Error(
+            `[Forbidden] CLOUDFLARE BYPASS ERROR:
+Please go to the homepage of <${_Realm.baseUrl}> and press the cloud icon.`
+          );
         case 503:
           throw new Error(
-            `CLOUDFLARE BYPASS ERROR:
-Please go to the homepage of <${_RizzFables.baseUrl}> and press the cloud icon.`
+            `[Service Unavailable] CLOUDFLARE BYPASS ERROR:
+Please go to the homepage of <${_Realm.baseUrl}> and press the cloud icon.`
           );
         case 404:
           throw new Error(
-            `The requested page ${response.request.url} was not found!`
+            `[Not Found] The requested page ${response.request.url} was not found!`
           );
       }
     }
   };
-  return __toCommonJS(RizzFables_exports);
+  return __toCommonJS(Realm_exports);
 })();
 this.Sources = _Sources; if (typeof exports === 'object' && typeof module !== 'undefined') {module.exports.Sources = this.Sources;}
