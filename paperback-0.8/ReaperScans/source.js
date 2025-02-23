@@ -1526,7 +1526,7 @@ var _Sources = (() => {
       const section3 = App.createHomeSection({
         id: "3",
         title: "Weekly Comics",
-        containsMoreItems: true,
+        containsMoreItems: false,
         type: import_types.HomeSectionType.singleRowLarge
       });
       const mangaDaily = [];
@@ -1616,9 +1616,8 @@ var _Sources = (() => {
   var REAPERSCANS_DOMAIN = "https://reaperscans.com";
   var REAPERSCANS_DOMAIN_API = "https://api.reaperscans.com";
   var REAPERSCANS_CDN = "https://media.reaperscans.com/file/4SRBHm";
-  var ID_SEP = "|#|";
   var ReaperScansInfo = {
-    version: "5.4.2",
+    version: "5.4.3",
     name: "ReaperScans",
     description: "Reaperscans source for 0.8",
     author: "IvanMatthew",
@@ -1665,12 +1664,12 @@ var _Sources = (() => {
     }
     //LINK - URL
     getMangaShareUrl(mangaId) {
-      return `${this.baseUrl}/series/${mangaId.split("|#|")[1]}`;
+      return `${this.baseUrl}/series/${mangaId.split(this.parser.ID_SEP)[1]}`;
     }
     //LINK - M-Details
     async getMangaDetails(mangaId) {
       const request = App.createRequest({
-        url: `${this.apiUrl}/series/${mangaId.split("|#|")[1]}`,
+        url: `${this.apiUrl}/series/${mangaId.split(this.parser.ID_SEP)[1]}`,
         method: "GET"
       });
       const response = await this.requestManager.schedule(request, 1);
@@ -1682,12 +1681,12 @@ var _Sources = (() => {
     async getChapters(mangaId) {
       const chapters = [];
       const params = {
-        perPage: 1e4,
-        series_id: mangaId.split(ID_SEP)[0],
-        page: 1
+        perPage: 30,
+        page: 1,
+        order: "desc"
       };
       const queryString = this.parser.joinParams(params);
-      const constructedURL = `${this.apiUrl}/chapter/query?adult=true${queryString}`;
+      const constructedURL = `${this.apiUrl}/chapters/${mangaId.split(this.parser.ID_SEP)[0]}?query=${queryString}`;
       const request = App.createRequest({
         url: constructedURL,
         method: "GET",
@@ -1718,7 +1717,7 @@ var _Sources = (() => {
     //LINK - C-Details
     async getChapterDetails(mangaId, chapterId) {
       const request = App.createRequest({
-        url: `${this.apiUrl}/chapter/${mangaId.split(ID_SEP)[1]}/${chapterId}`,
+        url: `${this.apiUrl}/chapter/${mangaId.split(this.parser.ID_SEP)[1]}/${chapterId}`,
         method: "GET"
       });
       const response = await this.requestManager.schedule(request, 1);
@@ -1799,7 +1798,7 @@ var _Sources = (() => {
       const searchResult = json.data;
       const result = [];
       for (const item of searchResult) {
-        const mangaId = item.id + ID_SEP + item.series_slug;
+        const mangaId = item.id + this.parser.ID_SEP + item.series_slug;
         const latestChapter = item.free_chapters && item.free_chapters.length > 0 ? item.free_chapters[0]?.chapter_name : "";
         result.push(
           App.createPartialSourceManga({
@@ -1896,29 +1895,36 @@ var _Sources = (() => {
      * Copied from Madara.ts made by Netsky
      */
     convertTime(date) {
-      date = date.toUpperCase();
+      date = date.toLowerCase();
       let time;
       const number = Number((/\d*/.exec(date) ?? [])[0]);
-      if (date.includes("LESS THAN AN HOUR") || date.includes("JUST NOW")) {
+      if (date.includes("less than an hour") || date.includes("just now")) {
         time = new Date(Date.now());
-      } else if (date.includes("YEAR") || date.includes("YEARS")) {
+      } else if (date.includes("year")) {
         time = new Date(Date.now() - number * 31556952e3);
-      } else if (date.includes("MONTH") || date.includes("MONTHS")) {
+      } else if (date.includes("month")) {
         time = new Date(Date.now() - number * 2592e6);
-      } else if (date.includes("WEEK") || date.includes("WEEKS")) {
+      } else if (date.includes("week")) {
         time = new Date(Date.now() - number * 6048e5);
-      } else if (date.includes("YESTERDAY")) {
+      } else if (date.includes("yesterday")) {
         time = new Date(Date.now() - 864e5);
-      } else if (date.includes("DAY") || date.includes("DAYS")) {
+      } else if (date.includes("day")) {
         time = new Date(Date.now() - number * 864e5);
-      } else if (date.includes("HOUR") || date.includes("HOURS")) {
+      } else if (date.includes("hour")) {
         time = new Date(Date.now() - number * 36e5);
-      } else if (date.includes("MINUTE") || date.includes("MINUTES")) {
+      } else if (date.includes("minute")) {
         time = new Date(Date.now() - number * 6e4);
-      } else if (date.includes("SECOND") || date.includes("SECONDS")) {
+      } else if (date.includes("second")) {
         time = new Date(Date.now() - number * 1e3);
+      } else if (date.match(/\d{2}\/\d{2}\/\d{4}/) != null) {
+        const [month, day, year] = date.split("/").map(Number);
+        time = new Date(
+          year,
+          month - 1,
+          day
+        );
       } else {
-        time = new Date(date);
+        time = /* @__PURE__ */ new Date();
       }
       return time;
     }

@@ -14598,7 +14598,7 @@ var _Sources = (() => {
   var FLAMECOMICS_DOMAIN = "https://flamecomics.xyz";
   var FLAMECOMICS_CDN_DOMAIN = "https://cdn.flamecomics.xyz";
   var FlameComicsInfo = {
-    version: "1.1.1",
+    version: "1.1.2",
     name: "FlameComics",
     description: "Flame comics source for 0.8",
     author: "IvanMatthew",
@@ -14797,7 +14797,7 @@ var _Sources = (() => {
             App.createTagSection({
               id: "0",
               label: "Genres",
-              tags: JSON.parse(mangaDetailsPageProps.series.tags).map(
+              tags: mangaDetailsPageProps.series.tags.map(
                 (tag) => {
                   return App.createTag({
                     id: tag.toLowerCase(),
@@ -14896,7 +14896,7 @@ var _Sources = (() => {
             const includedTags = query.includedTags.map(
               (tag) => tag.label
             );
-            const comicTags = JSON.parse(comic.tags);
+            const comicTags = comic.tags;
             return includedTags.some(
               (tag) => comicTags.includes(tag)
             );
@@ -14907,7 +14907,7 @@ var _Sources = (() => {
             const excludedTags = query.excludedTags.map(
               (tag) => tag.label
             );
-            const comicTags = JSON.parse(comic.tags);
+            const comicTags = comic.tags;
             return !excludedTags.some(
               (tag) => comicTags.includes(tag)
             );
