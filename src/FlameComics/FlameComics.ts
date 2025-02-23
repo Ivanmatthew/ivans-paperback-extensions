@@ -26,7 +26,7 @@ import * as cheerio from 'cheerio'
 const FLAMECOMICS_DOMAIN = 'https://flamecomics.xyz'
 const FLAMECOMICS_CDN_DOMAIN = 'https://cdn.flamecomics.xyz'
 export const FlameComicsInfo: SourceInfo = {
-    version: '1.1.1',
+    version: '1.1.2',
     name: 'FlameComics',
     description: 'Flame comics source for 0.8',
     author: 'IvanMatthew',
@@ -75,7 +75,7 @@ type FlameComicsComicObject = {
     description: string
     language: string
     type: string
-    tags: string // as json array
+    tags: string[]
     country: string
     author: string
     artist: string
@@ -381,7 +381,7 @@ export class FlameComics
                     App.createTagSection({
                         id: '0',
                         label: 'Genres',
-                        tags: JSON.parse(mangaDetailsPageProps.series.tags).map(
+                        tags: mangaDetailsPageProps.series.tags.map(
                             (tag: string) => {
                                 return App.createTag({
                                     id: tag.toLowerCase(),
@@ -513,7 +513,7 @@ export class FlameComics
                         const includedTags = query.includedTags.map(
                             (tag) => tag.label
                         )
-                        const comicTags = JSON.parse(comic.tags)
+                        const comicTags = comic.tags
                         return includedTags.some((tag) =>
                             comicTags.includes(tag)
                         )
@@ -526,7 +526,7 @@ export class FlameComics
                         const excludedTags = query.excludedTags.map(
                             (tag) => tag.label
                         )
-                        const comicTags = JSON.parse(comic.tags)
+                        const comicTags = comic.tags
                         return !excludedTags.some((tag) =>
                             comicTags.includes(tag)
                         )

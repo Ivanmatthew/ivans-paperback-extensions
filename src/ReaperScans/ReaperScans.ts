@@ -34,12 +34,11 @@ import {
 const REAPERSCANS_DOMAIN = 'https://reaperscans.com'
 const REAPERSCANS_DOMAIN_API = 'https://api.reaperscans.com'
 const REAPERSCANS_CDN = 'https://media.reaperscans.com/file/4SRBHm' // https://domain.tld/file/<bucket>/<file>
-const ID_SEP = '|#|'
 // https://media.reaperscans.com/file/4SRBHm//comics/c22c1254-ce3c-4628-b3ad-34df82e40cd8/tdDPcgIEfalT3qvWpQQgVZECpadGpI9azYAxFcOo.jpg
 
 //SECTION - SourceInfo
 export const ReaperScansInfo: SourceInfo = {
-    version: '5.4.2',
+    version: '5.4.3',
     name: 'ReaperScans',
     description: 'Reaperscans source for 0.8',
     author: 'IvanMatthew',
@@ -100,13 +99,15 @@ export class ReaperScans
 
     //LINK - URL
     getMangaShareUrl(mangaId: string): string {
-        return `${this.baseUrl}/series/${mangaId.split('|#|')[1]}`
+        return `${this.baseUrl}/series/${mangaId.split(this.parser.ID_SEP)[1]}`
     }
 
     //LINK - M-Details
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
         const request = App.createRequest({
-            url: `${this.apiUrl}/series/${mangaId.split('|#|')[1]}`,
+            url: `${this.apiUrl}/series/${
+                mangaId.split(this.parser.ID_SEP)[1]
+            }`,
             method: 'GET'
         })
         const response = await this.requestManager.schedule(request, 1)
@@ -119,13 +120,16 @@ export class ReaperScans
     async getChapters(mangaId: string): Promise<Chapter[]> {
         const chapters: Chapter[] = []
         const params = {
-            perPage: 10000,
-            series_id: mangaId.split(ID_SEP)[0],
-            page: 1
+            perPage: 30,
+            page: 1,
+            order: 'desc'
         }
 
+        // TODO: Replace with URLBuilder
         const queryString = this.parser.joinParams(params)
-        const constructedURL = `${this.apiUrl}/chapter/query?adult=true${queryString}`
+        const constructedURL = `${this.apiUrl}/chapters/${
+            mangaId.split(this.parser.ID_SEP)[0]
+        }?query=${queryString}`
 
         const request = App.createRequest({
             url: constructedURL,
@@ -166,7 +170,7 @@ export class ReaperScans
         // https://api.reaperscans.com/chapter/hard-carry-support/chapter-71
         const request = App.createRequest({
             url: `${this.apiUrl}/chapter/${
-                mangaId.split(ID_SEP)[1]
+                mangaId.split(this.parser.ID_SEP)[1]
             }/${chapterId}`,
             method: 'GET'
         })
@@ -272,7 +276,7 @@ export class ReaperScans
 
         const result = []
         for (const item of searchResult) {
-            const mangaId = item.id + ID_SEP + item.series_slug
+            const mangaId = item.id + this.parser.ID_SEP + item.series_slug
             const latestChapter =
                 item.free_chapters && item.free_chapters.length > 0
                     ? item.free_chapters[0]?.chapter_name
@@ -397,29 +401,36 @@ export class ReaperScans
      * Copied from Madara.ts made by Netsky
      */
     protected convertTime(date: string): Date {
-        date = date.toUpperCase()
+        date = date.toLowerCase()
         let time: Date
         const number = Number((/\d*/.exec(date) ?? [])[0])
-        if (date.includes('LESS THAN AN HOUR') || date.includes('JUST NOW')) {
+        if (date.includes('less than an hour') || date.includes('just now')) {
             time = new Date(Date.now())
-        } else if (date.includes('YEAR') || date.includes('YEARS')) {
+        } else if (date.includes('year')) {
             time = new Date(Date.now() - number * 31556952000)
-        } else if (date.includes('MONTH') || date.includes('MONTHS')) {
+        } else if (date.includes('month')) {
             time = new Date(Date.now() - number * 2592000000)
-        } else if (date.includes('WEEK') || date.includes('WEEKS')) {
+        } else if (date.includes('week')) {
             time = new Date(Date.now() - number * 604800000)
-        } else if (date.includes('YESTERDAY')) {
+        } else if (date.includes('yesterday')) {
             time = new Date(Date.now() - 86400000)
-        } else if (date.includes('DAY') || date.includes('DAYS')) {
+        } else if (date.includes('day')) {
             time = new Date(Date.now() - number * 86400000)
-        } else if (date.includes('HOUR') || date.includes('HOURS')) {
+        } else if (date.includes('hour')) {
             time = new Date(Date.now() - number * 3600000)
-        } else if (date.includes('MINUTE') || date.includes('MINUTES')) {
+        } else if (date.includes('minute')) {
             time = new Date(Date.now() - number * 60000)
-        } else if (date.includes('SECOND') || date.includes('SECONDS')) {
+        } else if (date.includes('second')) {
             time = new Date(Date.now() - number * 1000)
+        } else if (date.match(/\d{2}\/\d{2}\/\d{4}/) != null) {
+            const [month, day, year] = date.split('/').map(Number)
+            time = new Date(
+                year as number,
+                (month as number) - 1,
+                day as number
+            )
         } else {
-            time = new Date(date)
+            time = new Date()
         }
         return time
     }
