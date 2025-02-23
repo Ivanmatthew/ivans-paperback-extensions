@@ -38,7 +38,7 @@ const REAPERSCANS_CDN = 'https://media.reaperscans.com/file/4SRBHm' // https://d
 
 //SECTION - SourceInfo
 export const ReaperScansInfo: SourceInfo = {
-    version: '5.4.3',
+    version: '5.4.4',
     name: 'ReaperScans',
     description: 'Reaperscans source for 0.8',
     author: 'IvanMatthew',

@@ -11,6 +11,8 @@ import entities = require('entities')
 import { MangaItem, QueryData, RSMangaDetails } from './types/'
 import { ReaperScans } from './ReaperScans'
 
+import { load } from 'cheerio'
+
 export class Parser {
     REAPERSCANS_DOMAIN = 'https://reaperscans.com'
     REAPERSCANS_DOMAIN_API = 'https://api.reaperscans.com'
@@ -20,7 +22,7 @@ export class Parser {
     //LINK - MangaDetails
     parseMangaDetails(manga: RSMangaDetails, mangaId: string): SourceManga {
         const title = manga.title ?? ''
-        const desc = manga.description ?? ''
+        const desc = load(manga.description ?? '').text()
 
         const tags: TagSection[] = [
             App.createTagSection({

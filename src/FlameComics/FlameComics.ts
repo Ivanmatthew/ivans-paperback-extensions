@@ -26,7 +26,7 @@ import * as cheerio from 'cheerio'
 const FLAMECOMICS_DOMAIN = 'https://flamecomics.xyz'
 const FLAMECOMICS_CDN_DOMAIN = 'https://cdn.flamecomics.xyz'
 export const FlameComicsInfo: SourceInfo = {
-    version: '1.1.2',
+    version: '1.1.3',
     name: 'FlameComics',
     description: 'Flame comics source for 0.8',
     author: 'IvanMatthew',
@@ -90,6 +90,28 @@ type FlameComicsComicObject = {
     last_edit: string // timestamp
     time: number // also timestamp
 }
+// Separate object for Browse (FlameComics devs what are you doing???)
+type FlameComicsComicSeriesObject = {
+    series_id: number
+    title: string
+    altTitles: string // as json array
+    description: string
+    language: string
+    type: string
+    categories: string[] // tags: string[]
+    country: string
+    author: string
+    artist: string
+    publisher: string
+    year: number
+    status: string
+    schedule: string
+    views: number
+    likes?: number | null
+    cover: string // as json object, FLAMECOMICS_CDN_DOMAIN + "/series/" + series_id + cover
+    last_edit: string // timestamp
+    time: number // also timestamp
+}
 type FlameComicsSectionComicObject = FlameComicsComicObject & {
     chapters: FlameComicsChapterObject[]
 }
@@ -133,7 +155,7 @@ type FlameComicsBrowseObject = {
     cookies: {}
     __N_SSG: boolean
     pageProps: {
-        series: FlameComicsComicObject[]
+        series: FlameComicsComicSeriesObject[]
     }
 }
 
@@ -513,7 +535,7 @@ export class FlameComics
                         const includedTags = query.includedTags.map(
                             (tag) => tag.label
                         )
-                        const comicTags = comic.tags
+                        const comicTags = comic.categories
                         return includedTags.some((tag) =>
                             comicTags.includes(tag)
                         )
@@ -526,7 +548,7 @@ export class FlameComics
                         const excludedTags = query.excludedTags.map(
                             (tag) => tag.label
                         )
-                        const comicTags = comic.tags
+                        const comicTags = comic.categories
                         return !excludedTags.some((tag) =>
                             comicTags.includes(tag)
                         )
