@@ -16783,12 +16783,14 @@ var _Sources = (() => {
       const intIndex = parseInt(hexIndex, 16);
       return this.get(intIndex);
     }
-    findByString(findString, exludeString, returnAsHex = false) {
+    findByString(findString, excludeString, returnAsHex = false) {
       if (returnAsHex) {
         const hexBufferArray = this.bufferArrayAsHex();
         for (const [index2, entry] of Object.entries(hexBufferArray)) {
           if (entry && findString.every(
-            (str) => entry.includes(str) && !exludeString.some((exStr) => entry.includes(exStr))
+            (str) => entry.includes(str) && !excludeString.some(
+              (exStr) => entry.includes(exStr)
+            )
           )) {
             return index2;
           }
@@ -16796,7 +16798,9 @@ var _Sources = (() => {
       } else {
         for (const [index2, entry] of this.bufferArray.entries()) {
           if (entry && findString.every(
-            (str) => entry.includes(str) && !exludeString.some((exStr) => entry.includes(exStr))
+            (str) => entry.includes(str) && !excludeString.some(
+              (exStr) => entry.includes(exStr)
+            )
           )) {
             return index2.toString();
           }
@@ -16816,7 +16820,10 @@ var _Sources = (() => {
       });
       return bufferArrayHex;
     }
-    replacePointers(text3, maxDepth = 64, _currentDepth = 0) {
+    replacePointers(text3, _currentDepth = 0) {
+      if (_currentDepth > this.bufferArray.length) {
+        throw new Error("Circular dependency detected, please report!");
+      }
       const pointerRegex = /\$[0-9a-fA-F]+/g;
       let json;
       try {
@@ -16824,13 +16831,11 @@ var _Sources = (() => {
       } catch (error) {
       }
       if (json) {
-        return JSON.stringify(json, (key, value) => {
-          if (typeof value === "string" && _currentDepth < maxDepth && value.match(pointerRegex)) {
-            _currentDepth++;
+        return JSON.stringify(json, (_key, value) => {
+          if (typeof value === "string" && _currentDepth < this.bufferArray.length && value.match(pointerRegex)) {
             const replaceVal = this.replacePointers(
               value,
-              maxDepth,
-              _currentDepth
+              _currentDepth + 1
             );
             return replaceVal;
           }
@@ -16840,9 +16845,8 @@ var _Sources = (() => {
       return text3.replace(pointerRegex, (match) => {
         const hexIndex = match.slice(1);
         const value = this.getWithHex(hexIndex);
-        if (value?.match(pointerRegex) && _currentDepth < maxDepth) {
-          _currentDepth++;
-          return this.replacePointers(value, maxDepth, _currentDepth);
+        if (value?.match(pointerRegex) && _currentDepth < this.bufferArray.length) {
+          return this.replacePointers(value, _currentDepth + 1);
         }
         return value ?? match;
       });
@@ -17286,7 +17290,7 @@ var _Sources = (() => {
   var AS_DOMAIN = "https://asuracomic.net";
   var AS_API_DOMAIN = "https://gg.asuracomic.net";
   var AsuraScansInfo = {
-    version: "5.3.1",
+    version: "5.3.2",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
