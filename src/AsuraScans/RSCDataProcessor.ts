@@ -205,7 +205,7 @@ export class RSCDataProcessor {
 
     public findByString(
         findString: string[],
-        exludeString: string[],
+        excludeString: string[],
         returnAsHex: boolean = false
     ): string | null {
         // Find whether the findStrings are contained in a bufferarray entry and if so, return the entry
@@ -217,7 +217,9 @@ export class RSCDataProcessor {
                     findString.every(
                         (str) =>
                             entry.includes(str) &&
-                            !exludeString.some((exStr) => entry.includes(exStr))
+                            !excludeString.some((exStr) =>
+                                entry.includes(exStr)
+                            )
                     )
                 ) {
                     return index
@@ -230,7 +232,9 @@ export class RSCDataProcessor {
                     findString.every(
                         (str) =>
                             entry.includes(str) &&
-                            !exludeString.some((exStr) => entry.includes(exStr))
+                            !excludeString.some((exStr) =>
+                                entry.includes(exStr)
+                            )
                     )
                 ) {
                     return index.toString()
@@ -256,11 +260,11 @@ export class RSCDataProcessor {
         return bufferArrayHex
     }
 
-    private replacePointers(
-        text: string,
-        maxDepth: number = 64,
-        _currentDepth: number = 0
-    ): string {
+    private replacePointers(text: string, _currentDepth: number = 0): string {
+        // Detect circular dependency
+        if (_currentDepth > this.bufferArray.length) {
+            throw new Error('Circular dependency detected, please report!')
+        }
         const pointerRegex = /\$[0-9a-fA-F]+/g
 
         let json: any
@@ -269,17 +273,15 @@ export class RSCDataProcessor {
         } catch (error) {}
 
         if (json) {
-            return JSON.stringify(json, (key, value) => {
+            return JSON.stringify(json, (_key, value) => {
                 if (
                     typeof value === 'string' &&
-                    _currentDepth < maxDepth &&
+                    _currentDepth < this.bufferArray.length &&
                     value.match(pointerRegex)
                 ) {
-                    _currentDepth++
                     const replaceVal = this.replacePointers(
                         value,
-                        maxDepth,
-                        _currentDepth
+                        _currentDepth + 1
                     )
                     return replaceVal
                 }
@@ -291,9 +293,11 @@ export class RSCDataProcessor {
         return text.replace(pointerRegex, (match) => {
             const hexIndex = match.slice(1)
             const value = this.getWithHex(hexIndex)
-            if (value?.match(pointerRegex) && _currentDepth < maxDepth) {
-                _currentDepth++
-                return this.replacePointers(value, maxDepth, _currentDepth)
+            if (
+                value?.match(pointerRegex) &&
+                _currentDepth < this.bufferArray.length
+            ) {
+                return this.replacePointers(value, _currentDepth + 1)
             }
 
             return value ?? match
