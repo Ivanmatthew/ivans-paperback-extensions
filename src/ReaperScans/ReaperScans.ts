@@ -38,7 +38,7 @@ const REAPERSCANS_CDN = 'https://media.reaperscans.com/file/4SRBHm' // https://d
 
 //SECTION - SourceInfo
 export const ReaperScansInfo: SourceInfo = {
-    version: '5.4.4',
+    version: '5.4.5',
     name: 'ReaperScans',
     description: 'Reaperscans source for 0.8',
     author: 'IvanMatthew',
@@ -127,9 +127,10 @@ export class ReaperScans
 
         // TODO: Replace with URLBuilder
         const queryString = this.parser.joinParams(params)
-        const constructedURL = `${this.apiUrl}/chapters/${
+        const baseRequestUrl = `${this.apiUrl}/chapters/${
             mangaId.split(this.parser.ID_SEP)[0]
-        }?query=${queryString}`
+        }`
+        const constructedURL = baseRequestUrl + '?query=' + queryString
 
         const request = App.createRequest({
             url: constructedURL,
@@ -143,7 +144,43 @@ export class ReaperScans
         const response = await this.requestManager.schedule(request, 1)
         this.checkResponseError(response)
         const json = JSON.parse(response.data ?? '[]') as RSChapterList
-        const chapterList = json.data as RSChapterListData[]
+        let chapterList = json.data as RSChapterListData[]
+
+        if (chapterList.length < (json.meta?.total ?? 0)) {
+            const pages = Math.ceil((json.meta?.total as number) / 30)
+            for (let i = 2; i <= pages; i++) {
+                const params = {
+                    perPage: 30,
+                    page: i,
+                    order: 'desc'
+                }
+                const queryString = this.parser.joinParams(params)
+                const constructedURL = baseRequestUrl + '?query=' + queryString
+
+                const request = App.createRequest({
+                    url: constructedURL,
+                    method: 'GET',
+                    headers: {
+                        'user-agent':
+                            await this.requestManager.getDefaultUserAgent(),
+                        referer: `${this.baseUrl}/`
+                    }
+                })
+
+                const response = await this.requestManager.schedule(request, 1)
+                this.checkResponseError(response)
+                const json = JSON.parse(response.data ?? '[]') as RSChapterList
+                chapterList = chapterList.concat(
+                    json.data as RSChapterListData[]
+                )
+            }
+        }
+        // Sort chapters by chapter number
+        chapterList.sort((a, b) => {
+            const numA = Number(a.chapter_name?.replace('Chapter', '') ?? '-1')
+            const numB = Number(b.chapter_name?.replace('Chapter', '') ?? '-1')
+            return numA - numB
+        })
 
         for (const item of chapterList) {
             chapters.push(
