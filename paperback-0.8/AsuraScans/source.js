@@ -16783,9 +16783,14 @@ var _Sources = (() => {
       const intIndex = parseInt(hexIndex, 16);
       return this.get(intIndex);
     }
-    findByString(findString, excludeString, returnAsHex = false) {
+    findByString(findString, excludeString, returnAsHex = false, searchBackwards = true) {
       if (returnAsHex) {
-        const hexBufferArray = this.bufferArrayAsHex();
+        let hexBufferArray = this.bufferArrayAsHex();
+        if (searchBackwards) {
+          hexBufferArray = Object.fromEntries(
+            Object.entries(hexBufferArray).reverse()
+          );
+        }
         for (const [index2, entry] of Object.entries(hexBufferArray)) {
           if (entry && findString.every(
             (str) => entry.includes(str) && !excludeString.some(
@@ -16796,7 +16801,11 @@ var _Sources = (() => {
           }
         }
       } else {
-        for (const [index2, entry] of this.bufferArray.entries()) {
+        let bufferArray = this.bufferArray;
+        if (searchBackwards) {
+          bufferArray = bufferArray.reverse();
+        }
+        for (const [index2, entry] of bufferArray.entries()) {
           if (entry && findString.every(
             (str) => entry.includes(str) && !excludeString.some(
               (exStr) => entry.includes(exStr)
@@ -17290,7 +17299,7 @@ var _Sources = (() => {
   var AS_DOMAIN = "https://asuracomic.net";
   var AS_API_DOMAIN = "https://gg.asuracomic.net";
   var AsuraScansInfo = {
-    version: "5.3.2",
+    version: "5.3.3",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
