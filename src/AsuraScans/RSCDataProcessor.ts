@@ -206,11 +206,17 @@ export class RSCDataProcessor {
     public findByString(
         findString: string[],
         excludeString: string[],
-        returnAsHex: boolean = false
+        returnAsHex: boolean = false,
+        searchBackwards: boolean = true
     ): string | null {
         // Find whether the findStrings are contained in a bufferarray entry and if so, return the entry
         if (returnAsHex) {
-            const hexBufferArray = this.bufferArrayAsHex()
+            let hexBufferArray = this.bufferArrayAsHex()
+            if (searchBackwards) {
+                hexBufferArray = Object.fromEntries(
+                    Object.entries(hexBufferArray).reverse()
+                )
+            }
             for (const [index, entry] of Object.entries(hexBufferArray)) {
                 if (
                     entry &&
@@ -226,7 +232,11 @@ export class RSCDataProcessor {
                 }
             }
         } else {
-            for (const [index, entry] of this.bufferArray.entries()) {
+            let bufferArray = this.bufferArray
+            if (searchBackwards) {
+                bufferArray = bufferArray.reverse()
+            }
+            for (const [index, entry] of bufferArray.entries()) {
                 if (
                     entry &&
                     findString.every(
