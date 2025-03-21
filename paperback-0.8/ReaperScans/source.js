@@ -15470,10 +15470,13 @@ var _Sources = (() => {
       const json = JSON.parse(response.data ?? "[]");
       return json;
     }
-    joinParams(params) {
+    joinParams(params, withStartChar = false) {
       let ret = "";
       for (const key in params) {
         ret += `&${key}=${params[key].toString()}`;
+      }
+      if (withStartChar) {
+        ret = "?" + ret.substring(1);
       }
       return ret;
     }
@@ -15484,7 +15487,7 @@ var _Sources = (() => {
   var REAPERSCANS_DOMAIN_API = "https://api.reaperscans.com";
   var REAPERSCANS_CDN = "https://media.reaperscans.com/file/4SRBHm";
   var ReaperScansInfo = {
-    version: "5.4.5",
+    version: "5.4.6",
     name: "ReaperScans",
     description: "Reaperscans source for 0.8",
     author: "IvanMatthew",
@@ -15681,8 +15684,8 @@ var _Sources = (() => {
         perPage: 200,
         page: 1
       };
-      const queryString = this.parser.joinParams(params);
-      const constructedURL = `${this.apiUrl}/query?adult=true${queryString}`;
+      const queryString = this.parser.joinParams(params, true);
+      const constructedURL = `${this.apiUrl}/query${queryString}`;
       const request = App.createRequest({
         url: constructedURL,
         method: "GET",
@@ -15731,8 +15734,8 @@ var _Sources = (() => {
         orderBy: "updated_at",
         page
       };
-      const queryString = this.parser.joinParams(params);
-      const constructedURL = `${this.apiUrl}/query?adult=true${queryString}`;
+      const queryString = this.parser.joinParams(params, true);
+      const constructedURL = `${this.apiUrl}/query${queryString}`;
       const request = App.createRequest({
         url: constructedURL,
         method: "GET",
@@ -15768,8 +15771,8 @@ var _Sources = (() => {
         orderBy: "updated_at",
         page: 1
       };
-      const queryString = this.parser.joinParams(params);
-      const constructedURL = `${this.apiUrl}/query?adult=true${queryString}`;
+      const queryString = this.parser.joinParams(params, true);
+      const constructedURL = `${this.apiUrl}/query${queryString}`;
       const request = App.createRequest({
         url: constructedURL,
         method: "GET",
