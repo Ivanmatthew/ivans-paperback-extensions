@@ -15487,7 +15487,7 @@ var _Sources = (() => {
   var REAPERSCANS_DOMAIN_API = "https://api.reaperscans.com";
   var REAPERSCANS_CDN = "https://media.reaperscans.com/file/4SRBHm";
   var ReaperScansInfo = {
-    version: "5.4.6",
+    version: "5.4.7",
     name: "ReaperScans",
     description: "Reaperscans source for 0.8",
     author: "IvanMatthew",
@@ -15684,8 +15684,8 @@ var _Sources = (() => {
         perPage: 200,
         page: 1
       };
-      const queryString = this.parser.joinParams(params, true);
-      const constructedURL = `${this.apiUrl}/query${queryString}`;
+      const queryString = this.parser.joinParams(params);
+      const constructedURL = `${this.apiUrl}/query?adult=true${queryString}`;
       const request = App.createRequest({
         url: constructedURL,
         method: "GET",
@@ -15729,7 +15729,7 @@ var _Sources = (() => {
         });
       const params = {
         series_type: "Comic",
-        perPage: 15,
+        perPage: 12,
         order: "desc",
         orderBy: "updated_at",
         page
@@ -15766,7 +15766,7 @@ var _Sources = (() => {
       });
       const params = {
         series_type: "Comic",
-        perPage: 15,
+        perPage: 12,
         order: "desc",
         orderBy: "updated_at",
         page: 1
