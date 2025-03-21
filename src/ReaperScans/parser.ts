@@ -189,10 +189,17 @@ export class Parser {
         return json
     }
 
-    joinParams(params: { [key: string]: any }): string {
+    joinParams(
+        params: { [key: string]: any },
+        withStartChar: boolean = false
+    ): string {
         let ret = ''
         for (const key in params) {
             ret += `&${key}=${params[key].toString()}`
+        }
+
+        if (withStartChar) {
+            ret = '?' + ret.substring(1)
         }
         return ret
     }
