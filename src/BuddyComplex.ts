@@ -23,7 +23,7 @@ import { BuddyComplexParser } from './BuddyComplexParser'
 import { URLBuilder } from './UrlBuilder'
 
 // Set the version for the base, changing this version will change the versions of all sources
-const BASE_VERSION = '2.1.2'
+const BASE_VERSION = '2.1.3'
 export const getExportVersion = (EXTENSION_VERSION: string): string => {
     return BASE_VERSION.split('.')
         .map(

@@ -145,21 +145,27 @@ export class BuddyComplexParser {
     getDeobfuscatedImageUrlBase($: CheerioAPI): [string, string] {
         const script = $('script')
             .toArray()
-            .find(
-                (s) =>
-                    $(s).text().includes('sub') &&
-                    $(s).text().includes('dm') &&
-                    $(s).text().includes('dot') &&
-                    $(s).text().includes('resPath')
-            )
+            .find((s) => {
+                return (
+                    $(s).html()?.includes('sub') &&
+                    $(s).html()?.includes('dm') &&
+                    $(s).html()?.includes('dot') &&
+                    $(s).html()?.includes('resPath')
+                )
+            })
         if (!script) {
             throw new Error(
                 'Deobfuscation script not found! Please report this issue.'
             )
         }
-        const scriptContent = $(script).text()
+        const scriptContent = $(script).html()
+        if (!scriptContent) {
+            throw new Error(
+                'Deobfuscation script content is empty! Please report this issue.'
+            )
+        }
         const resPathMatch = scriptContent.match(
-            /const\s+resPath\s*=\s*['"]([^'"]+)['"]/
+            /resPath\s*=\s*['"]([^'"]+)['"]/
         )
         if (!resPathMatch || resPathMatch.length < 2) {
             throw new Error(
@@ -167,25 +173,21 @@ export class BuddyComplexParser {
             )
         }
         const resPath = resPathMatch[1] ?? ''
-        const subMatch = scriptContent.match(
-            /const\s+sub\s*=\s*['"]([^'"]+)['"]/
-        )
+        const subMatch = scriptContent.match(/sub\s*=\s*['"]([^'"]+)['"]/)
         if (!subMatch || subMatch.length < 2) {
             throw new Error(
                 'Deobfuscation script does not contain sub! Please report this issue.'
             )
         }
         const sub = subMatch[1]
-        const dmMatch = scriptContent.match(/const\s+dm\s*=\s*['"]([^'"]+)['"]/)
+        const dmMatch = scriptContent.match(/dm\s*=\s*['"]([^'"]+)['"]/)
         if (!dmMatch || dmMatch.length < 2) {
             throw new Error(
                 'Deobfuscation script does not contain dm! Please report this issue.'
             )
         }
         const dm = dmMatch[1]
-        const dotMatch = scriptContent.match(
-            /const\s+dot\s*=\s*['"]([^'"]+)['"]/
-        )
+        const dotMatch = scriptContent.match(/dot\s*=\s*['"]([^'"]+)['"]/)
         if (!dotMatch || dotMatch.length < 2) {
             throw new Error(
                 'Deobfuscation script does not contain dot! Please report this issue.'
@@ -203,7 +205,8 @@ export class BuddyComplexParser {
     ): ChapterDetails {
         const pages: string[] = []
 
-        const imageRegex = $.html().match(/chapImages\s*=\s*["'](.+)["']/gm)
+        const regex = /chapImages\s*=\s*["'](.+)["']/gm
+        const imageRegex = regex.exec($.html())
         let chapterImages = null
         if (imageRegex && imageRegex.length > 0) {
             chapterImages = imageRegex[1]?.split(',')
@@ -211,17 +214,20 @@ export class BuddyComplexParser {
 
         // If script has a match, use the script
         if (chapterImages && chapterImages.length > 0) {
+            console.log(
+                'Detected deobfuscated image URLs, using script method.'
+            )
             const [baseUrl, resPath] = this.getDeobfuscatedImageUrlBase($)
 
             for (const imageUrl of chapterImages) {
-                let imageUrlPath = imageUrl.replace(
-                    /http[s]?:\/\/[^/]*(\/.*)/,
-                    ''
-                )
+                let imageUrlPath = imageUrl.replace(/http[s]?:\/\/[^/]*/, '')
 
                 pages.push(baseUrl + imageUrlPath.replace(resPath, '/'))
             }
         } else {
+            console.log(
+                'No deobfuscated image URLs found, using manual parsing.'
+            )
             // Else parse the manual way
             for (const image of $(
                 'div.chapter-image',
