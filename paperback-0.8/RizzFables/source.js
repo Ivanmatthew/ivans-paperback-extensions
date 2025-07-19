@@ -15542,6 +15542,7 @@ Image url: ${image}`
       const response = await this.requestManager.schedule(request, 1);
       this.checkResponseError(response);
       const $2 = load(response.data);
+      const promises = [];
       const sectionValues = Object.values(this.homescreen_sections).sort(
         (n1, n2) => n1.sortIndex - n2.sortIndex
       );
@@ -15555,11 +15556,18 @@ Image url: ${image}`
         if (!section.enabled) {
           continue;
         }
-        this.parser.parseHomeSection($2, section, this).then((items) => {
-          section.section.items = items;
-          sectionCallback(section.section);
-        });
+        promises.push(
+          new Promise((resolve) => {
+            this.parser.parseHomeSection($2, section, this).then((items) => {
+              section.section.items = items;
+              sectionCallback(section.section);
+            }).finally(() => {
+              resolve();
+            });
+          })
+        );
       }
+      await Promise.allSettled(promises);
     }
     async getViewMoreItems(homepageSectionId, metadata) {
       switch (homepageSectionId) {
