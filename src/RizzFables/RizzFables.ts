@@ -39,7 +39,7 @@ import {
 } from './components/Helper'
 
 export const RizzFablesInfo: SourceInfo = {
-    version: '2.0.8',
+    version: '2.0.9',
     name: 'RizzFables',
     description:
         "Extension that pulls manga from RizzFables or it's derivatives.",
@@ -346,7 +346,6 @@ export class RizzFables extends SourceConfiguration implements Source {
 
         const $ = cheerio.load(response.data as string)
 
-        const promises: Promise<void>[] = []
         const sectionValues = Object.values(this.homescreen_sections).sort(
             (n1, n2) => n1.sortIndex - n2.sortIndex
         )
@@ -363,21 +362,11 @@ export class RizzFables extends SourceConfiguration implements Source {
                 continue
             }
 
-            // eslint-disable-next-line no-async-promise-executor
-            promises.push(
-                new Promise(async () => {
-                    section.section.items = await this.parser.parseHomeSection(
-                        $,
-                        section,
-                        this
-                    )
-                    sectionCallback(section.section)
-                })
-            )
+            this.parser.parseHomeSection($, section, this).then((items) => {
+                section.section.items = items
+                sectionCallback(section.section)
+            })
         }
-
-        // Make sure the function completes
-        await Promise.all(promises)
     }
 
     async getViewMoreItems(

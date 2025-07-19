@@ -83,8 +83,6 @@ export function cleanId(slug: string): string {
         .replace(/-s-/, 's-')
         .replace(/-ll-/, 'll-')
 
-    console.log(`${slug} -> ${test}`)
-
     return test
 }
 
