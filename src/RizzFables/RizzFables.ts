@@ -346,6 +346,7 @@ export class RizzFables extends SourceConfiguration implements Source {
 
         const $ = cheerio.load(response.data as string)
 
+        const promises: Promise<void>[] = []
         const sectionValues = Object.values(this.homescreen_sections).sort(
             (n1, n2) => n1.sortIndex - n2.sortIndex
         )
@@ -362,11 +363,23 @@ export class RizzFables extends SourceConfiguration implements Source {
                 continue
             }
 
-            this.parser.parseHomeSection($, section, this).then((items) => {
-                section.section.items = items
-                sectionCallback(section.section)
-            })
+            promises.push(
+                new Promise((resolve) => {
+                    this.parser
+                        .parseHomeSection($, section, this)
+                        .then((items) => {
+                            section.section.items = items
+                            sectionCallback(section.section)
+                        })
+                        .finally(() => {
+                            resolve()
+                        })
+                })
+            )
         }
+
+        // Make sure the function completes and ensures all sections are loaded even if some fail
+        await Promise.allSettled(promises)
     }
 
     async getViewMoreItems(
