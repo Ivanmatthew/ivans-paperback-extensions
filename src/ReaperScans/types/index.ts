@@ -1,5 +1,0 @@
-export * from "./MangaItem"
-export * from "./QueryResult"
-export * from "./RSMangaDetails"
-export * from "./RSChapterList"
-export * from "./RSChapterDetails"
