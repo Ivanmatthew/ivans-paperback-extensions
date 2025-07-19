@@ -1064,7 +1064,6 @@ var _Sources = (() => {
   }
   function cleanId(slug) {
     const test = slug.replace(/\/$/, "").split("/").pop().replace(preSlugContent + "-", "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-s-/, "s-").replace(/-ll-/, "ll-");
-    console.log(`${slug} -> ${test}`);
     return test;
   }
   function trimUrl(url) {
@@ -15323,7 +15322,7 @@ Image url: ${image}`
 
   // src/RizzFables/RizzFables.ts
   var RizzFablesInfo = {
-    version: "2.0.8",
+    version: "2.0.9",
     name: "RizzFables",
     description: "Extension that pulls manga from RizzFables or it's derivatives.",
     author: "IvanMatthew",
@@ -15543,7 +15542,6 @@ Image url: ${image}`
       const response = await this.requestManager.schedule(request, 1);
       this.checkResponseError(response);
       const $2 = load(response.data);
-      const promises = [];
       const sectionValues = Object.values(this.homescreen_sections).sort(
         (n1, n2) => n1.sortIndex - n2.sortIndex
       );
@@ -15557,18 +15555,11 @@ Image url: ${image}`
         if (!section.enabled) {
           continue;
         }
-        promises.push(
-          new Promise(async () => {
-            section.section.items = await this.parser.parseHomeSection(
-              $2,
-              section,
-              this
-            );
-            sectionCallback(section.section);
-          })
-        );
+        this.parser.parseHomeSection($2, section, this).then((items) => {
+          section.section.items = items;
+          sectionCallback(section.section);
+        });
       }
-      await Promise.all(promises);
     }
     async getViewMoreItems(homepageSectionId, metadata) {
       switch (homepageSectionId) {
