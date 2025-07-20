@@ -39,7 +39,7 @@ import {
 } from './components/Helper'
 
 export const RizzFablesInfo: SourceInfo = {
-    version: '2.0.13',
+    version: '2.0.14',
     name: 'RizzFables',
     description:
         "Extension that pulls manga from RizzFables or it's derivatives.",
@@ -110,11 +110,7 @@ export class RizzFables extends SourceConfiguration implements Source {
         },
         latest_update: {
             ...DefaultHomeSectionData,
-            section: createHomeSection(
-                'latest_update',
-                'Latest Updates',
-                false
-            ),
+            section: createHomeSection('latest_update', 'Latest Updates', true),
             selectorFunc: ($: cheerio.CheerioAPI) => $('div.uta'),
             titleSelectorFunc: (
                 $: cheerio.CheerioAPI,
@@ -130,6 +126,7 @@ export class RizzFables extends SourceConfiguration implements Source {
                     .trim(),
             // TODO: Remove nicely
             // getViewMoreItemsFunc: (page: string) => `${RizzFables.directoryPath}/?page=${page}&order=update`,
+            getViewMoreItemsFunc: () => undefined,
             sortIndex: 20
         },
         top_alltime: {
@@ -394,7 +391,13 @@ export class RizzFables extends SourceConfiguration implements Source {
     }
 
     async getViewMoreItems(
-        homepageSectionId: string,
+        // homepageSectionId: string,
+        homepageSectionId:
+            | 'popular_today'
+            | 'latest_update'
+            | 'top_alltime'
+            | 'top_monthly'
+            | 'top_weekly',
         metadata: Metadata | undefined
     ): Promise<PagedResults> {
         switch (homepageSectionId) {
@@ -448,11 +451,9 @@ export class RizzFables extends SourceConfiguration implements Source {
                 const page: number = metadata?.page ?? 1
 
                 const param =
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-ignore
                     this.homescreen_sections[
                         homepageSectionId
-                    ].getViewMoreItemsFunc(page) ?? undefined
+                    ].getViewMoreItemsFunc(page.toString()) ?? undefined
                 if (!param) {
                     throw new Error(
                         `Invalid homeSectionId: ${homepageSectionId}`

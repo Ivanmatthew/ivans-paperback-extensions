@@ -9,49 +9,53 @@ import {
 
 import * as cheerio from 'cheerio'
 
-export interface Source extends ChapterProviding, HomePageSectionsProviding, MangaProviding, SearchResultsProviding {}
+export interface Source
+    extends ChapterProviding,
+        HomePageSectionsProviding,
+        MangaProviding,
+        SearchResultsProviding {}
 
 export interface Months {
-    january: string;
-    february: string;
-    march: string;
-    april: string;
-    may: string;
-    june: string;
-    july: string;
-    august: string;
-    september: string;
-    october: string;
-    november: string;
-    december: string;
+    january: string
+    february: string
+    march: string
+    april: string
+    may: string
+    june: string
+    july: string
+    august: string
+    september: string
+    october: string
+    november: string
+    december: string
 }
 
 export interface StatusTypes {
-    ONGOING: string;
-    COMPLETED: string;
+    ONGOING: string
+    COMPLETED: string
 }
 
 export interface Slug {
-    path: string | undefined;
-    slug: string | undefined;
+    path: string | undefined
+    slug: string | undefined
 }
 
 export interface Metadata {
-    page: number | null;
+    page: number | null
 }
 
 export interface TagSection {
-    id: string;
-    label: string;
-    tags: Tag[];
+    id: string
+    label: string
+    tags: Tag[]
 }
 
 export interface SearchResult {
-    slug: string;
-    path: string;
-    image: string;
-    title: string;
-    subtitle: string;
+    slug: string
+    path: string
+    image: string
+    title: string
+    subtitle: string
 }
 
 export interface ComicResult {
@@ -78,17 +82,28 @@ export interface ComicResult {
 }
 
 export interface HomeSectionData {
-    selectorFunc: ($: cheerio.CheerioAPI) => cheerio.Cheerio<cheerio.Element>;
-    titleSelectorFunc?: ($: cheerio.CheerioAPI, element: cheerio.Element) => string | undefined;
-    subtitleSelectorFunc: ($: cheerio.CheerioAPI, element: cheerio.Element) => string;
-    getViewMoreItemsFunc: (page: string) => string;
-    section: HomeSection;
-    enabled: boolean;
-    sortIndex: number;
+    selectorFunc: ($: cheerio.CheerioAPI) => cheerio.Cheerio<cheerio.Element>
+    titleSelectorFunc?: (
+        $: cheerio.CheerioAPI,
+        element: cheerio.Element
+    ) => string | undefined
+    subtitleSelectorFunc: (
+        $: cheerio.CheerioAPI,
+        element: cheerio.Element
+    ) => string
+    getViewMoreItemsFunc: (page: string) => string | undefined
+    section: HomeSection
+    enabled: boolean
+    sortIndex: number
 }
 export const DefaultHomeSectionData = {
-    titleSelectorFunc: ($: cheerio.CheerioAPI, element: cheerio.Element) => $('h2', element).text().trim(),
-    subtitleSelectorFunc: ($: cheerio.CheerioAPI, element: cheerio.Element) => $('span a', element).toArray().map(x => $(x).text().trim()).join(', '),
+    titleSelectorFunc: ($: cheerio.CheerioAPI, element: cheerio.Element) =>
+        $('h2', element).text().trim(),
+    subtitleSelectorFunc: ($: cheerio.CheerioAPI, element: cheerio.Element) =>
+        $('span a', element)
+            .toArray()
+            .map((x) => $(x).text().trim())
+            .join(', '),
     getViewMoreItemsFunc: () => '',
     enabled: true
 }
