@@ -39,7 +39,7 @@ import {
 } from './components/Helper'
 
 export const RizzFablesInfo: SourceInfo = {
-    version: '2.0.12',
+    version: '2.0.13',
     name: 'RizzFables',
     description:
         "Extension that pulls manga from RizzFables or it's derivatives.",
@@ -110,7 +110,11 @@ export class RizzFables extends SourceConfiguration implements Source {
         },
         latest_update: {
             ...DefaultHomeSectionData,
-            section: createHomeSection('latest_update', 'Latest Updates'),
+            section: createHomeSection(
+                'latest_update',
+                'Latest Updates',
+                false
+            ),
             selectorFunc: ($: cheerio.CheerioAPI) => $('div.uta'),
             titleSelectorFunc: (
                 $: cheerio.CheerioAPI,
@@ -362,9 +366,6 @@ export class RizzFables extends SourceConfiguration implements Source {
                 this.parser
                     .parseHomeSection($, section, this)
                     .then((items) => {
-                        console.log(
-                            `Loaded section: ${section.section.id} with ${items.length} items`
-                        )
                         section.section.items = items
                         sectionCallback(section.section)
                     })
@@ -378,8 +379,8 @@ export class RizzFables extends SourceConfiguration implements Source {
         }
 
         // Make sure the function completes and ensures all sections are loaded even if some fail
-        const promArray = await Promise.allSettled(promises)
-        promArray.forEach((result, index) => {
+        const promiseArray = await Promise.allSettled(promises)
+        promiseArray.forEach((result, index) => {
             if (result.status === 'rejected') {
                 console.error(
                     `Failed to load section ${sectionValues[index]?.section.id}:`,
@@ -387,6 +388,9 @@ export class RizzFables extends SourceConfiguration implements Source {
                 )
             }
         })
+        if (promiseArray.every((result) => result.status === 'fulfilled')) {
+            console.log('All sections loaded successfully.')
+        }
     }
 
     async getViewMoreItems(
