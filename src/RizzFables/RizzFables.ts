@@ -39,7 +39,7 @@ import {
 } from './components/Helper'
 
 export const RizzFablesInfo: SourceInfo = {
-    version: '2.0.14',
+    version: '2.0.15',
     name: 'RizzFables',
     description:
         "Extension that pulls manga from RizzFables or it's derivatives.",
@@ -400,6 +400,9 @@ export class RizzFables extends SourceConfiguration implements Source {
             | 'top_weekly',
         metadata: Metadata | undefined
     ): Promise<PagedResults> {
+        console.log(
+            `Fetching view more items for section: ${homepageSectionId}`
+        )
         switch (homepageSectionId) {
             case 'latest_update': {
                 const headers: Record<string, string> = {
