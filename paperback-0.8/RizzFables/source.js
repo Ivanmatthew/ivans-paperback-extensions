@@ -15322,7 +15322,7 @@ Image url: ${image}`
 
   // src/RizzFables/RizzFables.ts
   var RizzFablesInfo = {
-    version: "2.0.11",
+    version: "2.0.12",
     name: "RizzFables",
     description: "Extension that pulls manga from RizzFables or it's derivatives.",
     author: "IvanMatthew",
@@ -15488,7 +15488,8 @@ Image url: ${image}`
     async constructSearchRequest(page, query) {
       let searchUrl = new URLBuilder(_RizzFables.baseUrl);
       const headers = {
-        "content-type": "application/x-www-form-urlencoded; charset=UTF-8"
+        "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+        origin: _RizzFables.baseUrl
       };
       const formData = {};
       if (query?.title) {
@@ -15553,14 +15554,22 @@ Image url: ${image}`
         sectionCallback(section.section);
         promises.push(
           this.parser.parseHomeSection($2, section, this).then((items) => {
+            console.log(
+              `Loaded section: ${section.section.id} with ${items.length} items`
+            );
             section.section.items = items;
             sectionCallback(section.section);
+          }).catch((error) => {
+            console.error(
+              `Error loading section ${section.section.id}:`,
+              error
+            );
           })
         );
       }
       const promArray = await Promise.allSettled(promises);
       promArray.forEach((result, index2) => {
-        if (result.status !== "fulfilled") {
+        if (result.status === "rejected") {
           console.error(
             `Failed to load section ${sectionValues[index2]?.section.id}:`,
             result.reason
