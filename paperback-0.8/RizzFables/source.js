@@ -15322,7 +15322,7 @@ Image url: ${image}`
 
   // src/RizzFables/RizzFables.ts
   var RizzFablesInfo = {
-    version: "2.0.10",
+    version: "2.0.11",
     name: "RizzFables",
     description: "Extension that pulls manga from RizzFables or it's derivatives.",
     author: "IvanMatthew",
@@ -15519,7 +15519,7 @@ Image url: ${image}`
       }
       return App.createRequest({
         url: searchUrl.build({
-          addTrailingSlash: true,
+          addTrailingSlash: false,
           includeUndefinedParameters: false
         }),
         headers,
@@ -15551,23 +15551,22 @@ Image url: ${image}`
           continue;
         }
         sectionCallback(section.section);
-      }
-      for (const section of sectionValues) {
-        if (!section.enabled) {
-          continue;
-        }
         promises.push(
-          new Promise((resolve) => {
-            this.parser.parseHomeSection($2, section, this).then((items) => {
-              section.section.items = items;
-              sectionCallback(section.section);
-            }).finally(() => {
-              resolve();
-            });
+          this.parser.parseHomeSection($2, section, this).then((items) => {
+            section.section.items = items;
+            sectionCallback(section.section);
           })
         );
       }
-      await Promise.allSettled(promises);
+      const promArray = await Promise.allSettled(promises);
+      promArray.forEach((result, index2) => {
+        if (result.status !== "fulfilled") {
+          console.error(
+            `Failed to load section ${sectionValues[index2]?.section.id}:`,
+            result.reason
+          );
+        }
+      });
     }
     async getViewMoreItems(homepageSectionId, metadata) {
       switch (homepageSectionId) {
