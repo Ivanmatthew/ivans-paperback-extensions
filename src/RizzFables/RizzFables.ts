@@ -39,7 +39,7 @@ import {
 } from './components/Helper'
 
 export const RizzFablesInfo: SourceInfo = {
-    version: '2.0.11',
+    version: '2.0.12',
     name: 'RizzFables',
     description:
         "Extension that pulls manga from RizzFables or it's derivatives.",
@@ -277,7 +277,8 @@ export class RizzFables extends SourceConfiguration implements Source {
     ): Promise<Request> {
         let searchUrl: URLBuilder = new URLBuilder(RizzFables.baseUrl)
         const headers: Record<string, string> = {
-            'content-type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            origin: RizzFables.baseUrl
         }
         const formData: Record<string, string> = {}
 
@@ -358,17 +359,28 @@ export class RizzFables extends SourceConfiguration implements Source {
             sectionCallback(section.section)
 
             promises.push(
-                this.parser.parseHomeSection($, section, this).then((items) => {
-                    section.section.items = items
-                    sectionCallback(section.section)
-                })
+                this.parser
+                    .parseHomeSection($, section, this)
+                    .then((items) => {
+                        console.log(
+                            `Loaded section: ${section.section.id} with ${items.length} items`
+                        )
+                        section.section.items = items
+                        sectionCallback(section.section)
+                    })
+                    .catch((error) => {
+                        console.error(
+                            `Error loading section ${section.section.id}:`,
+                            error
+                        )
+                    })
             )
         }
 
         // Make sure the function completes and ensures all sections are loaded even if some fail
         const promArray = await Promise.allSettled(promises)
         promArray.forEach((result, index) => {
-            if (result.status !== 'fulfilled') {
+            if (result.status === 'rejected') {
                 console.error(
                     `Failed to load section ${sectionValues[index]?.section.id}:`,
                     result.reason
