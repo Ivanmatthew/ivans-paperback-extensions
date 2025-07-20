@@ -15322,7 +15322,7 @@ Image url: ${image}`
 
   // src/RizzFables/RizzFables.ts
   var RizzFablesInfo = {
-    version: "2.0.13",
+    version: "2.0.14",
     name: "RizzFables",
     description: "Extension that pulls manga from RizzFables or it's derivatives.",
     author: "IvanMatthew",
@@ -15354,16 +15354,13 @@ Image url: ${image}`
         },
         latest_update: {
           ...DefaultHomeSectionData,
-          section: createHomeSection(
-            "latest_update",
-            "Latest Updates",
-            false
-          ),
+          section: createHomeSection("latest_update", "Latest Updates", true),
           selectorFunc: ($2) => $2("div.uta"),
           titleSelectorFunc: ($2, element) => $2("a", element).attr("title"),
           subtitleSelectorFunc: ($2, element) => $2("li > a, div.epxs", $2("div.luf, div.bigor", element)).first().text().trim(),
           // TODO: Remove nicely
           // getViewMoreItemsFunc: (page: string) => `${RizzFables.directoryPath}/?page=${page}&order=update`,
+          getViewMoreItemsFunc: () => void 0,
           sortIndex: 20
         },
         top_alltime: {
@@ -15622,11 +15619,7 @@ Image url: ${image}`
         }
         default: {
           const page = metadata?.page ?? 1;
-          const param = (
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            this.homescreen_sections[homepageSectionId].getViewMoreItemsFunc(page) ?? void 0
-          );
+          const param = this.homescreen_sections[homepageSectionId].getViewMoreItemsFunc(page.toString()) ?? void 0;
           if (!param) {
             throw new Error(
               `Invalid homeSectionId: ${homepageSectionId}`
