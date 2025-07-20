@@ -39,7 +39,7 @@ import {
 } from './components/Helper'
 
 export const RizzFablesInfo: SourceInfo = {
-    version: '2.0.10',
+    version: '2.0.11',
     name: 'RizzFables',
     description:
         "Extension that pulls manga from RizzFables or it's derivatives.",
@@ -313,7 +313,7 @@ export class RizzFables extends SourceConfiguration implements Source {
 
         return App.createRequest({
             url: searchUrl.build({
-                addTrailingSlash: true,
+                addTrailingSlash: false,
                 includeUndefinedParameters: false
             }),
             headers: headers,
@@ -350,36 +350,31 @@ export class RizzFables extends SourceConfiguration implements Source {
         const sectionValues = Object.values(this.homescreen_sections).sort(
             (n1, n2) => n1.sortIndex - n2.sortIndex
         )
-        for (const section of sectionValues) {
-            if (!section.enabled) {
-                continue
-            }
-            // Let the app load empty sections
-            sectionCallback(section.section)
-        }
 
         for (const section of sectionValues) {
             if (!section.enabled) {
                 continue
             }
+            sectionCallback(section.section)
 
             promises.push(
-                new Promise((resolve) => {
-                    this.parser
-                        .parseHomeSection($, section, this)
-                        .then((items) => {
-                            section.section.items = items
-                            sectionCallback(section.section)
-                        })
-                        .finally(() => {
-                            resolve()
-                        })
+                this.parser.parseHomeSection($, section, this).then((items) => {
+                    section.section.items = items
+                    sectionCallback(section.section)
                 })
             )
         }
 
         // Make sure the function completes and ensures all sections are loaded even if some fail
-        await Promise.allSettled(promises)
+        const promArray = await Promise.allSettled(promises)
+        promArray.forEach((result, index) => {
+            if (result.status !== 'fulfilled') {
+                console.error(
+                    `Failed to load section ${sectionValues[index]?.section.id}:`,
+                    result.reason
+                )
+            }
+        })
     }
 
     async getViewMoreItems(
