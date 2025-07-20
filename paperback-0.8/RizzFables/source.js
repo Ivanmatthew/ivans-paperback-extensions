@@ -15322,7 +15322,7 @@ Image url: ${image}`
 
   // src/RizzFables/RizzFables.ts
   var RizzFablesInfo = {
-    version: "2.0.12",
+    version: "2.0.13",
     name: "RizzFables",
     description: "Extension that pulls manga from RizzFables or it's derivatives.",
     author: "IvanMatthew",
@@ -15354,7 +15354,11 @@ Image url: ${image}`
         },
         latest_update: {
           ...DefaultHomeSectionData,
-          section: createHomeSection("latest_update", "Latest Updates"),
+          section: createHomeSection(
+            "latest_update",
+            "Latest Updates",
+            false
+          ),
           selectorFunc: ($2) => $2("div.uta"),
           titleSelectorFunc: ($2, element) => $2("a", element).attr("title"),
           subtitleSelectorFunc: ($2, element) => $2("li > a, div.epxs", $2("div.luf, div.bigor", element)).first().text().trim(),
@@ -15554,9 +15558,6 @@ Image url: ${image}`
         sectionCallback(section.section);
         promises.push(
           this.parser.parseHomeSection($2, section, this).then((items) => {
-            console.log(
-              `Loaded section: ${section.section.id} with ${items.length} items`
-            );
             section.section.items = items;
             sectionCallback(section.section);
           }).catch((error) => {
@@ -15567,8 +15568,8 @@ Image url: ${image}`
           })
         );
       }
-      const promArray = await Promise.allSettled(promises);
-      promArray.forEach((result, index2) => {
+      const promiseArray = await Promise.allSettled(promises);
+      promiseArray.forEach((result, index2) => {
         if (result.status === "rejected") {
           console.error(
             `Failed to load section ${sectionValues[index2]?.section.id}:`,
@@ -15576,6 +15577,9 @@ Image url: ${image}`
           );
         }
       });
+      if (promiseArray.every((result) => result.status === "fulfilled")) {
+        console.log("All sections loaded successfully.");
+      }
     }
     async getViewMoreItems(homepageSectionId, metadata) {
       switch (homepageSectionId) {
