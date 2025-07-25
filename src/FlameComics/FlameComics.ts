@@ -25,10 +25,10 @@ import * as cheerio from 'cheerio'
 
 const FLAMECOMICS_DOMAIN = 'https://flamecomics.xyz'
 const FLAMECOMICS_CDN_DOMAIN = 'https://cdn.flamecomics.xyz'
-const IMAGE_CDN_SLUG = 'uploads'
+const IMAGE_CDN_SLUG = 'uploads/images/series'
 
 export const FlameComicsInfo: SourceInfo = {
-    version: '1.1.4',
+    version: '1.1.5',
     name: 'FlameComics',
     description: 'Flame comics source for 0.8',
     author: 'IvanMatthew',
