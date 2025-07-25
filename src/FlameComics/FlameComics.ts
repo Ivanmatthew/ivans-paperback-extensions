@@ -25,8 +25,10 @@ import * as cheerio from 'cheerio'
 
 const FLAMECOMICS_DOMAIN = 'https://flamecomics.xyz'
 const FLAMECOMICS_CDN_DOMAIN = 'https://cdn.flamecomics.xyz'
+const IMAGE_CDN_SLUG = 'uploads'
+
 export const FlameComicsInfo: SourceInfo = {
-    version: '1.1.3',
+    version: '1.1.4',
     name: 'FlameComics',
     description: 'Flame comics source for 0.8',
     author: 'IvanMatthew',
@@ -85,7 +87,7 @@ type FlameComicsComicObject = {
     schedule: string
     views: number
     likes?: number | null
-    cover: string // as json object, FLAMECOMICS_CDN_DOMAIN + "/series/" + series_id + cover
+    cover: string // as json object, FLAMECOMICS_CDN_DOMAIN + "/${IMAGE_CDN_SLUG}/" + series_id + cover
     draft?: number | null
     last_edit: string // timestamp
     time: number // also timestamp
@@ -108,7 +110,7 @@ type FlameComicsComicSeriesObject = {
     schedule: string
     views: number
     likes?: number | null
-    cover: string // as json object, FLAMECOMICS_CDN_DOMAIN + "/series/" + series_id + cover
+    cover: string // as json object, FLAMECOMICS_CDN_DOMAIN + "/${IMAGE_CDN_SLUG}/" + series_id + cover
     last_edit: string // timestamp
     time: number // also timestamp
 }
@@ -124,7 +126,7 @@ type FlameComicsCarouselComicObject = {
     description: string
     categories: string // as json array
     language: string
-    banner_blob: string // as json object, FLAMECOMICS_CDN_DOMAIN + "/series/" + series_id + banner_blob.banner (when json parsed)
+    banner_blob: string // as json object, FLAMECOMICS_CDN_DOMAIN + "/${IMAGE_CDN_SLUG}/" + series_id + banner_blob.banner (when json parsed)
 }
 type FlameComicsSectionObject = {
     title: string
@@ -312,7 +314,7 @@ export class FlameComics
                 ) as FlameComicsBannerObject
                 return App.createPartialSourceManga({
                     mangaId: comic.series_id.toString(),
-                    image: `${FLAMECOMICS_CDN_DOMAIN}/series/${comic.series_id}/${jsonParsedBannerBlob.banner}`,
+                    image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${comic.series_id}/${jsonParsedBannerBlob.banner}`,
                     title: comic.title
                 })
             })
@@ -329,7 +331,7 @@ export class FlameComics
                 (comic) => {
                     return App.createPartialSourceManga({
                         mangaId: comic.series_id.toString(),
-                        image: `${FLAMECOMICS_CDN_DOMAIN}/series/${comic.series_id}/${comic.cover}`,
+                        image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${comic.series_id}/${comic.cover}`,
                         title: comic.title,
                         subtitle: `${comic.views} views | ${comic.status}`
                     })
@@ -348,7 +350,7 @@ export class FlameComics
                 (comic) => {
                     return App.createPartialSourceManga({
                         mangaId: comic.series_id.toString(),
-                        image: `${FLAMECOMICS_CDN_DOMAIN}/series/${comic.series_id}/${comic.cover}`,
+                        image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${comic.series_id}/${comic.cover}`,
                         title: comic.title,
                         subtitle: `${comic.chapters[0]?.chapter} | ${comic.status}`
                     })
@@ -385,7 +387,7 @@ export class FlameComics
         return App.createSourceManga({
             id: mangaId,
             mangaInfo: App.createMangaInfo({
-                image: `${FLAMECOMICS_CDN_DOMAIN}/series/${mangaId}/${mangaDetailsPageProps.series.cover}`,
+                image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${mangaId}/${mangaDetailsPageProps.series.cover}`,
                 artist: mangaDetailsPageProps.series.artist,
                 author: mangaDetailsPageProps.series.author,
                 desc: cheerio
@@ -414,7 +416,7 @@ export class FlameComics
                     })
                 ],
                 covers: [
-                    `${FLAMECOMICS_CDN_DOMAIN}/series/${mangaId}/${mangaDetailsPageProps.series.cover}`
+                    `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${mangaId}/${mangaDetailsPageProps.series.cover}`
                 ]
             })
         })
@@ -483,7 +485,7 @@ export class FlameComics
         // images is an object with keys as index and values as image object
         // re-cast iamges
         const images = Object.entries(chapter.images).map(([index, image]) => {
-            return `${FLAMECOMICS_CDN_DOMAIN}/series/${mangaId}/${chapter.token}/${image.name}`
+            return `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${mangaId}/${chapter.token}/${image.name}`
         })
 
         return App.createChapterDetails({
@@ -576,7 +578,7 @@ export class FlameComics
                 .map((comic) => {
                     return App.createPartialSourceManga({
                         mangaId: comic.series_id.toString(),
-                        image: `${FLAMECOMICS_CDN_DOMAIN}/series/${comic.series_id}/${comic.cover}`,
+                        image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${comic.series_id}/${comic.cover}`,
                         title: comic.title,
                         subtitle: comic.status
                     })
