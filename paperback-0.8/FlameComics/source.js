@@ -14597,9 +14597,9 @@ var _Sources = (() => {
   // src/FlameComics/FlameComics.ts
   var FLAMECOMICS_DOMAIN = "https://flamecomics.xyz";
   var FLAMECOMICS_CDN_DOMAIN = "https://cdn.flamecomics.xyz";
-  var IMAGE_CDN_SLUG = "uploads";
+  var IMAGE_CDN_SLUG = "uploads/images/series";
   var FlameComicsInfo = {
-    version: "1.1.4",
+    version: "1.1.5",
     name: "FlameComics",
     description: "Flame comics source for 0.8",
     author: "IvanMatthew",
