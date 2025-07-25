@@ -14597,8 +14597,9 @@ var _Sources = (() => {
   // src/FlameComics/FlameComics.ts
   var FLAMECOMICS_DOMAIN = "https://flamecomics.xyz";
   var FLAMECOMICS_CDN_DOMAIN = "https://cdn.flamecomics.xyz";
+  var IMAGE_CDN_SLUG = "uploads";
   var FlameComicsInfo = {
-    version: "1.1.3",
+    version: "1.1.4",
     name: "FlameComics",
     description: "Flame comics source for 0.8",
     author: "IvanMatthew",
@@ -14722,7 +14723,7 @@ var _Sources = (() => {
           );
           return App.createPartialSourceManga({
             mangaId: comic.series_id.toString(),
-            image: `${FLAMECOMICS_CDN_DOMAIN}/series/${comic.series_id}/${jsonParsedBannerBlob.banner}`,
+            image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${comic.series_id}/${jsonParsedBannerBlob.banner}`,
             title: comic.title
           });
         })
@@ -14737,7 +14738,7 @@ var _Sources = (() => {
           (comic) => {
             return App.createPartialSourceManga({
               mangaId: comic.series_id.toString(),
-              image: `${FLAMECOMICS_CDN_DOMAIN}/series/${comic.series_id}/${comic.cover}`,
+              image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${comic.series_id}/${comic.cover}`,
               title: comic.title,
               subtitle: `${comic.views} views | ${comic.status}`
             });
@@ -14754,7 +14755,7 @@ var _Sources = (() => {
           (comic) => {
             return App.createPartialSourceManga({
               mangaId: comic.series_id.toString(),
-              image: `${FLAMECOMICS_CDN_DOMAIN}/series/${comic.series_id}/${comic.cover}`,
+              image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${comic.series_id}/${comic.cover}`,
               title: comic.title,
               subtitle: `${comic.chapters[0]?.chapter} | ${comic.status}`
             });
@@ -14781,7 +14782,7 @@ var _Sources = (() => {
       return App.createSourceManga({
         id: mangaId,
         mangaInfo: App.createMangaInfo({
-          image: `${FLAMECOMICS_CDN_DOMAIN}/series/${mangaId}/${mangaDetailsPageProps.series.cover}`,
+          image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${mangaId}/${mangaDetailsPageProps.series.cover}`,
           artist: mangaDetailsPageProps.series.artist,
           author: mangaDetailsPageProps.series.author,
           desc: load(mangaDetailsPageProps.series.description).text(),
@@ -14808,7 +14809,7 @@ var _Sources = (() => {
             })
           ],
           covers: [
-            `${FLAMECOMICS_CDN_DOMAIN}/series/${mangaId}/${mangaDetailsPageProps.series.cover}`
+            `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${mangaId}/${mangaDetailsPageProps.series.cover}`
           ]
         })
       });
@@ -14856,7 +14857,7 @@ var _Sources = (() => {
         throw new Error("Chapter not found");
       }
       const images = Object.entries(chapter.images).map(([index2, image]) => {
-        return `${FLAMECOMICS_CDN_DOMAIN}/series/${mangaId}/${chapter.token}/${image.name}`;
+        return `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${mangaId}/${chapter.token}/${image.name}`;
       });
       return App.createChapterDetails({
         id: chapter.chapter_id.toString(),
@@ -14923,7 +14924,7 @@ var _Sources = (() => {
         }).map((comic) => {
           return App.createPartialSourceManga({
             mangaId: comic.series_id.toString(),
-            image: `${FLAMECOMICS_CDN_DOMAIN}/series/${comic.series_id}/${comic.cover}`,
+            image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${comic.series_id}/${comic.cover}`,
             title: comic.title,
             subtitle: comic.status
           });
