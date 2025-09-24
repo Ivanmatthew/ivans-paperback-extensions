@@ -28,7 +28,7 @@ const FLAMECOMICS_CDN_DOMAIN = 'https://cdn.flamecomics.xyz'
 const IMAGE_CDN_SLUG = 'uploads/images/series'
 
 export const FlameComicsInfo: SourceInfo = {
-    version: '1.1.5',
+    version: '1.1.6',
     name: 'FlameComics',
     description: 'Flame comics source for 0.8',
     author: 'IvanMatthew',
@@ -73,7 +73,7 @@ type FlameComicsChapterObject = {
 type FlameComicsComicObject = {
     series_id: number
     title: string
-    altTitles: string // as json array
+    altTitles: string[]
     description: string
     language: string
     type: string
@@ -96,7 +96,7 @@ type FlameComicsComicObject = {
 type FlameComicsComicSeriesObject = {
     series_id: number
     title: string
-    altTitles: string // as json array
+    altTitles: string[]
     description: string
     language: string
     type: string
@@ -397,7 +397,7 @@ export class FlameComics
                 hentai: false,
                 titles: [
                     mangaDetailsPageProps.series.title,
-                    ...JSON.parse(mangaDetailsPageProps.series.altTitles).map(
+                    ...mangaDetailsPageProps.series.altTitles.map(
                         (title: string) => cheerio.load(title).text()
                     )
                 ],
@@ -564,7 +564,7 @@ export class FlameComics
                             comic.title
                                 .toLowerCase()
                                 .includes(query.title.toLowerCase()) ||
-                            JSON.parse(comic.altTitles).some((title: string) =>
+                            comic.altTitles.some((title: string) =>
                                 title
                                     .toLowerCase()
                                     // @ts-ignore
