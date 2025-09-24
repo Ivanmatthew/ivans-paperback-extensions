@@ -14599,7 +14599,7 @@ var _Sources = (() => {
   var FLAMECOMICS_CDN_DOMAIN = "https://cdn.flamecomics.xyz";
   var IMAGE_CDN_SLUG = "uploads/images/series";
   var FlameComicsInfo = {
-    version: "1.1.5",
+    version: "1.1.6",
     name: "FlameComics",
     description: "Flame comics source for 0.8",
     author: "IvanMatthew",
@@ -14790,7 +14790,7 @@ var _Sources = (() => {
           hentai: false,
           titles: [
             mangaDetailsPageProps.series.title,
-            ...JSON.parse(mangaDetailsPageProps.series.altTitles).map(
+            ...mangaDetailsPageProps.series.altTitles.map(
               (title) => load(title).text()
             )
           ],
@@ -14916,7 +14916,7 @@ var _Sources = (() => {
           return true;
         }).filter((comic) => {
           if (query.title !== void 0) {
-            return comic.title.toLowerCase().includes(query.title.toLowerCase()) || JSON.parse(comic.altTitles).some(
+            return comic.title.toLowerCase().includes(query.title.toLowerCase()) || comic.altTitles.some(
               (title) => title.toLowerCase().includes(query.title.toLowerCase())
             );
           }
