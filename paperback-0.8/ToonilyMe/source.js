@@ -872,11 +872,11 @@ var _Sources = (() => {
     }
   });
 
-  // src/ToonilyMe/ToonilyMe.ts
-  var ToonilyMe_exports = {};
-  __export(ToonilyMe_exports, {
-    ToonilyMe: () => ToonilyMe,
-    ToonilyMeInfo: () => ToonilyMeInfo
+  // src/ToonilyCom/ToonilyCom.ts
+  var ToonilyCom_exports = {};
+  __export(ToonilyCom_exports, {
+    ToonilyCom: () => ToonilyCom,
+    ToonilyComInfo: () => ToonilyComInfo
   });
   var import_types2 = __toESM(require_lib());
 
@@ -1566,9 +1566,9 @@ Please go to Settings > Sources > ${this.baseUrl} and press Cloudflare Bypass`
     }
   };
 
-  // src/ToonilyMe/ToonilyMe.ts
+  // src/ToonilyCom/ToonilyCom.ts
   var DOMAIN = "https://toonily.com";
-  var ToonilyMeInfo = {
+  var ToonilyComInfo = {
     version: getExportVersion("0.0.0"),
     name: "ToonilyMe",
     description: `Extension that pulls manga from ${DOMAIN}`,
@@ -1585,12 +1585,12 @@ Please go to Settings > Sources > ${this.baseUrl} and press Cloudflare Bypass`
     ],
     intents: import_types2.SourceIntents.MANGA_CHAPTERS | import_types2.SourceIntents.HOMEPAGE_SECTIONS | import_types2.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
   };
-  var ToonilyMe = class extends BuddyComplex {
+  var ToonilyCom = class extends BuddyComplex {
     constructor() {
       super(...arguments);
       this.baseUrl = DOMAIN;
     }
   };
-  return __toCommonJS(ToonilyMe_exports);
+  return __toCommonJS(ToonilyCom_exports);
 })();
 this.Sources = _Sources; if (typeof exports === 'object' && typeof module !== 'undefined') {module.exports.Sources = this.Sources;}
