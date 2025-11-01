@@ -1567,7 +1567,7 @@ Please go to Settings > Sources > ${this.baseUrl} and press Cloudflare Bypass`
   };
 
   // src/ToonilyMe/ToonilyMe.ts
-  var DOMAIN = "https://toonily.me";
+  var DOMAIN = "https://toonily.com";
   var ToonilyMeInfo = {
     version: getExportVersion("0.0.0"),
     name: "ToonilyMe",
