@@ -22,13 +22,14 @@ import {
     Response
 } from '@paperback/types'
 import * as cheerio from 'cheerio'
+import { URLBuilder } from '../UrlBuilder'
 
 const FLAMECOMICS_DOMAIN = 'https://flamecomics.xyz'
 const FLAMECOMICS_CDN_DOMAIN = 'https://cdn.flamecomics.xyz'
 const IMAGE_CDN_SLUG = 'uploads/images/series'
 
 export const FlameComicsInfo: SourceInfo = {
-    version: '1.1.6',
+    version: '1.2.0',
     name: 'FlameComics',
     description: 'Flame comics source for 0.8',
     author: 'IvanMatthew',
@@ -48,27 +49,44 @@ export const FlameComicsInfo: SourceInfo = {
         SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
 }
 
-type FlameComicsImageObject = {
+type FlameComicsChapterImageObject = {
     size: number
-    type: string
+    type: string[] // first idx being the mime type
     name: string
     modified: string // ISO8601 timestamp
     width: number
     height: number
 }
 type FlameComicsChapterObject = {
+    series_id: number
+    chapter_id: number
+    chapter: string
+    chapter_title: string | null
+    images: FlameComicsChapterImageObject[]
+    language: string
+    draft: number
+    hidden: number
+    token: string
+    release_date: number // timestamp
+    edit_time: number // timestamp
+    unix_timestamp: number
+    title: string
+    altTitles: string[]
+    tags: string[]
+    description: string // richtext html
+    cover: string
+}
+type FlameComicsChapterPreviewObject = {
     chapter_id: number
     series_id: number
     chapter: string
     title: string
-    images: FlameComicsImageObject[]
-    language: string
-    views: number
-    likes: number
-    hidden: number
-    release_date: string // timestamp
+    cover: {
+        cover: string
+    }
+    release_date: number // timestamp
     token: string
-    unix_timestamp: number
+    edit_time: number // timestamp
 }
 type FlameComicsComicObject = {
     series_id: number
@@ -85,7 +103,6 @@ type FlameComicsComicObject = {
     year: number
     status: string
     schedule: string
-    views: number
     likes?: number | null
     cover: string // as json object, FLAMECOMICS_CDN_DOMAIN + "/${IMAGE_CDN_SLUG}/" + series_id + cover
     draft?: number | null
@@ -96,26 +113,36 @@ type FlameComicsComicObject = {
 type FlameComicsComicSeriesObject = {
     series_id: number
     title: string
-    altTitles: string[]
     description: string
     language: string
     type: string
     categories: string[] // tags: string[]
     country: string
-    author: string
-    artist: string
-    publisher: string
+    author: string[]
+    artist: string[]
+    publisher: string[]
     year: number
     status: string
-    schedule: string
-    views: number
-    likes?: number | null
+    likes: number
     cover: string // as json object, FLAMECOMICS_CDN_DOMAIN + "/${IMAGE_CDN_SLUG}/" + series_id + cover
     last_edit: string // timestamp
     time: number // also timestamp
 }
-type FlameComicsSectionComicObject = FlameComicsComicObject & {
-    chapters: FlameComicsChapterObject[]
+type FlameComicsSectionComicObject = {
+    series_id: number
+    title: string
+    language: string
+    type: string
+    tags: string[]
+    country: string
+    author: string[]
+    artist: string[]
+    publisher: string[]
+    status: string
+    likes: number
+    cover: string
+    last_edit: string
+    time: number
 }
 type FlameComicsBannerObject = {
     banner: string
@@ -123,14 +150,14 @@ type FlameComicsBannerObject = {
 type FlameComicsCarouselComicObject = {
     series_id: number
     title: string
-    description: string
-    categories: string // as json array
+    categories: string[]
     language: string
     banner_blob: string // as json object, FLAMECOMICS_CDN_DOMAIN + "/${IMAGE_CDN_SLUG}/" + series_id + banner_blob.banner (when json parsed)
 }
 type FlameComicsSectionObject = {
     title: string
     showChapters: boolean
+    carousel: boolean
     series: FlameComicsSectionComicObject[]
 }
 type FlameComicsEntriesObject = {
@@ -150,7 +177,15 @@ type FlameComicsMangaDetailsObject = {
     __N_SSG: boolean
     pageProps: {
         series: FlameComicsComicObject
-        chapters: FlameComicsChapterObject[]
+        chapters: FlameComicsChapterPreviewObject[]
+    }
+}
+type FlameComicsMangaChapterDetailsObject = {
+    cookies: {}
+    __N_SSG: boolean
+    pageProps: {
+        chapter: FlameComicsChapterObject
+        chapterList: FlameComicsChapterPreviewObject[]
     }
 }
 type FlameComicsBrowseObject = {
@@ -333,7 +368,7 @@ export class FlameComics
                         mangaId: comic.series_id.toString(),
                         image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${comic.series_id}/${comic.cover}`,
                         title: comic.title,
-                        subtitle: `${comic.views} views | ${comic.status}`
+                        subtitle: `${comic.likes} likes | ${comic.status}`
                     })
                 }
             )
@@ -352,7 +387,7 @@ export class FlameComics
                         mangaId: comic.series_id.toString(),
                         image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${comic.series_id}/${comic.cover}`,
                         title: comic.title,
-                        subtitle: `${comic.chapters[0]?.chapter} | ${comic.status}`
+                        subtitle: comic.status
                     })
                 }
             )
@@ -446,9 +481,11 @@ export class FlameComics
             return App.createChapter({
                 id: chapter.chapter_id.toString(),
                 chapNum: chapterNumber,
-                langCode: this.convertLanguageNameToCode(chapter.language),
+                langCode: '🇬🇧',
                 name:
-                    chapter.title !== ''
+                    chapter.title != null &&
+                    chapter.title !== '' &&
+                    chapter.title !== 'null'
                         ? `Ch. ${chapterNumber} - ${chapter.title}`
                         : `Ch. ${chapterNumber}`,
                 time: new Date(Number(chapter.release_date) * 1000)
@@ -474,22 +511,43 @@ export class FlameComics
                 ).data as string
             ) as FlameComicsMangaDetailsObject
         ).pageProps
-
-        const chapter = mangaDetailsPageProps.chapters.find(
+        const chapterPreview = mangaDetailsPageProps.chapters.find(
             (chapter) => chapter.chapter_id.toString() === chapterId
         )
-        if (!chapter) {
+        if (!chapterPreview) {
             throw new Error('Chapter not found')
         }
+        const token = chapterPreview.token
+
+        const mangaChapterDetailsUrlBuilder = new URLBuilder(
+            `${FLAMECOMICS_DOMAIN}/_next/data/${this.buildId}/series/${mangaId}/${token}.json`
+        )
+            .addQueryParameter('id', mangaId)
+            .addQueryParameter('token', token)
+        const mangaChapterDetailsPageProps = (
+            JSON.parse(
+                (
+                    await this.scheduleRequest(
+                        App.createRequest({
+                            url: mangaChapterDetailsUrlBuilder.build(),
+                            method: 'GET'
+                        }),
+                        0
+                    )
+                ).data as string
+            ) as FlameComicsMangaChapterDetailsObject
+        ).pageProps
 
         // images is an object with keys as index and values as image object
         // re-cast iamges
-        const images = Object.entries(chapter.images).map(([index, image]) => {
-            return `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${mangaId}/${chapter.token}/${image.name}`
+        const images = Object.entries(
+            mangaChapterDetailsPageProps.chapter.images
+        ).map(([index, image]) => {
+            return `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${mangaId}/${token}/${image.name}`
         })
 
         return App.createChapterDetails({
-            id: chapter.chapter_id.toString(),
+            id: mangaChapterDetailsPageProps.chapter.chapter_id.toString(),
             mangaId: mangaId,
             pages: images
         })
@@ -560,17 +618,9 @@ export class FlameComics
                 })
                 .filter((comic) => {
                     if (query.title !== undefined) {
-                        return (
-                            comic.title
-                                .toLowerCase()
-                                .includes(query.title.toLowerCase()) ||
-                            comic.altTitles.some((title: string) =>
-                                title
-                                    .toLowerCase()
-                                    // @ts-ignore
-                                    .includes(query.title.toLowerCase())
-                            )
-                        )
+                        return comic.title
+                            .toLowerCase()
+                            .includes(query.title.toLowerCase())
                     }
 
                     return true
