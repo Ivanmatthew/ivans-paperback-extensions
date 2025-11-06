@@ -14594,12 +14594,74 @@ var _Sources = (() => {
   var { parseHTML: parseHTML2 } = static_exports;
   var { root: root2 } = static_exports;
 
+  // src/UrlBuilder.ts
+  var defaultBuildParameters = {
+    addTrailingSlash: false,
+    includeUndefinedParameters: false
+  };
+  var URLBuilder = class {
+    constructor(baseUrl) {
+      this.parameters = {};
+      this.pathComponents = [];
+      this.baseUrl = baseUrl.replace(/(^\/)?(?=.*)(\/$)?/gim, "");
+    }
+    addPathComponent(component) {
+      this.pathComponents.push(component.replace(/(^\/)?(?=.*)(\/$)?/gim, ""));
+      return this;
+    }
+    addQueryParameter(key, value) {
+      if (Array.isArray(value) && (!value.length || value.length === 0)) {
+        return this;
+      }
+      const array = this.parameters[key];
+      if (array?.length) {
+        if (Array.isArray(value)) {
+          array.push(...value);
+        } else {
+          array.push(value);
+        }
+      } else {
+        this.parameters[key] = value;
+      }
+      return this;
+    }
+    buildQueryParameters() {
+      if (Object.values(this.parameters).length === 0) {
+        return "";
+      } else if (Object.values(this.parameters).length === 1) {
+        const key = Object.keys(this.parameters)[0];
+        const value = this.parameters[key];
+        if (Array.isArray(value)) {
+          return value.map((value2) => `${key}[]=${value2}`).join("&");
+        }
+        return `${key}=${value}`;
+      }
+      return Object.entries(this.parameters).map((entry) => {
+        if (Array.isArray(entry[1])) {
+          return entry[1].map((value) => `${entry[0]}[]=${value}`).join("&");
+        }
+        return `${entry[0]}=${entry[1]}`;
+      }).join("&");
+    }
+    build({
+      addTrailingSlash,
+      includeUndefinedParameters
+    } = defaultBuildParameters) {
+      let finalUrl = this.baseUrl + "/";
+      finalUrl += this.pathComponents.join("/");
+      finalUrl += addTrailingSlash ? "/" : "";
+      finalUrl += Object.values(this.parameters).length > 0 ? "?" : "";
+      finalUrl += this.buildQueryParameters();
+      return finalUrl;
+    }
+  };
+
   // src/FlameComics/FlameComics.ts
   var FLAMECOMICS_DOMAIN = "https://flamecomics.xyz";
   var FLAMECOMICS_CDN_DOMAIN = "https://cdn.flamecomics.xyz";
   var IMAGE_CDN_SLUG = "uploads/images/series";
   var FlameComicsInfo = {
-    version: "1.1.6",
+    version: "1.2.0",
     name: "FlameComics",
     description: "Flame comics source for 0.8",
     author: "IvanMatthew",
@@ -14740,7 +14802,7 @@ var _Sources = (() => {
               mangaId: comic.series_id.toString(),
               image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${comic.series_id}/${comic.cover}`,
               title: comic.title,
-              subtitle: `${comic.views} views | ${comic.status}`
+              subtitle: `${comic.likes} likes | ${comic.status}`
             });
           }
         )
@@ -14757,7 +14819,7 @@ var _Sources = (() => {
               mangaId: comic.series_id.toString(),
               image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${comic.series_id}/${comic.cover}`,
               title: comic.title,
-              subtitle: `${comic.chapters[0]?.chapter} | ${comic.status}`
+              subtitle: comic.status
             });
           }
         )
@@ -14833,8 +14895,8 @@ var _Sources = (() => {
         return App.createChapter({
           id: chapter.chapter_id.toString(),
           chapNum: chapterNumber,
-          langCode: this.convertLanguageNameToCode(chapter.language),
-          name: chapter.title !== "" ? `Ch. ${chapterNumber} - ${chapter.title}` : `Ch. ${chapterNumber}`,
+          langCode: "\u{1F1EC}\u{1F1E7}",
+          name: chapter.title != null && chapter.title !== "" && chapter.title !== "null" ? `Ch. ${chapterNumber} - ${chapter.title}` : `Ch. ${chapterNumber}`,
           time: new Date(Number(chapter.release_date) * 1e3)
         });
       });
@@ -14850,17 +14912,32 @@ var _Sources = (() => {
           0
         )).data
       ).pageProps;
-      const chapter = mangaDetailsPageProps.chapters.find(
-        (chapter2) => chapter2.chapter_id.toString() === chapterId
+      const chapterPreview = mangaDetailsPageProps.chapters.find(
+        (chapter) => chapter.chapter_id.toString() === chapterId
       );
-      if (!chapter) {
+      if (!chapterPreview) {
         throw new Error("Chapter not found");
       }
-      const images = Object.entries(chapter.images).map(([index2, image]) => {
-        return `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${mangaId}/${chapter.token}/${image.name}`;
+      const token = chapterPreview.token;
+      const mangaChapterDetailsUrlBuilder = new URLBuilder(
+        `${FLAMECOMICS_DOMAIN}/_next/data/${this.buildId}/series/${mangaId}/${token}.json`
+      ).addQueryParameter("id", mangaId).addQueryParameter("token", token);
+      const mangaChapterDetailsPageProps = JSON.parse(
+        (await this.scheduleRequest(
+          App.createRequest({
+            url: mangaChapterDetailsUrlBuilder.build(),
+            method: "GET"
+          }),
+          0
+        )).data
+      ).pageProps;
+      const images = Object.entries(
+        mangaChapterDetailsPageProps.chapter.images
+      ).map(([index2, image]) => {
+        return `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${mangaId}/${token}/${image.name}`;
       });
       return App.createChapterDetails({
-        id: chapter.chapter_id.toString(),
+        id: mangaChapterDetailsPageProps.chapter.chapter_id.toString(),
         mangaId,
         pages: images
       });
@@ -14916,9 +14993,7 @@ var _Sources = (() => {
           return true;
         }).filter((comic) => {
           if (query.title !== void 0) {
-            return comic.title.toLowerCase().includes(query.title.toLowerCase()) || comic.altTitles.some(
-              (title) => title.toLowerCase().includes(query.title.toLowerCase())
-            );
+            return comic.title.toLowerCase().includes(query.title.toLowerCase());
           }
           return true;
         }).map((comic) => {
