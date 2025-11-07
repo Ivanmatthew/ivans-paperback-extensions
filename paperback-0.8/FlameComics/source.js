@@ -14661,7 +14661,7 @@ var _Sources = (() => {
   var FLAMECOMICS_CDN_DOMAIN = "https://cdn.flamecomics.xyz";
   var IMAGE_CDN_SLUG = "uploads/images/series";
   var FlameComicsInfo = {
-    version: "1.2.0",
+    version: "1.2.1",
     name: "FlameComics",
     description: "Flame comics source for 0.8",
     author: "IvanMatthew",
@@ -14680,11 +14680,13 @@ var _Sources = (() => {
   var FlameComics = class {
     constructor() {
       this.buildId = "";
-      this.refreshBuildId = async () => {
-        const cachedBuildId = await this.stateManager.retrieve("buildId");
-        if (cachedBuildId) {
-          this.buildId = cachedBuildId;
-          return;
+      this.refreshBuildId = async (deleteCache = false) => {
+        if (!deleteCache) {
+          const cachedBuildId = await this.stateManager.retrieve("buildId");
+          if (cachedBuildId) {
+            this.buildId = cachedBuildId;
+            return;
+          }
         }
         const response = await this.requestManager.schedule(
           App.createRequest({
@@ -14765,15 +14767,25 @@ var _Sources = (() => {
     /// Main screen
     async getHomePageSections(sectionCallback) {
       await this.refreshBuildId();
-      const indexResponseData = JSON.parse(
-        (await this.scheduleRequest(
-          App.createRequest({
-            url: `${FLAMECOMICS_DOMAIN}/_next/data/${this.buildId}/index.json`,
-            method: "GET"
-          }),
-          0
-        )).data
-      );
+      const indexRequest = App.createRequest({
+        url: `${FLAMECOMICS_DOMAIN}/_next/data/${this.buildId}/index.json`,
+        method: "GET"
+      });
+      let indexResponse = await this.scheduleRequest(indexRequest, 0);
+      if (indexResponse.status === 404) {
+        await this.refreshBuildId(true);
+        indexResponse = await this.scheduleRequest(indexRequest, 0);
+      }
+      let indexResponseData;
+      try {
+        indexResponseData = JSON.parse(
+          indexResponse.data
+        );
+      } catch {
+        throw new Error(
+          "FlameComics could not load, please contact IvanMatthew."
+        );
+      }
       const carrouselSection = App.createHomeSection({
         id: "featured",
         title: "Featured",
