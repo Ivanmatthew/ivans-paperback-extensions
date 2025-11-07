@@ -27,9 +27,10 @@ import { URLBuilder } from '../UrlBuilder'
 const FLAMECOMICS_DOMAIN = 'https://flamecomics.xyz'
 const FLAMECOMICS_CDN_DOMAIN = 'https://cdn.flamecomics.xyz'
 const IMAGE_CDN_SLUG = 'uploads/images/series'
+const IMAGE_CAROUSEL_SLUG = 'uploads/images/carousel'
 
 export const FlameComicsInfo: SourceInfo = {
-    version: '1.2.1',
+    version: '1.2.2',
     name: 'FlameComics',
     description: 'Flame comics source for 0.8',
     author: 'IvanMatthew',
@@ -144,15 +145,15 @@ type FlameComicsSectionComicObject = {
     last_edit: string
     time: number
 }
-type FlameComicsBannerObject = {
-    banner: string
-}
 type FlameComicsCarouselComicObject = {
+    id: number
     series_id: number
+    novel_id: number | null
     title: string
     categories: string[]
     language: string
-    banner_blob: string // as json object, FLAMECOMICS_CDN_DOMAIN + "/${IMAGE_CDN_SLUG}/" + series_id + banner_blob.banner (when json parsed)
+    image: string // as filename, FLAMECOMICS_CDN_DOMAIN + "/${IMAGE_CAROUSEL_SLUG}/" + image
+    link: null
 }
 type FlameComicsSectionObject = {
     title: string
@@ -271,8 +272,7 @@ export class FlameComics
                 'Failed to parse script containing build id, site changed'
             )
         }
-
-        const nextDataJson = JSON.parse(nextData.html() || '')
+        const nextDataJson = JSON.parse(nextData.text() || '')
         if (!nextDataJson) {
             throw new Error(
                 'Failed to parse nextdata containing build id, site changed'
@@ -356,12 +356,9 @@ export class FlameComics
             type: HomeSectionType.featured,
             containsMoreItems: false,
             items: indexResponseData.pageProps.carousel.map((comic) => {
-                const jsonParsedBannerBlob = JSON.parse(
-                    comic.banner_blob
-                ) as FlameComicsBannerObject
                 return App.createPartialSourceManga({
                     mangaId: comic.series_id.toString(),
-                    image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${comic.series_id}/${jsonParsedBannerBlob.banner}`,
+                    image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CAROUSEL_SLUG}/${comic.image}`,
                     title: comic.title
                 })
             })
