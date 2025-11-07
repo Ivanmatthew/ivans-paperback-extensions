@@ -14660,8 +14660,9 @@ var _Sources = (() => {
   var FLAMECOMICS_DOMAIN = "https://flamecomics.xyz";
   var FLAMECOMICS_CDN_DOMAIN = "https://cdn.flamecomics.xyz";
   var IMAGE_CDN_SLUG = "uploads/images/series";
+  var IMAGE_CAROUSEL_SLUG = "uploads/images/carousel";
   var FlameComicsInfo = {
-    version: "1.2.1",
+    version: "1.2.2",
     name: "FlameComics",
     description: "Flame comics source for 0.8",
     author: "IvanMatthew",
@@ -14709,7 +14710,7 @@ var _Sources = (() => {
             "Failed to parse script containing build id, site changed"
           );
         }
-        const nextDataJson = JSON.parse(nextData.html() || "");
+        const nextDataJson = JSON.parse(nextData.text() || "");
         if (!nextDataJson) {
           throw new Error(
             "Failed to parse nextdata containing build id, site changed"
@@ -14792,12 +14793,9 @@ var _Sources = (() => {
         type: import_types2.HomeSectionType.featured,
         containsMoreItems: false,
         items: indexResponseData.pageProps.carousel.map((comic) => {
-          const jsonParsedBannerBlob = JSON.parse(
-            comic.banner_blob
-          );
           return App.createPartialSourceManga({
             mangaId: comic.series_id.toString(),
-            image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CDN_SLUG}/${comic.series_id}/${jsonParsedBannerBlob.banner}`,
+            image: `${FLAMECOMICS_CDN_DOMAIN}/${IMAGE_CAROUSEL_SLUG}/${comic.image}`,
             title: comic.title
           });
         })
