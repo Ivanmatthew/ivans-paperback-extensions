@@ -29,7 +29,7 @@ const FLAMECOMICS_CDN_DOMAIN = 'https://cdn.flamecomics.xyz'
 const IMAGE_CDN_SLUG = 'uploads/images/series'
 
 export const FlameComicsInfo: SourceInfo = {
-    version: '1.2.0',
+    version: '1.2.1',
     name: 'FlameComics',
     description: 'Flame comics source for 0.8',
     author: 'IvanMatthew',
@@ -237,11 +237,13 @@ export class FlameComics
         this.stateManager = App.createSourceStateManager()
     }
 
-    private refreshBuildId = async () => {
-        const cachedBuildId = await this.stateManager.retrieve('buildId')
-        if (cachedBuildId) {
-            this.buildId = cachedBuildId
-            return
+    private refreshBuildId = async (deleteCache: boolean = false) => {
+        if (!deleteCache) {
+            const cachedBuildId = await this.stateManager.retrieve('buildId')
+            if (cachedBuildId) {
+                this.buildId = cachedBuildId
+                return
+            }
         }
 
         const response = await this.requestManager.schedule(
@@ -325,17 +327,27 @@ export class FlameComics
     ): Promise<void> {
         await this.refreshBuildId()
 
-        const indexResponseData = JSON.parse(
-            (
-                await this.scheduleRequest(
-                    App.createRequest({
-                        url: `${FLAMECOMICS_DOMAIN}/_next/data/${this.buildId}/index.json`,
-                        method: 'GET'
-                    }),
-                    0
-                )
-            ).data as string
-        ) as FlameComicsIndexObject
+        const indexRequest = App.createRequest({
+            url: `${FLAMECOMICS_DOMAIN}/_next/data/${this.buildId}/index.json`,
+            method: 'GET'
+        })
+        let indexResponse = await this.scheduleRequest(indexRequest, 0)
+        if (indexResponse.status === 404) {
+            await this.refreshBuildId(true)
+            indexResponse = await this.scheduleRequest(indexRequest, 0)
+        }
+
+        let indexResponseData
+
+        try {
+            indexResponseData = JSON.parse(
+                indexResponse.data as string
+            ) as FlameComicsIndexObject
+        } catch {
+            throw new Error(
+                'FlameComics could not load, please contact IvanMatthew.'
+            )
+        }
 
         // Carrousel
         const carrouselSection = App.createHomeSection({
