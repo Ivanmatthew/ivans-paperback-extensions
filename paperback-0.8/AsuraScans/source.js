@@ -17082,7 +17082,7 @@ var _Sources = (() => {
     const textBufferRepr = parseNextJSData($3);
     const randomChapterImageObjectIdx = textBufferRepr.findByString(
       ["order", "url"],
-      [],
+      ["div", "rating"],
       true
     );
     if (!randomChapterImageObjectIdx) {
@@ -17299,7 +17299,7 @@ var _Sources = (() => {
   var AS_DOMAIN = "https://asuracomic.net";
   var AS_API_DOMAIN = "https://gg.asuracomic.net";
   var AsuraScansInfo = {
-    version: "5.3.3",
+    version: "5.3.4",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
