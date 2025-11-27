@@ -237,7 +237,7 @@ export const parseChapterDetails = async (
 
     const randomChapterImageObjectIdx = textBufferRepr.findByString(
         ['order', 'url'],
-        [],
+        ['div', 'rating'],
         true
     )
     if (!randomChapterImageObjectIdx) {
