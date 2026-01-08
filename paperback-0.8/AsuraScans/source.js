@@ -16687,10 +16687,9 @@ var _Sources = (() => {
                 Array.from(countableByteArray)
               );
               this.currentChunk += line;
-              const toTraverseLength = this.expectedByteArrayLength - this.currentChunkInByteArray.length;
               const actualChunkByteArray = this.currentChunkInByteArray.slice(
                 0,
-                toTraverseLength
+                this.expectedByteArrayLength
               );
               const actualChunk = this.textDecoder.decode(
                 Uint8Array.from(actualChunkByteArray)
@@ -16698,7 +16697,7 @@ var _Sources = (() => {
               const otherChunk = this.textDecoder.decode(
                 Uint8Array.from(
                   this.currentChunkInByteArray.slice(
-                    toTraverseLength
+                    this.expectedByteArrayLength
                   )
                 )
               );
@@ -16739,17 +16738,16 @@ var _Sources = (() => {
           this.expectedByteArrayLength = 0;
           this.currentChunkInByteArray = [];
         } else if (this.currentChunkInByteArray.length > this.expectedByteArrayLength) {
-          const toTraverseLength = this.expectedByteArrayLength - this.currentChunkInByteArray.length;
           const actualChunkByteArray = this.currentChunkInByteArray.slice(
             0,
-            toTraverseLength
+            this.expectedByteArrayLength
           );
           const actualChunk = this.textDecoder.decode(
             Uint8Array.from(actualChunkByteArray)
           );
           const otherChunk = this.textDecoder.decode(
             Uint8Array.from(
-              this.currentChunkInByteArray.slice(toTraverseLength)
+              this.currentChunkInByteArray.slice(this.expectedByteArrayLength)
             )
           );
           const strSplitIndex = this.currentChunk.indexOf(":");
@@ -17299,7 +17297,7 @@ var _Sources = (() => {
   var AS_DOMAIN = "https://asuracomic.net";
   var AS_API_DOMAIN = "https://gg.asuracomic.net";
   var AsuraScansInfo = {
-    version: "5.3.4",
+    version: "5.3.5",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
