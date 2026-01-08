@@ -53,7 +53,8 @@ describe.each([
     ['4', 194],
     ['5', 244],
     ['6', 169],
-    ['7', 203]
+    ['7', 203],
+    ['8', 124]
 ])('RSCDataProcessor Test Case %s', async (casenumstr, expected) => {
     let textBuffer: RSCDataProcessor
     let caseData: string = await Bun.file(
