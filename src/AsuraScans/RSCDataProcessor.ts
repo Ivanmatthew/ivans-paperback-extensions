@@ -89,14 +89,11 @@ export class RSCDataProcessor {
                                 Array.from(countableByteArray)
                             )
                         this.currentChunk += line
-
-                        const toTraverseLength =
-                            this.expectedByteArrayLength -
-                            this.currentChunkInByteArray.length
+                        
                         const actualChunkByteArray =
                             this.currentChunkInByteArray.slice(
                                 0,
-                                toTraverseLength
+                                this.expectedByteArrayLength
                             )
                         const actualChunk = this.textDecoder.decode(
                             Uint8Array.from(actualChunkByteArray)
@@ -104,7 +101,7 @@ export class RSCDataProcessor {
                         const otherChunk = this.textDecoder.decode(
                             Uint8Array.from(
                                 this.currentChunkInByteArray.slice(
-                                    toTraverseLength
+                                    this.expectedByteArrayLength
                                 )
                             )
                         )
@@ -152,19 +149,16 @@ export class RSCDataProcessor {
                 this.currentChunkInByteArray.length >
                 this.expectedByteArrayLength
             ) {
-                const toTraverseLength =
-                    this.expectedByteArrayLength -
-                    this.currentChunkInByteArray.length
                 const actualChunkByteArray = this.currentChunkInByteArray.slice(
                     0,
-                    toTraverseLength
+                    this.expectedByteArrayLength
                 )
                 const actualChunk = this.textDecoder.decode(
                     Uint8Array.from(actualChunkByteArray)
                 )
                 const otherChunk = this.textDecoder.decode(
                     Uint8Array.from(
-                        this.currentChunkInByteArray.slice(toTraverseLength)
+                        this.currentChunkInByteArray.slice(this.expectedByteArrayLength)
                     )
                 )
                 const strSplitIndex = this.currentChunk.indexOf(':')
