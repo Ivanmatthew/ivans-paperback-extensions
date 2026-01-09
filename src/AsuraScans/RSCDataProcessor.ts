@@ -1,34 +1,41 @@
 // @ts-ignore
 import { TextEncoder, TextDecoder } from '@sinonjs/text-encoding'
 
+// Pre-compiled regex - avoids recreation on each call (was O(n) per replacePointers call)
+const POINTER_REGEX = /\$[0-9a-fA-F]+/g
+const LENGTH_REGEX = /T([0-9a-fA-F]+),/
+
 export class RSCDataProcessor {
     private textEncoder: TextEncoder
     private textDecoder: TextDecoder
-    private buffer: string
+    private bufferChunks: string[]  // O(1) append vs O(n) string concat
     private isLocked: boolean
     private bufferArray: string[]
-    private currentChunk: string
-    private currentChunkInByteArray: number[]
+    private currentChunkIndex: number  // Store index instead of rebuilding string
+    private currentChunkByteArray: Uint8Array  // Pre-allocated typed array
+    private byteArrayWritePos: number  // Track position for efficient writes
     private expectedByteArrayLength: number
 
     constructor(initialText: string = '') {
         this.textEncoder = new TextEncoder()
         this.textDecoder = new TextDecoder()
 
-        this.buffer = initialText
+        this.bufferChunks = initialText ? [initialText] : []
         this.isLocked = false
         this.bufferArray = []
 
-        this.currentChunk = ''
-        this.currentChunkInByteArray = []
+        this.currentChunkIndex = -1
+        this.currentChunkByteArray = new Uint8Array(0)
+        this.byteArrayWritePos = 0
         this.expectedByteArrayLength = 0
     }
 
+    // O(1) amortized append instead of O(n) string concatenation
     public append(text: string): void {
         if (this.isLocked) {
             throw new Error('TextBufferRepr is locked')
         }
-        this.buffer += text
+        this.bufferChunks.push(text)
     }
 
     private processSerializedBufferLine(line: string, idx?: number): void {
@@ -36,8 +43,6 @@ export class RSCDataProcessor {
             this.bufferArray[idx] = line
             return
         }
-        // This should only process a line which has been preprocessed to ensure it is a valid buffer line
-        // Therefore, this method does not check for validity and trusts the input
         const strSplitIndex = line.indexOf(':')
         if (strSplitIndex === -1) {
             return
@@ -50,13 +55,33 @@ export class RSCDataProcessor {
         this.bufferArray[intIndex] = value
     }
 
+    // Append bytes to the pre-allocated buffer, growing if needed
+    private appendToByteArray(bytes: Uint8Array): void {
+        const requiredLength = this.byteArrayWritePos + bytes.length
+        if (requiredLength > this.currentChunkByteArray.length) {
+            // Grow buffer with some headroom to reduce reallocations
+            const newSize = Math.max(requiredLength, this.currentChunkByteArray.length * 2, 256)
+            const newArray = new Uint8Array(newSize)
+            newArray.set(this.currentChunkByteArray.subarray(0, this.byteArrayWritePos))
+            this.currentChunkByteArray = newArray
+        }
+        this.currentChunkByteArray.set(bytes, this.byteArrayWritePos)
+        this.byteArrayWritePos += bytes.length
+    }
+
+    private resetChunkState(): void {
+        this.currentChunkIndex = -1
+        this.byteArrayWritePos = 0
+        this.expectedByteArrayLength = 0
+    }
+
     private transformSerializedBufferLine(line: string): void {
         line += '\n'
         if (this.expectedByteArrayLength === 0) {
             const strSplitIndex = line.indexOf(':')
             if (strSplitIndex === -1) {
                 console.log(
-                    `Hi, this is the edgecase: ${line}; ${this.currentChunk}, ${this.currentChunkInByteArray.length}, ${this.expectedByteArrayLength}`
+                    `Hi, this is the edgecase: ${line}; idx=${this.currentChunkIndex}, ${this.byteArrayWritePos}, ${this.expectedByteArrayLength}`
                 )
                 throw new Error(
                     'Uncaught edgecase, please report to get this fixed!'
@@ -66,109 +91,65 @@ export class RSCDataProcessor {
                 this.processSerializedBufferLine(line)
             } else {
                 const commaIndex = line.indexOf(',')
-                const length = line.match(/T([0-9a-fA-F]+),/)?.[1]
+                const lengthMatch = LENGTH_REGEX.exec(line)
+                const length = lengthMatch?.[1]
                 if (length && commaIndex !== -1) {
                     this.expectedByteArrayLength = parseInt(length, 16)
                     const countableChunk = line.slice(commaIndex + 1)
-                    const countableByteArray: Uint8Array =
-                        this.textEncoder.encode(countableChunk)
-                    if (
-                        countableByteArray.length ===
-                        this.expectedByteArrayLength
-                    ) {
+                    const countableByteArray = this.textEncoder.encode(countableChunk)
+                    
+                    if (countableByteArray.length === this.expectedByteArrayLength) {
                         const idx = parseInt(line.slice(0, strSplitIndex), 16)
                         this.processSerializedBufferLine(countableChunk, idx)
-                        this.currentChunk = ''
-                        this.currentChunkInByteArray = []
-                        this.expectedByteArrayLength = 0
-                    } else if (
-                        countableByteArray.length > this.expectedByteArrayLength
-                    ) {
-                        this.currentChunkInByteArray =
-                            this.currentChunkInByteArray.concat(
-                                Array.from(countableByteArray)
-                            )
-                        this.currentChunk += line
+                        this.resetChunkState()
+                    } else if (countableByteArray.length > this.expectedByteArrayLength) {
+                        // Store index for later use
+                        this.currentChunkIndex = parseInt(line.slice(0, strSplitIndex), 16)
+                        this.appendToByteArray(countableByteArray)
                         
-                        const actualChunkByteArray =
-                            this.currentChunkInByteArray.slice(
-                                0,
-                                this.expectedByteArrayLength
-                            )
+                        // Decode only the needed portions using subarray (no copy)
                         const actualChunk = this.textDecoder.decode(
-                            Uint8Array.from(actualChunkByteArray)
+                            this.currentChunkByteArray.subarray(0, this.expectedByteArrayLength)
                         )
                         const otherChunk = this.textDecoder.decode(
-                            Uint8Array.from(
-                                this.currentChunkInByteArray.slice(
-                                    this.expectedByteArrayLength
-                                )
-                            )
+                            this.currentChunkByteArray.subarray(this.expectedByteArrayLength, this.byteArrayWritePos)
                         )
-                        this.processSerializedBufferLine(
-                            actualChunk,
-                            parseInt(
-                                this.currentChunk.slice(0, strSplitIndex),
-                                16
-                            )
-                        )
+                        
+                        this.processSerializedBufferLine(actualChunk, this.currentChunkIndex)
+                        this.resetChunkState()
                         this.transformSerializedBufferLine(otherChunk)
                     } else {
-                        this.currentChunk = line
-                        this.currentChunkInByteArray =
-                            this.currentChunkInByteArray.concat(
-                                Array.from(
-                                    this.textEncoder.encode(countableChunk)
-                                )
-                            )
+                        this.currentChunkIndex = parseInt(line.slice(0, strSplitIndex), 16)
+                        this.appendToByteArray(countableByteArray)
                     }
                 } else {
                     throw new Error(
-                        `An error occurred while processing '${this.currentChunk}', found length: '${length}', commaIndex: '${commaIndex}'`
+                        `An error occurred while processing idx=${this.currentChunkIndex}, found length: '${length}', commaIndex: '${commaIndex}'`
                     )
                 }
             }
         } else {
-            this.currentChunkInByteArray = this.currentChunkInByteArray.concat(
-                Array.from(this.textEncoder.encode(line))
-            )
-            this.currentChunk += line
-            if (
-                this.currentChunkInByteArray.length ===
-                this.expectedByteArrayLength
-            ) {
+            const lineBytes = this.textEncoder.encode(line)
+            this.appendToByteArray(lineBytes)
+            
+            if (this.byteArrayWritePos === this.expectedByteArrayLength) {
                 this.processSerializedBufferLine(
                     this.textDecoder.decode(
-                        Uint8Array.from(this.currentChunkInByteArray)
-                    )
+                        this.currentChunkByteArray.subarray(0, this.byteArrayWritePos)
+                    ),
+                    this.currentChunkIndex
                 )
-                this.currentChunk = ''
-                this.expectedByteArrayLength = 0
-                this.currentChunkInByteArray = []
-            } else if (
-                this.currentChunkInByteArray.length >
-                this.expectedByteArrayLength
-            ) {
-                const actualChunkByteArray = this.currentChunkInByteArray.slice(
-                    0,
-                    this.expectedByteArrayLength
-                )
+                this.resetChunkState()
+            } else if (this.byteArrayWritePos > this.expectedByteArrayLength) {
                 const actualChunk = this.textDecoder.decode(
-                    Uint8Array.from(actualChunkByteArray)
+                    this.currentChunkByteArray.subarray(0, this.expectedByteArrayLength)
                 )
                 const otherChunk = this.textDecoder.decode(
-                    Uint8Array.from(
-                        this.currentChunkInByteArray.slice(this.expectedByteArrayLength)
-                    )
+                    this.currentChunkByteArray.subarray(this.expectedByteArrayLength, this.byteArrayWritePos)
                 )
-                const strSplitIndex = this.currentChunk.indexOf(':')
-                this.processSerializedBufferLine(
-                    actualChunk,
-                    parseInt(this.currentChunk.slice(0, strSplitIndex), 16)
-                )
-                this.expectedByteArrayLength = 0
-                this.currentChunk = ''
-                this.currentChunkInByteArray = []
+                
+                this.processSerializedBufferLine(actualChunk, this.currentChunkIndex)
+                this.resetChunkState()
                 this.transformSerializedBufferLine(otherChunk)
             }
         }
@@ -180,12 +161,25 @@ export class RSCDataProcessor {
         }
         this.isLocked = true
 
-        this.buffer.split('\n').forEach((line, idx) => {
-            if (line === '') {
-                return
+        // Join once at process time - O(n) total instead of O(n²) from repeated concat
+        const buffer = this.bufferChunks.join('')
+        // Store joined buffer for getBuffer() calls
+        this.bufferChunks = [buffer]
+        
+        // Process lines without creating intermediate array
+        let lineStart = 0
+        for (let i = 0; i < buffer.length; i++) {
+            if (buffer[i] === '\n') {
+                if (i > lineStart) {
+                    this.transformSerializedBufferLine(buffer.slice(lineStart, i))
+                }
+                lineStart = i + 1
             }
-            this.transformSerializedBufferLine(line)
-        })
+        }
+        // Handle last line without newline
+        if (lineStart < buffer.length) {
+            this.transformSerializedBufferLine(buffer.slice(lineStart))
+        }
     }
 
     public get(index: number): string | null {
@@ -197,70 +191,58 @@ export class RSCDataProcessor {
         return this.get(intIndex)
     }
 
+    // Optimized: iterate without creating intermediate arrays/objects
     public findByString(
         findString: string[],
         excludeString: string[],
         returnAsHex: boolean = false,
         searchBackwards: boolean = true
     ): string | null {
-        // Find whether the findStrings are contained in a bufferarray entry and if so, return the entry
-        if (returnAsHex) {
-            let hexBufferArray = this.bufferArrayAsHex()
-            if (searchBackwards) {
-                hexBufferArray = Object.fromEntries(
-                    Object.entries(hexBufferArray).reverse()
-                )
-            }
-            for (const [index, entry] of Object.entries(hexBufferArray)) {
-                if (
-                    entry &&
-                    findString.every(
-                        (str) =>
-                            entry.includes(str) &&
-                            !excludeString.some((exStr) =>
-                                entry.includes(exStr)
-                            )
-                    )
-                ) {
-                    return index
+        const arr = this.bufferArray
+        const len = arr.length
+        
+        // Direct iteration - no array copy or reversal needed
+        if (searchBackwards) {
+            for (let i = len - 1; i >= 0; i--) {
+                const entry = arr[i]
+                if (entry && this.matchesFilters(entry, findString, excludeString)) {
+                    return returnAsHex ? i.toString(16) : i.toString()
                 }
             }
         } else {
-            let bufferArray = this.bufferArray
-            if (searchBackwards) {
-                bufferArray = bufferArray.reverse()
-            }
-            for (const [index, entry] of bufferArray.entries()) {
-                if (
-                    entry &&
-                    findString.every(
-                        (str) =>
-                            entry.includes(str) &&
-                            !excludeString.some((exStr) =>
-                                entry.includes(exStr)
-                            )
-                    )
-                ) {
-                    return index.toString()
+            for (let i = 0; i < len; i++) {
+                const entry = arr[i]
+                if (entry && this.matchesFilters(entry, findString, excludeString)) {
+                    return returnAsHex ? i.toString(16) : i.toString()
                 }
             }
         }
-
         return null
     }
 
+    private matchesFilters(entry: string, findString: string[], excludeString: string[]): boolean {
+        for (const str of findString) {
+            if (!entry.includes(str)) return false
+        }
+        for (const exStr of excludeString) {
+            if (entry.includes(exStr)) return false
+        }
+        return true
+    }
+
     public getBuffer(): string {
-        return this.buffer
+        return this.bufferChunks.join('')
     }
 
     public bufferArrayAsHex(): { [key: string]: string } {
         const bufferArrayHex: { [key: string]: string } = {}
-        this.bufferArray.forEach((value: any, index: number) => {
+        const arr = this.bufferArray
+        for (let i = 0; i < arr.length; i++) {
+            const value = arr[i]
             if (value) {
-                bufferArrayHex[index.toString(16)] = value
+                bufferArrayHex[i.toString(16)] = value
             }
-        })
-
+        }
         return bufferArrayHex
     }
 
@@ -269,7 +251,6 @@ export class RSCDataProcessor {
         if (_currentDepth > this.bufferArray.length) {
             throw new Error('Circular dependency detected, please report!')
         }
-        const pointerRegex = /\$[0-9a-fA-F]+/g
 
         let json: any
         try {
@@ -281,29 +262,25 @@ export class RSCDataProcessor {
                 if (
                     typeof value === 'string' &&
                     _currentDepth < this.bufferArray.length &&
-                    value.match(pointerRegex)
+                    POINTER_REGEX.test(value)
                 ) {
-                    const replaceVal = this.replacePointers(
-                        value,
-                        _currentDepth + 1
-                    )
-                    return replaceVal
+                    // Reset lastIndex since we're reusing the global regex
+                    POINTER_REGEX.lastIndex = 0
+                    return this.replacePointers(value, _currentDepth + 1)
                 }
-
                 return value
             })
         }
 
-        return text.replace(pointerRegex, (match) => {
+        // Reset lastIndex before using global regex
+        POINTER_REGEX.lastIndex = 0
+        return text.replace(POINTER_REGEX, (match) => {
             const hexIndex = match.slice(1)
             const value = this.getWithHex(hexIndex)
-            if (
-                value?.match(pointerRegex) &&
-                _currentDepth < this.bufferArray.length
-            ) {
+            if (value && POINTER_REGEX.test(value) && _currentDepth < this.bufferArray.length) {
+                POINTER_REGEX.lastIndex = 0
                 return this.replacePointers(value, _currentDepth + 1)
             }
-
             return value ?? match
         })
     }
