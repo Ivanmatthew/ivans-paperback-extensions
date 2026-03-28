@@ -15268,7 +15268,7 @@ var _Sources = (() => {
   var AS_API_DOMAIN = `https://api.${AS_DOMAIN_NAME}/api`;
   var PAGE_SIZE = 20;
   var AsuraScansInfo = {
-    version: "6.0.0",
+    version: "6.0.1",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
