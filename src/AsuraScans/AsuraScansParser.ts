@@ -398,7 +398,7 @@ const STATUS_TAGS_INFO = [
 const TYPE_TAGS_INFO = [
     {
         id: TAG_SECTION_IDS.TYPES + '|' + 'manga',
-        label: 'Mangatoon'
+        label: 'Manga'
     },
     {
         id: TAG_SECTION_IDS.TYPES + '|' + 'manhwa',
