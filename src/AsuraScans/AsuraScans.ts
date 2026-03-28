@@ -42,7 +42,7 @@ const AS_API_DOMAIN = `https://api.${AS_DOMAIN_NAME}/api`
 const PAGE_SIZE = 20
 
 export const AsuraScansInfo: SourceInfo = {
-    version: '6.0.0',
+    version: '6.0.1',
     name: 'AsuraScans',
     description: 'Extension that pulls manga from AsuraScans',
     author: 'IvanMatthew',
