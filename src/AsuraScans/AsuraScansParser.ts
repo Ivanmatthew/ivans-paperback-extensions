@@ -10,135 +10,288 @@ import {
 } from '@paperback/types'
 
 import { decode as decodeHTMLEntity } from 'html-entities'
-import { CheerioAPI } from 'cheerio'
+import type { CheerioAPI } from 'cheerio'
 
-import { getFilter, getMangaId } from './AsuraScansUtils'
+import { reviveProps } from './utils/PropsReviver'
+import {
+    FeaturedProps,
+    LatestUpdatesProps,
+    TrendingProps,
+    ChapterListProps,
+    ChapterReaderProps,
+    BrowseFiltersProps,
+    CreatorsData
+} from './interfaces'
 
-import { Filters } from './interface/Filters'
-import { RSCDataProcessor } from './RSCDataProcessor'
-import { recurseParseJSON } from './AsuraScansHelper'
-
-import * as cheerio from 'cheerio'
-
-export const parseNextJSData = ($: CheerioAPI): RSCDataProcessor => {
-    const scriptsWithData = $('script')
-        .toArray()
-        .filter((script) => {
-            const scriptContent = $(script).html()
-            return scriptContent?.includes('self.__next_f.push')
-        })
-
-    if (scriptsWithData.length === 0) {
-        throw new Error('Could not find script with data')
+function retrieveProps($: CheerioAPI, selector: string): any | undefined {
+    const rawProps = $(selector).attr('props')
+    if (!rawProps) {
+        console.warn(`Couldn't find props for selector: ${selector}`)
+        return undefined
+    }
+    const props = reviveProps(rawProps)
+    if (!props) {
+        console.warn(`Invalid props for selector: ${selector}`)
+        return undefined
     }
 
-    const rscDataProcessor: RSCDataProcessor = new RSCDataProcessor()
+    return props
+}
 
-    for (const scriptWithData of scriptsWithData) {
-        const self = {
-            __next_f: []
-        }
-        const scriptContent = $(scriptWithData).text()
-        if (!scriptContent) continue
-        eval(scriptContent)
+const HOME_SECTIONS = [
+    {
+        id: 'featured',
+        title: 'Featured',
+        containsMoreItems: false,
+        type: HomeSectionType.singleRowLarge,
+        parser: ($: CheerioAPI): PartialSourceManga[] => {
+            const selector = `astro-island[opts='{"name":"HeroCarouselEmbla","value":true}']`
+            const items: PartialSourceManga[] = []
 
-        self.__next_f.forEach((val: [number, undefined | null | string]) => {
-            if (val[0] === 1) {
-                rscDataProcessor.append(val[1] as unknown as string)
+            const props: FeaturedProps | undefined = retrieveProps($, selector)
+            if (!props) {
+                console.warn(`Failed to retrieve props for featured section.`)
+                return items
             }
-        })
+
+            for (const item of props.items) {
+                // if public_url, then
+                // const slug = cleanSlug(item.public_url)
+
+                items.push(
+                    App.createPartialSourceManga({
+                        mangaId: item.slug,
+                        title: decodeHTMLEntity(item.title),
+                        subtitle: `★ ${item.rating}`,
+                        image: item.cover_url
+                    })
+                )
+            }
+
+            return items
+        }
+    },
+    {
+        id: 'latest_updates',
+        title: 'Latest Updates',
+        containsMoreItems: false,
+        type: HomeSectionType.singleRowNormal,
+        parser: ($: CheerioAPI): PartialSourceManga[] => {
+            const selector = `astro-island[opts='{"name":"LatestUpdates","value":true}']`
+            const items: PartialSourceManga[] = []
+
+            const props: LatestUpdatesProps | undefined = retrieveProps(
+                $,
+                selector
+            )
+            if (!props) {
+                console.warn(
+                    `Failed to retrieve props for latest updates section.`
+                )
+                return items
+            }
+            // The list contains 3 chapters containing the same comic info.
+            // It needs to be de-duplicated based on the comic slug.
+            // This is the same for all 3 chapters.
+            const comics = new Map<
+                string,
+                LatestUpdatesProps['chapters'][number]
+            >()
+            for (const chapter of props.chapters) {
+                if (!comics.has(chapter.comic_slug)) {
+                    comics.set(chapter.comic_slug, chapter)
+                } else {
+                    const existingChapter = comics.get(chapter.comic_slug)!
+                    if (chapter.number > existingChapter.number) {
+                        comics.set(chapter.comic_slug, chapter)
+                    }
+                }
+            }
+
+            for (const chapter of comics.values()) {
+                const isEarlyAccess = chapter.early_access_until
+                    ? new Date(chapter.early_access_until) > new Date()
+                    : chapter.is_premium
+
+                items.push(
+                    App.createPartialSourceManga({
+                        mangaId: chapter.comic_slug,
+                        title: decodeHTMLEntity(chapter.comic_name),
+                        subtitle: `${isEarlyAccess ? '[Early Access] ' : ''}Ch. ${chapter.number}${chapter.title ? ` - ${decodeHTMLEntity(chapter.title)}` : ''}`,
+                        image: chapter.comic_cover
+                    })
+                )
+            }
+
+            return items
+        }
+    },
+    {
+        id: 'trending_today',
+        title: 'Trending Today',
+        containsMoreItems: false,
+        type: HomeSectionType.singleRowNormal,
+        parser: ($: CheerioAPI): PartialSourceManga[] => {
+            const selector = `astro-island[opts='{"name":"TrendingSection","value":true}']`
+            const items: PartialSourceManga[] = []
+
+            const props: TrendingProps | undefined = retrieveProps($, selector)
+            if (!props) {
+                console.warn(
+                    `Failed to retrieve props for popular today section.`
+                )
+                return items
+            }
+
+            for (const item of props.items) {
+                const formattedViewCount = Intl.NumberFormat('en-US', {
+                    notation: 'compact',
+                    maximumFractionDigits: 1
+                }).format(item.view_count)
+
+                items.push(
+                    App.createPartialSourceManga({
+                        mangaId: item.slug,
+                        title: decodeHTMLEntity(item.title),
+                        subtitle: `${formattedViewCount} views`,
+                        image: item.cover_url
+                    })
+                )
+            }
+
+            return items
+        }
     }
+]
 
-    rscDataProcessor.process()
+export const parseHomeSections = async (
+    $: CheerioAPI,
+    sectionCallback: (section: HomeSection) => void
+): Promise<void> => {
+    HOME_SECTIONS.forEach((section) => {
+        const { parser, ...homeSectionInfo } = section
 
-    return rscDataProcessor
+        const homeSection = App.createHomeSection(homeSectionInfo)
+        homeSection.items = parser($)
+
+        sectionCallback(homeSection)
+    })
 }
 
 export const parseMangaDetails = async (
-    source: any,
     $: CheerioAPI,
     mangaId: string
 ): Promise<SourceManga> => {
-    const textBufferRepr = parseNextJSData($)
-
-    const rawMangaDetailsObjectIdx = textBufferRepr.findByString(
-        ['comic', 'chapters', 'loading'],
-        ['chevron'],
-        true
+    const title = decodeHTMLEntity(
+        $(
+            "h1[class='text-xl lg:text-[32px] font-semibold leading-tight']"
+        ).text()
     )
+    const altTitles = $('#alt-titles')
+        .text()
+        .split('•')
+        .map((t) => decodeHTMLEntity(t.trim()))
+    const titles = altTitles.length > 0 ? [title, ...altTitles] : [title]
 
-    if (!rawMangaDetailsObjectIdx) {
-        throw new Error(`Couldn't find manga details for mangaId: ${mangaId}!`)
-    }
+    const image =
+        $("div[class*='z-0'] img[class='w-full h-full object-cover']").attr(
+            'src'
+        ) ?? ''
 
-    const rawMangaDetailsObject = textBufferRepr.resolveIndexWithHex(
-        rawMangaDetailsObjectIdx,
-        (inp) => recurseParseJSON(inp)
+    const rawStatus = $('.text-base.capitalize').text().trim()
+    const statusTagInfo = Object.values(STATUS_TAGS_INFO).find(
+        (status) => status.label.toLowerCase() === rawStatus.toLowerCase()
     )
-    if (!rawMangaDetailsObject) {
-        throw new Error(
-            `Couldn't find manga details for: ${mangaId}. (Missing rawMangaDetailsObject)`
-        )
+    if (!statusTagInfo) {
+        // Could be one that can not be searched with i.e. "seasonal" so no error
+        console.warn(`Unknown status "${rawStatus}" for mangaId: ${mangaId}`)
     }
-    if (!rawMangaDetailsObject[3]) {
-        throw new Error(
-            `Couldn't find manga details for: ${mangaId}. (Missing expected 3rd index, got '${JSON.stringify(
-                rawMangaDetailsObject
-            )}')`
-        )
-    }
-    if (!rawMangaDetailsObject[3].comic) {
-        throw new Error(
-            `Couldn't find manga details for: ${mangaId}. (Missing comic object, got '${JSON.stringify(
-                rawMangaDetailsObject[3]
-            )}')`
-        )
-    }
+    const statusTagSection = statusTagInfo
+        ? App.createTagSection({
+              id: TAG_SECTION_IDS.STATUS,
+              label: 'Status',
+              tags: [App.createTag(statusTagInfo)]
+          })
+        : undefined
 
-    const mangaDetailsObject = rawMangaDetailsObject[3].comic
-
-    const title = mangaDetailsObject.name ?? ''
-    const image = mangaDetailsObject.cover ?? ''
-    const uncleanDescription = cheerio.load(
-        mangaDetailsObject.summary ?? '',
-        null,
-        false
+    const author = $(
+        'html > body > div > main > div > div:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > div > div:nth-of-type(3) > div:nth-of-type(1) > a'
     )
-    let description = uncleanDescription('div').text().trim() ?? ''
-    if (description === '') {
-        description = uncleanDescription.text().trim() ?? ''
-    }
+        .text()
+        .trim()
+    const authorTagSection = App.createTagSection({
+        id: TAG_SECTION_IDS.AUTHORS,
+        label: 'Authors',
+        tags: [
+            App.createTag({
+                id: TAG_SECTION_IDS.AUTHORS + '|' + encodeURIComponent(author),
+                label: author
+            })
+        ]
+    })
 
-    const author = mangaDetailsObject.author ?? ''
-    const artist = mangaDetailsObject.artist ?? ''
+    const artist = $(
+        'html > body > div > main > div > div:nth-of-type(4) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > div > div:nth-of-type(3) > div:nth-of-type(2) > a'
+    )
+        .text()
+        .trim()
+    const artistTagSection = App.createTagSection({
+        id: TAG_SECTION_IDS.ARTISTS,
+        label: 'Artists',
+        tags: [
+            App.createTag({
+                id: TAG_SECTION_IDS.ARTISTS + '|' + encodeURIComponent(artist),
+                label: artist
+            })
+        ]
+    })
 
-    const arrayTags: Tag[] = []
-    for (const tag of mangaDetailsObject.genres ?? []) {
-        const label = tag.name
-        const filterName = label.toLocaleUpperCase()
+    const description = $('#description-text').text().trim()
 
-        // const id = tag.id // TODO: Transfer to new ID system (Maybe?)
-        const id = await getFilter(source, filterName)
-
-        if (!id || !label) continue
-        arrayTags.push({ id: `genres:${id}`, label: label })
-    }
-    const tagSections: TagSection[] = [
-        App.createTagSection({
-            id: '0',
-            label: 'genres',
-            tags: arrayTags.map((x) => App.createTag(x))
+    // Children are anchor tags with genre names.
+    const genres = $("div[class='hidden lg:flex max-w-full gap-2 flex-wrap'] a")
+        .map((i, el) => {
+            const genre = $(el).text().trim()
+            const genreId = el.attribs['href']?.split('=').pop() ?? genre
+            return App.createTag({
+                id: TAG_SECTION_IDS.GENRES + '|' + encodeURIComponent(genreId),
+                label: genre
+            })
         })
-    ]
+        .get()
+    const genresTagSection = App.createTagSection({
+        id: TAG_SECTION_IDS.GENRES,
+        label: 'Genres',
+        tags: genres
+    })
 
-    const status = mangaDetailsObject.status?.name ?? ''
+    const rawType = $('.text-base.uppercase').text().trim()
+    const typeTagInfo = TYPE_TAGS_INFO.find(
+        (type) => type.label.toLowerCase() === rawType.toLowerCase()
+    )
+    if (!typeTagInfo) {
+        throw new Error(`Unknown type "${rawType}" for mangaId: ${mangaId}`)
+    }
+    const typeTagSection = App.createTagSection({
+        id: TAG_SECTION_IDS.TYPES,
+        label: 'Types',
+        tags: [App.createTag(typeTagInfo)]
+    })
+
+    const tagSections = [genresTagSection]
+    if (statusTagSection) {
+        tagSections.push(statusTagSection)
+    }
+    tagSections.push(typeTagSection, authorTagSection, artistTagSection)
 
     return App.createSourceManga({
         id: mangaId,
         mangaInfo: App.createMangaInfo({
-            titles: [decodeHTMLEntity(title)],
+            titles: titles,
             image: image,
-            status: status,
+            status:
+                statusTagInfo?.label ??
+                rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1),
             author: decodeHTMLEntity(author),
             artist: decodeHTMLEntity(artist),
             tags: tagSections,
@@ -148,84 +301,30 @@ export const parseMangaDetails = async (
 }
 
 export const parseChapters = ($: CheerioAPI, mangaId: string): Chapter[] => {
-    const textBufferRepr = parseNextJSData($)
-
-    const rawMangaChaptersObjectIdx = textBufferRepr.findByString(
-        ['comic', 'chapters', 'loading'],
-        ['chevron'],
-        true
+    const props: ChapterListProps | undefined = retrieveProps(
+        $,
+        `astro-island[opts='{"name":"ChapterListReact","value":true}']`
     )
-    if (!rawMangaChaptersObjectIdx) {
+
+    if (!props) {
         throw new Error(`Couldn't find chapters for mangaId: ${mangaId}!`)
     }
 
-    const rawMangaChaptersObject = textBufferRepr.resolveIndexWithHex(
-        rawMangaChaptersObjectIdx,
-        (inp) => recurseParseJSON(inp)
-    )
-    if (!rawMangaChaptersObject) {
-        throw new Error(
-            `Couldn't find chapters for: ${mangaId}. (Missing rawMangaChaptersObject)`
-        )
-    }
-    if (!rawMangaChaptersObject[3]) {
-        throw new Error(
-            `Couldn't find chapters for: ${mangaId}. (Missing expected 3rd index, got '${JSON.stringify(
-                rawMangaChaptersObject
-            )}')`
-        )
-    }
-    if (!rawMangaChaptersObject[3].chapters) {
-        throw new Error(
-            `Couldn't find chapters for: ${mangaId}. (Missing chapters array, got '${JSON.stringify(
-                rawMangaChaptersObject[3]
-            )}')`
-        )
-    }
-
     const chapters: Chapter[] = []
-    let sortingIndex = 0
+    for (const chapter of props.chapters) {
+        if (chapter.is_locked) continue
 
-    for (const chapter of rawMangaChaptersObject[3].chapters) {
-        const id = String(chapter.name) // TODO: This is not the actual chapter ID, but rather the chapter name (e.g. "Chapter 1"). This was from the previous implementation, so I'm keeping it as is for now for backwards compatibility.
-
-        if (!id || isNaN(Number(id))) continue
-        if (chapter.is_early_access) {
-            continue
-        }
-
-        // const rawDate = $('h3', chapter).last().text().trim() ?? ''
-        // const date = new Date(rawDate.replace(/\b(\d+)(st|nd|rd|th)\b/g, '$1'))
-        const date = new Date(chapter.published_at)
-
-        let title = chapter?.title
-        if (!title || typeof title === 'undefined') {
-            title = `Ch. ${id}`
-        } else {
-            title = `Ch. ${id} - ${title}`
-        }
-
-        chapters.push({
-            id: id,
-            name: title,
-            langCode: '🇬🇧',
-            chapNum: Number(id),
-            volume: 0,
-            time: date,
-            sortingIndex,
-            group: ''
-        })
-        sortingIndex--
+        chapters.push(
+            App.createChapter({
+                id: String(chapter.number),
+                name: `Ch. ${chapter.number}${chapter.title ? ` - ${decodeHTMLEntity(chapter.title)}` : ''}`,
+                chapNum: chapter.number,
+                time: new Date(chapter.published_at),
+                langCode: '🇺🇸'
+            })
+        )
     }
-
-    if (chapters.length == 0) {
-        throw new Error(`Couldn't find any chapters for mangaId: ${mangaId}!`)
-    }
-
-    return chapters.map((chapter) => {
-        chapter.sortingIndex = chapters.indexOf(chapter)
-        return App.createChapter(chapter)
-    })
+    return chapters
 }
 
 export const parseChapterDetails = async (
@@ -233,286 +332,153 @@ export const parseChapterDetails = async (
     mangaId: string,
     chapterId: string
 ): Promise<ChapterDetails> => {
-    const textBufferRepr = parseNextJSData($)
-
-    const randomChapterImageObjectIdx = textBufferRepr.findByString(
-        ['order', 'url'],
-        ['div', 'rating'],
-        true
-    )
-    if (!randomChapterImageObjectIdx) {
-        throw new Error(`Couldn't find pages for chapterId: ${chapterId}!`)
-    }
-    const rawPagesObjectIdx = textBufferRepr.findByString(
-        ['$' + randomChapterImageObjectIdx, '[', ']\n'],
-        [],
-        true
+    const props: ChapterReaderProps | undefined = retrieveProps(
+        $,
+        `astro-island[opts='{"name":"ChapterReader","value":true}']`
     )
 
-    if (!rawPagesObjectIdx) {
-        throw new Error(`Couldn't find pages for chapterId: ${chapterId}!`)
-    }
-
-    const stableRawPagesObject = textBufferRepr.resolveIndexWithHex(
-        rawPagesObjectIdx,
-        (inp) => recurseParseJSON(inp)
-    )
-    if (!Array.isArray(stableRawPagesObject)) {
+    if (!props) {
         throw new Error(
-            `Couldn't find pages for chapterId: ${chapterId}! (Not an array)`
+            `Couldn't find chapter details for mangaId: ${mangaId}, chapterId: ${chapterId}!`
         )
     }
 
-    const pages: string[] = []
-    stableRawPagesObject.forEach((page: { order: number; url: string }) => {
-        pages[page.order - 1] = page.url
-    })
-
-    const chapterDetails = App.createChapterDetails({
+    return App.createChapterDetails({
         id: chapterId,
         mangaId: mangaId,
-        pages: pages
+        pages: props.pages.map((page) => page.url)
     })
-
-    return chapterDetails
 }
 
-export const parseHomeSections = async (
-    source: any,
-    $: CheerioAPI,
-    sectionCallback: (section: HomeSection) => void
-): Promise<void> => {
-    const featuredSection = App.createHomeSection({
-        id: 'featured',
-        title: 'Featured',
-        containsMoreItems: false,
-        type: HomeSectionType.singleRowLarge
-    })
-
-    const updateSection = App.createHomeSection({
-        id: 'latest_updates',
-        title: 'Latest Updates',
-        containsMoreItems: true,
-        type: HomeSectionType.singleRowNormal
-    })
-
-    const popularSection = App.createHomeSection({
-        id: 'popular_today',
-        title: 'Popular Today',
-        containsMoreItems: false,
-        type: HomeSectionType.singleRowNormal
-    })
-
-    // Featured
-    const featuredSection_Array: PartialSourceManga[] = []
-    for (const manga of $('li.slide', 'ul.slider.animated').toArray()) {
-        const slug =
-            $('a', manga).attr('href')?.replace(/\/$/, '')?.split('/').pop() ??
-            ''
-        if (!slug) continue
-
-        const id = await getMangaId(source, slug)
-
-        // Fix ID later, remove hash
-        const image: string = $('img', manga).first().attr('src') ?? ''
-        const title: string = $('a', manga).first().text().trim() ?? ''
-
-        if (!id || !title) continue
-        featuredSection_Array.push(
-            App.createPartialSourceManga({
-                image: image,
-                title: decodeHTMLEntity(title),
-                mangaId: id
-            })
-        )
-    }
-    featuredSection.items = featuredSection_Array
-    sectionCallback(featuredSection)
-
-    // Latest Updates
-    const updateSection_Array: PartialSourceManga[] = []
-    for (const manga of $('div.w-full', 'div.grid.grid-rows-1').toArray()) {
-        const slug =
-            $('a', manga).attr('href')?.replace(/\/$/, '')?.split('/').pop() ??
-            ''
-        if (!slug) continue
-
-        const id = await getMangaId(source, slug)
-
-        const image: string = $('img', manga).first().attr('src') ?? ''
-        const title: string =
-            $('.col-span-9 > .font-medium > a', manga).first().text().trim() ??
-            ''
-        let subtitle: string =
-            $('.flex.flex-col .flex-row a', manga).first().text().trim() ?? ''
-        let subtitleContext: string =
-            $('p.flex.items-end', manga).text().trim() ?? ''
-        if (subtitleContext.indexOf('Public in') !== -1) {
-            subtitle = '(Early Access) ' + subtitle
-        }
-
-        if (!id || !title) continue
-        updateSection_Array.push(
-            App.createPartialSourceManga({
-                image: image,
-                title: decodeHTMLEntity(title),
-                mangaId: id,
-                subtitle: decodeHTMLEntity(subtitle)
-            })
-        )
-    }
-    updateSection.items = updateSection_Array
-    sectionCallback(updateSection)
-
-    // Popular Today
-    const popularSection_Array: PartialSourceManga[] = []
-    for (const manga of $('a', 'div.flex-wrap.hidden').toArray()) {
-        const slug =
-            $(manga).attr('href')?.replace(/\/$/, '')?.split('/').pop() ?? ''
-        if (!slug) continue
-
-        const id = await getMangaId(source, slug)
-
-        const image: string = $('img', manga).first().attr('src') ?? ''
-        const title: string =
-            $('span.block.font-bold', manga).first().text().trim() ?? ''
-        const subtitle: string =
-            $('span.block.font-bold', manga).first().next().text().trim() ?? ''
-
-        if (!id || !title) continue
-        popularSection_Array.push(
-            App.createPartialSourceManga({
-                image: image,
-                title: decodeHTMLEntity(title),
-                mangaId: id,
-                subtitle: decodeHTMLEntity(subtitle)
-            })
-        )
-    }
-    popularSection.items = popularSection_Array
-    sectionCallback(popularSection)
+export const TAG_SECTION_IDS = {
+    GENRES: '0',
+    STATUS: '1',
+    TYPES: '2',
+    ORDER: '3',
+    ARTISTS: '4',
+    AUTHORS: '5'
 }
 
-export const parseViewMore = async (
-    source: any,
-    $: CheerioAPI
-): Promise<PartialSourceManga[]> => {
-    const manga: PartialSourceManga[] = []
-    const collectedIds: string[] = []
+function parseGenres($: CheerioAPI): Tag[] {
+    const props: BrowseFiltersProps | undefined = retrieveProps(
+        $,
+        `astro-island[opts='{"name":"BrowseFilters","value":true}']`
+    )
 
-    for (const item of $('a', 'div.grid.grid-cols-2').toArray()) {
-        const slug =
-            $(item).attr('href')?.replace(/\/$/, '')?.split('/').pop() ?? ''
-        if (!slug) continue
-
-        const id = await getMangaId(source, slug)
-
-        const image: string = $('img', item).first().attr('src') ?? ''
-        const title: string =
-            $('span.block.font-bold', item).first().text().trim() ?? ''
-        const subtitle: string =
-            $('span.block.font-bold', item).first().next().text().trim() ?? ''
-
-        if (!id || !title || collectedIds.includes(id)) continue
-        manga.push(
-            App.createPartialSourceManga({
-                image: image,
-                title: decodeHTMLEntity(title),
-                mangaId: id,
-                subtitle: decodeHTMLEntity(subtitle)
-            })
-        )
-        collectedIds.push(id)
+    if (!props) {
+        throw new Error(`Couldn't find genres tags!`)
     }
-    return manga
+
+    return props.availableGenres.map((genre) =>
+        App.createTag({
+            id: TAG_SECTION_IDS.GENRES + '|' + genre.slug,
+            label: genre.name
+        })
+    )
 }
 
-export const parseTags = (filters: Filters): TagSection[] => {
-    const createTags = (filterItems: any, prefix: string): Tag[] => {
-        return filterItems.map((item: { id: any; value: any; name: any }) => ({
-            id: `${prefix}:${item.id ?? item.value}`,
-            label: item.name
-        }))
+const STATUS_TAGS_INFO = [
+    {
+        id: TAG_SECTION_IDS.STATUS + '|' + 'ongoing',
+        label: 'Ongoing'
+    },
+    {
+        id: TAG_SECTION_IDS.STATUS + '|' + 'completed',
+        label: 'Completed'
+    },
+    {
+        id: TAG_SECTION_IDS.STATUS + '|' + 'hiatus',
+        label: 'Hiatus'
+    },
+    {
+        id: TAG_SECTION_IDS.STATUS + '|' + 'dropped',
+        label: 'Dropped'
     }
+]
+const TYPE_TAGS_INFO = [
+    {
+        id: TAG_SECTION_IDS.TYPES + '|' + 'manga',
+        label: 'Mangatoon'
+    },
+    {
+        id: TAG_SECTION_IDS.TYPES + '|' + 'manhwa',
+        label: 'Manhwa'
+    },
+    {
+        id: TAG_SECTION_IDS.TYPES + '|' + 'manhua',
+        label: 'Manhua'
+    }
+]
+const ORDER_TAGS_INFO = [
+    {
+        id: TAG_SECTION_IDS.ORDER + '|' + 'asc',
+        label: 'Ascending'
+    },
+    {
+        id: TAG_SECTION_IDS.ORDER + '|' + 'desc',
+        label: 'Descending'
+    }
+]
+
+export const parseTags = (
+    $genresResponse: CheerioAPI,
+    creators: CreatorsData
+): TagSection[] => {
+    const genresTags = parseGenres($genresResponse)
+    const artistsTags = creators.data.artists.map((artist) =>
+        App.createTag({
+            id: TAG_SECTION_IDS.ARTISTS + '|' + encodeURIComponent(artist),
+            label: artist
+        })
+    )
+    const authorTags = creators.data.authors.map((author) =>
+        App.createTag({
+            id: TAG_SECTION_IDS.AUTHORS + '|' + encodeURIComponent(author),
+            label: author
+        })
+    )
+    const statusTags = STATUS_TAGS_INFO.map((status) => App.createTag(status))
+    const typeTags = TYPE_TAGS_INFO.map((type) => App.createTag(type))
+    const orderTags = ORDER_TAGS_INFO.map((order) => App.createTag(order))
 
     const tagSections: TagSection[] = [
         // Tag section for genres
         App.createTagSection({
-            id: '0',
-            label: 'genres',
-            tags: createTags(filters.genres, 'genres').map((x) =>
-                App.createTag(x)
-            )
+            id: TAG_SECTION_IDS.GENRES,
+            label: 'Genres',
+            tags: genresTags
         }),
         // Tag section for status
         App.createTagSection({
-            id: '1',
-            label: 'status',
-            tags: createTags(filters.statuses, 'status').map((x) =>
-                App.createTag(x)
-            )
+            id: TAG_SECTION_IDS.STATUS,
+            label: 'Status',
+            tags: statusTags
         }),
         // Tag section for types
         App.createTagSection({
-            id: '2',
-            label: 'type',
-            tags: createTags(filters.types, 'type').map((x) => App.createTag(x))
+            id: TAG_SECTION_IDS.TYPES,
+            label: 'Types',
+            tags: typeTags
         }),
         // Tag section for order
         App.createTagSection({
-            id: '3',
-            label: 'order',
-            tags: createTags(
-                filters.order.map((order) => ({
-                    id: order.value,
-                    name: order.name
-                })),
-                'order'
-            ).map((x) => App.createTag(x))
+            id: TAG_SECTION_IDS.ORDER,
+            label: 'Order',
+            tags: orderTags
+        }),
+        // Tag section for artists
+        App.createTagSection({
+            id: TAG_SECTION_IDS.ARTISTS,
+            label: 'Artists',
+            tags: artistsTags
+        }),
+        // Tag section for authors
+        App.createTagSection({
+            id: TAG_SECTION_IDS.AUTHORS,
+            label: 'Authors',
+            tags: authorTags
         })
     ]
+
     return tagSections
-}
-
-export const parseSearch = async (
-    source: any,
-    $: CheerioAPI
-): Promise<PartialSourceManga[]> => {
-    const collectedIds: string[] = []
-    const itemArray: PartialSourceManga[] = []
-
-    for (const item of $('a', 'div.grid.grid-cols-2').toArray()) {
-        const slug =
-            $(item).attr('href')?.replace(/\/$/, '')?.split('/').pop() ?? ''
-        if (!slug) continue
-
-        const id = await getMangaId(source, slug)
-
-        const image: string = $('img', item).first().attr('src') ?? ''
-        const title: string =
-            $('span.block.font-bold', item).first().text().trim() ?? ''
-        const subtitle: string =
-            $('span.block.font-bold', item).first().next().text().trim() ?? ''
-
-        itemArray.push(
-            App.createPartialSourceManga({
-                image: image,
-                title: decodeHTMLEntity(title),
-                mangaId: id,
-                subtitle: subtitle
-            })
-        )
-
-        collectedIds.push(id)
-    }
-
-    return itemArray
-}
-
-export const isLastPage = ($: CheerioAPI): boolean => {
-    let isLast = true
-    const hasItems = $('a', 'div.grid.grid-cols-2').toArray().length > 0
-
-    if (hasItems) isLast = false
-    return isLast
 }

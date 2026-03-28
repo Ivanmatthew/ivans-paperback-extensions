@@ -15,33 +15,34 @@ import {
     SourceInfo,
     SourceIntents,
     SourceManga,
-    TagSection
+    TagSection,
+    SearchField
 } from '@paperback/types'
-
-import * as cheerio from 'cheerio'
-
 import {
-    isLastPage,
+    TAG_SECTION_IDS,
     parseChapterDetails,
     parseChapters,
     parseHomeSections,
     parseMangaDetails,
-    parseSearch,
-    parseTags,
-    parseViewMore
+    parseTags
 } from './AsuraScansParser'
 
-import {
-    getFilterTagsBySection,
-    getIncludedTagBySection
-} from './AsuraScansHelper'
-import { URLBuilder, setFilters } from './AsuraScansUtils'
+import { decode as decodeHTMLEntity } from 'html-entities'
 
-const AS_DOMAIN = 'https://asuracomic.net'
-const AS_API_DOMAIN = 'https://gg.asuracomic.net'
+import * as cheerio from 'cheerio'
+import { CreatorsData, SeriesData } from './interfaces'
+
+import { URLBuilder } from './utils/URLBuilder'
+import { cleanTagId, getTagsOfSection, pickTag } from './utils/TagsHelper'
+
+const AS_DOMAIN_NAME = 'asurascans.com'
+const AS_DOMAIN = `https://${AS_DOMAIN_NAME}`
+const AS_API_DOMAIN = `https://api.${AS_DOMAIN_NAME}/api`
+
+const PAGE_SIZE = 20
 
 export const AsuraScansInfo: SourceInfo = {
-    version: '5.3.6',
+    version: '6.0.0',
     name: 'AsuraScans',
     description: 'Extension that pulls manga from AsuraScans',
     author: 'IvanMatthew',
@@ -52,8 +53,7 @@ export const AsuraScansInfo: SourceInfo = {
     intents:
         SourceIntents.MANGA_CHAPTERS |
         SourceIntents.HOMEPAGE_SECTIONS |
-        SourceIntents.CLOUDFLARE_BYPASS_REQUIRED |
-        SourceIntents.SETTINGS_UI,
+        SourceIntents.CLOUDFLARE_BYPASS_REQUIRED,
     sourceTags: []
 }
 
@@ -71,19 +71,17 @@ export class AsuraScans
         interceptor: {
             interceptRequest: async (request: Request): Promise<Request> => {
                 request.headers = {
-                    ...(request.headers ?? {}),
-                    ...{
-                        referer: `${AS_DOMAIN}/`,
-                        'user-agent':
-                            await this.requestManager.getDefaultUserAgent()
-                    }
+                    ...request.headers,
+                    'user-agent':
+                        await this.requestManager.getDefaultUserAgent()
                 }
-
                 return request
             },
             interceptResponse: async (
                 response: Response
             ): Promise<Response> => {
+                this.CloudFlareError(response.status)
+
                 return response
             }
         }
@@ -92,24 +90,38 @@ export class AsuraScans
     stateManager = App.createSourceStateManager()
 
     getMangaShareUrl(mangaId: string): string {
-        return `${AS_DOMAIN}/series/${mangaId}`
+        return `${AS_DOMAIN}/comics/${mangaId}`
+    }
+
+    async getHomePageSections(
+        sectionCallback: (section: HomeSection) => void
+    ): Promise<void> {
+        const request = App.createRequest({
+            url: AS_DOMAIN,
+            method: 'GET'
+        })
+        const response = await this.requestManager.schedule(request, 1)
+
+        const $ = cheerio.load(response.data as string)
+        await parseHomeSections($, sectionCallback)
     }
 
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
         const request = App.createRequest({
-            url: `${AS_DOMAIN}/series/${mangaId}`,
+            url: `${AS_DOMAIN}/comics/${mangaId}`,
             method: 'GET'
         })
 
         const response = await this.requestManager.schedule(request, 1)
         this.CloudFlareError(response.status)
+
         const $ = cheerio.load(response.data as string)
-        return await parseMangaDetails(this, $, mangaId)
+        return await parseMangaDetails($, mangaId)
     }
 
     async getChapters(mangaId: string): Promise<Chapter[]> {
         const request = App.createRequest({
-            url: `${AS_DOMAIN}/series/${mangaId}`,
+            url: `${AS_DOMAIN}/comics/${mangaId}`,
             method: 'GET'
         })
 
@@ -124,7 +136,7 @@ export class AsuraScans
         chapterId: string
     ): Promise<ChapterDetails> {
         const request = App.createRequest({
-            url: `${AS_DOMAIN}/series/${mangaId}/chapter/${chapterId}`,
+            url: `${AS_DOMAIN}/comics/${mangaId}/chapter/${chapterId}`,
             method: 'GET'
         })
 
@@ -134,71 +146,41 @@ export class AsuraScans
         return parseChapterDetails($, mangaId, chapterId)
     }
 
-    async getHomePageSections(
-        sectionCallback: (section: HomeSection) => void
-    ): Promise<void> {
-        const request = App.createRequest({
-            url: AS_DOMAIN,
-            method: 'GET'
-        })
-
-        const response = await this.requestManager.schedule(request, 1)
-        this.CloudFlareError(response.status)
-        const $ = cheerio.load(response.data as string)
-        await parseHomeSections(this, $, sectionCallback)
-    }
-
     async getViewMoreItems(
-        homepageSectionId: string,
-        metadata: any
+        _homepageSectionId: string,
+        _metadata: any
     ): Promise<PagedResults> {
-        if (metadata?.completed) return metadata
-
-        const page: number = metadata?.page ?? 1
-        let param = ''
-
-        switch (homepageSectionId) {
-            case 'latest_updates':
-                param = `series?page=${page}`
-                break
-            default:
-                throw new Error(
-                    "Requested to getViewMoreItems for a section ID which doesn't exist"
-                )
-        }
-
-        const request = App.createRequest({
-            url: `${AS_DOMAIN}/${param}`,
-            method: 'GET'
-        })
-
-        const response = await this.requestManager.schedule(request, 1)
-        this.CloudFlareError(response.status)
-        const $ = cheerio.load(response.data as string)
-        const manga = await parseViewMore(this, $)
-
-        metadata = !isLastPage($) ? { page: page + 1 } : undefined
-        return App.createPagedResults({
-            results: manga,
-            metadata
-        })
+        throw new Error('getViewMoreItems is not implemented for AsuraScans')
     }
 
     async getSearchTags(): Promise<TagSection[]> {
         try {
-            const request = App.createRequest({
-                url: `${AS_API_DOMAIN}/api/series/filters`,
+            const genresRequest = App.createRequest({
+                url: `${AS_DOMAIN}/browse`,
+                method: 'GET'
+            })
+            const creatorsRequest = App.createRequest({
+                url: `${AS_API_DOMAIN}/creators`,
+                headers: {
+                    origin: AS_DOMAIN,
+                    referer: `${AS_DOMAIN}/`
+                },
                 method: 'GET'
             })
 
-            const response = await this.requestManager.schedule(request, 1)
-            this.CloudFlareError(response.status)
-            const data = JSON.parse(response.data as string)
+            const [genresResponse, creatorsResponse] = await Promise.all([
+                this.requestManager.schedule(genresRequest, 1),
+                this.requestManager.schedule(creatorsRequest, 1)
+            ])
+            this.CloudFlareError(genresResponse.status)
+            this.CloudFlareError(creatorsResponse.status)
 
-            // Set filters for mangaDetails
-            await setFilters(this, data)
+            const $ = cheerio.load(genresResponse.data as string)
 
-            return parseTags(data)
+            return parseTags(
+                $,
+                JSON.parse(creatorsResponse.data ?? '{}') as CreatorsData
+            )
         } catch (error) {
             throw new Error(error as string)
         }
@@ -208,55 +190,184 @@ export class AsuraScans
         return false
     }
 
+    async getSearchFields(): Promise<SearchField[]> {
+        return [
+            App.createSearchField({
+                id: 'min_chapters',
+                name: 'Minimum Chapters',
+                placeholder: 'e.g. 10'
+            })
+        ]
+    }
+
     async getSearchResults(
         query: SearchRequest,
-        metadata: any
+        metadata:
+            | (SeriesData['meta'] & { page: number; lastPage: boolean })
+            | undefined
     ): Promise<PagedResults> {
+        if (metadata?.lastPage) {
+            console.log('DEBUG: LAST PAGE')
+            return App.createPagedResults({})
+        }
+
         const page: number = metadata?.page ?? 1
 
-        let urlBuilder: URLBuilder = new URLBuilder(AS_DOMAIN)
-            .addPathComponent('series')
-            .addQueryParameter('page', page.toString())
+        let urlBuilder: URLBuilder = new URLBuilder(
+            AS_API_DOMAIN
+        ).addPathComponent('series')
 
         if (query?.title) {
-            urlBuilder = urlBuilder.addQueryParameter(
-                'name',
-                encodeURIComponent(
-                    query?.title.replace(/[’‘´`'-][a-z]*/g, '%') ?? ''
-                )
+            urlBuilder.addQueryParameter(
+                'search',
+                encodeURIComponent(query.title)
             )
         }
 
-        urlBuilder = urlBuilder
-            .addQueryParameter(
-                'genres',
-                getFilterTagsBySection('genres', query?.includedTags)
-            )
-            .addQueryParameter(
-                'status',
-                getIncludedTagBySection('status', query?.includedTags)
-            )
-            .addQueryParameter(
-                'types',
-                getIncludedTagBySection('type', query?.includedTags)
-            )
+        const typeTag = pickTag(
+            query.includedTags,
+            TAG_SECTION_IDS.TYPES,
+            1,
+            'Type'
+        )
+        if (typeTag) {
+            urlBuilder.addQueryParameter('type', cleanTagId(typeTag.id))
+        }
+
+        const statusTag = pickTag(
+            query.includedTags,
+            TAG_SECTION_IDS.STATUS,
+            1,
+            'Status'
+        )
+        if (statusTag) {
+            urlBuilder.addQueryParameter('status', cleanTagId(statusTag.id))
+        }
+
+        urlBuilder
+            .addQueryParameter('sort', 'latest')
             .addQueryParameter(
                 'order',
-                getIncludedTagBySection('order', query?.includedTags)
+                cleanTagId(
+                    pickTag(query.includedTags, TAG_SECTION_IDS.ORDER)?.id ??
+                        'desc'
+                )
             )
+            .addQueryParameter('limit', PAGE_SIZE)
+            .addQueryParameter('offset', (page - 1) * PAGE_SIZE)
+
+        const genreTags = getTagsOfSection(
+            query.includedTags,
+            TAG_SECTION_IDS.GENRES
+        )
+        if (genreTags.length > 0) {
+            const genreIds = genreTags.map((tag) => cleanTagId(tag.id))
+            urlBuilder.addQueryParameter('genres', genreIds.join(','))
+        }
+
+        const authorTag = pickTag(
+            query.includedTags,
+            TAG_SECTION_IDS.AUTHORS,
+            1,
+            'Authors'
+        )
+        const artistTag = pickTag(
+            query.includedTags,
+            TAG_SECTION_IDS.ARTISTS,
+            1,
+            'Artists'
+        )
+        if (authorTag && artistTag) {
+            throw new Error(
+                'Please select either Author or Artist tags, not both.'
+            )
+        } else if (authorTag) {
+            urlBuilder.addQueryParameter('author', cleanTagId(authorTag.id))
+        } else if (artistTag) {
+            urlBuilder.addQueryParameter('artist', cleanTagId(artistTag.id))
+        }
+
+        if (query.parameters.min_chapters) {
+            const minChapters = Number(query.parameters.min_chapters)
+            if (isNaN(minChapters)) {
+                throw new Error(
+                    'Invalid input for Minimum Chapters. Please enter a valid number.'
+                )
+            }
+
+            urlBuilder.addQueryParameter('min_chapters', minChapters)
+        }
 
         const request = App.createRequest({
             url: urlBuilder.buildUrl(),
-            method: 'GET'
+            method: 'GET',
+            headers: {
+                origin: AS_DOMAIN,
+                referer: `${AS_DOMAIN}/`
+            }
         })
 
         const response = await this.requestManager.schedule(request, 1)
-        const $ = cheerio.load(response.data as string)
+        const seriesData = JSON.parse(response.data as string) as SeriesData
+        if (seriesData.data === null) {
+            console.log('DEBUG: LAST PAGE')
+            return App.createPagedResults({})
+        }
 
-        const items = await parseSearch(this, $)
-        metadata = !isLastPage($) ? { page: page + 1 } : undefined
+        metadata = {
+            ...seriesData.meta,
+            page: seriesData.meta.has_more ? page + 1 : page,
+            lastPage: !seriesData.meta.has_more
+        }
+
         return App.createPagedResults({
-            results: items,
+            results: seriesData.data
+                .map((series) => {
+                    const sortedLatestChapters = series.latest_chapters.sort(
+                        (a, b) =>
+                            new Date(b.published_at).getTime() -
+                            new Date(a.published_at).getTime()
+                    )
+                    const latestChapter =
+                        sortedLatestChapters.length > 0
+                            ? sortedLatestChapters[0]
+                            : undefined
+
+                    const isEarlyAccess = latestChapter
+                        ? latestChapter.early_access_until
+                            ? new Date(latestChapter.early_access_until) >
+                              new Date()
+                            : latestChapter.is_premium
+                        : false
+
+                    return App.createPartialSourceManga({
+                        mangaId: series.slug,
+                        title: series.title,
+                        image: series.cover,
+                        subtitle: latestChapter
+                            ? `${isEarlyAccess ? '[Early Access] ' : ''}Ch. ${latestChapter.number}${latestChapter.title ? ` - ${decodeHTMLEntity(latestChapter.title)}` : ''}`
+                            : 'No chapters'
+                    })
+                })
+                // (To make migration user-friendly)
+                // Prioritize search results with exact title matches by sorting them to the top
+                .sort((a, b) => {
+                    if (query.title) {
+                        const titleA = a.title.toLowerCase()
+                        const titleB = b.title.toLowerCase()
+                        const queryTitle = query.title.toLowerCase()
+
+                        const isExactMatchA = titleA === queryTitle
+                        const isExactMatchB = titleB === queryTitle
+
+                        if (isExactMatchA && !isExactMatchB) {
+                            return -1
+                        } else if (!isExactMatchA && isExactMatchB) {
+                            return 1
+                        }
+                    }
+                    return 0
+                }),
             metadata
         })
     }
