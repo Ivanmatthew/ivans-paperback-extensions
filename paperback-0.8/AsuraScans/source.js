@@ -1075,12 +1075,20 @@ var _Sources = (() => {
       }
     }
   ];
-  var parseHomeSections = async ($2, sectionCallback) => {
-    HOME_SECTIONS.forEach((section) => {
+  var parseHomeSections = async (source, $2, sectionCallback) => {
+    HOME_SECTIONS.forEach(async (section) => {
       const { parser, ...homeSectionInfo } = section;
       const homeSection = App.createHomeSection(homeSectionInfo);
-      homeSection.items = parser($2);
       sectionCallback(homeSection);
+      homeSection.items = parser($2);
+      if (homeSection.id === "latest_updates") {
+        if (homeSection.items.length !== 0) {
+          homeSection.containsMoreItems = await source.getLatestUpdatesViewMoreState();
+          sectionCallback(homeSection);
+        }
+      } else {
+        sectionCallback(homeSection);
+      }
     });
   };
   var parseMangaDetails = async ($2, mangaId) => {
@@ -1186,7 +1194,10 @@ var _Sources = (() => {
     }
     const chapters = [];
     for (const chapter of props.chapters) {
-      if (chapter.is_locked) continue;
+      const isEarlyAccess = chapter.early_access_until ? new Date(chapter.early_access_until) > /* @__PURE__ */ new Date() : chapter.is_locked;
+      if (isEarlyAccess) {
+        continue;
+      }
       chapters.push(
         App.createChapter({
           id: String(chapter.number),
@@ -15268,7 +15279,7 @@ var _Sources = (() => {
   var AS_API_DOMAIN = `https://api.${AS_DOMAIN_NAME}/api`;
   var PAGE_SIZE = 20;
   var AsuraScansInfo = {
-    version: "6.0.1",
+    version: "6.1.0",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
@@ -15276,7 +15287,7 @@ var _Sources = (() => {
     icon: "icon.png",
     contentRating: import_types3.ContentRating.MATURE,
     websiteBaseURL: AS_DOMAIN,
-    intents: import_types3.SourceIntents.MANGA_CHAPTERS | import_types3.SourceIntents.HOMEPAGE_SECTIONS | import_types3.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED,
+    intents: import_types3.SourceIntents.MANGA_CHAPTERS | import_types3.SourceIntents.SETTINGS_UI | import_types3.SourceIntents.HOMEPAGE_SECTIONS | import_types3.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED,
     sourceTags: []
   };
   var AsuraScans = class _AsuraScans {
@@ -15301,6 +15312,26 @@ var _Sources = (() => {
       });
       this.stateManager = App.createSourceStateManager();
     }
+    async getLatestUpdatesViewMoreState() {
+      return await this.stateManager.retrieve("luvm") ?? false;
+    }
+    async getSourceMenu() {
+      return App.createDUISection({
+        id: "settings",
+        header: "Source Settings",
+        isHidden: false,
+        rows: async () => [
+          App.createDUISwitch({
+            id: "luvmsw",
+            label: "Toggle View More For Latest Updates",
+            value: App.createDUIBinding({
+              get: () => this.getLatestUpdatesViewMoreState(),
+              set: async (value) => await this.stateManager.store("luvm", value)
+            })
+          })
+        ]
+      });
+    }
     getMangaShareUrl(mangaId) {
       return `${AS_DOMAIN}/comics/${mangaId}`;
     }
@@ -15311,7 +15342,7 @@ var _Sources = (() => {
       });
       const response = await this.requestManager.schedule(request, 1);
       const $2 = load(response.data);
-      await parseHomeSections($2, sectionCallback);
+      return await parseHomeSections(this, $2, sectionCallback);
     }
     async getMangaDetails(mangaId) {
       const request = App.createRequest({
@@ -15343,8 +15374,26 @@ var _Sources = (() => {
       const $2 = load(response.data);
       return parseChapterDetails($2, mangaId, chapterId);
     }
-    async getViewMoreItems(_homepageSectionId, _metadata) {
-      throw new Error("getViewMoreItems is not implemented for AsuraScans");
+    async getViewMoreItems(homepageSectionId, metadata) {
+      if (homepageSectionId === "latest_updates") {
+        if (metadata?.lastPage) {
+          return App.createPagedResults({});
+        }
+        metadata = {
+          lastPage: true
+        };
+        const request = App.createRequest({
+          url: AS_DOMAIN,
+          method: "GET"
+        });
+        const response = await this.requestManager.schedule(request, 1);
+        const $2 = load(response.data);
+        return App.createPagedResults({
+          results: HOME_SECTIONS[1].parser($2)
+        });
+      } else {
+        throw new Error("Not implemented for " + homepageSectionId);
+      }
     }
     async getSearchTags() {
       try {
