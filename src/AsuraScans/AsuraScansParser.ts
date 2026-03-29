@@ -6,7 +6,8 @@ import {
     TagSection,
     Tag,
     HomeSectionType,
-    HomeSection
+    HomeSection,
+    SourceStateManager
 } from '@paperback/types'
 
 import { decode as decodeHTMLEntity } from 'html-entities'
@@ -38,7 +39,7 @@ function retrieveProps($: CheerioAPI, selector: string): any | undefined {
     return props
 }
 
-const HOME_SECTIONS = [
+export const HOME_SECTIONS = [
     {
         id: 'featured',
         title: 'Featured',
@@ -165,16 +166,26 @@ const HOME_SECTIONS = [
 ]
 
 export const parseHomeSections = async (
+    source: { getLatestUpdatesViewMoreState: () => Promise<boolean> },
     $: CheerioAPI,
     sectionCallback: (section: HomeSection) => void
 ): Promise<void> => {
-    HOME_SECTIONS.forEach((section) => {
+    HOME_SECTIONS.forEach(async (section) => {
         const { parser, ...homeSectionInfo } = section
 
         const homeSection = App.createHomeSection(homeSectionInfo)
-        homeSection.items = parser($)
-
         sectionCallback(homeSection)
+        homeSection.items = parser($)
+        if (homeSection.id === 'latest_updates') {
+            if (homeSection.items.length !== 0) {
+                homeSection.containsMoreItems =
+                    await source.getLatestUpdatesViewMoreState()
+
+                sectionCallback(homeSection)
+            }
+        } else {
+            sectionCallback(homeSection)
+        }
     })
 }
 
@@ -312,7 +323,12 @@ export const parseChapters = ($: CheerioAPI, mangaId: string): Chapter[] => {
 
     const chapters: Chapter[] = []
     for (const chapter of props.chapters) {
-        if (chapter.is_locked) continue
+        const isEarlyAccess = chapter.early_access_until
+            ? new Date(chapter.early_access_until) > new Date()
+            : chapter.is_locked
+        if (isEarlyAccess) {
+            continue
+        }
 
         chapters.push(
             App.createChapter({

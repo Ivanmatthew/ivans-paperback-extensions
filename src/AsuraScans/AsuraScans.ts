@@ -16,9 +16,12 @@ import {
     SourceIntents,
     SourceManga,
     TagSection,
-    SearchField
+    SearchField,
+    DUISection,
+    PartialSourceManga
 } from '@paperback/types'
 import {
+    HOME_SECTIONS,
     TAG_SECTION_IDS,
     parseChapterDetails,
     parseChapters,
@@ -30,7 +33,7 @@ import {
 import { decode as decodeHTMLEntity } from 'html-entities'
 
 import * as cheerio from 'cheerio'
-import { CreatorsData, SeriesData } from './interfaces'
+import { CreatorsData, LatestUpdatesProps, SeriesData } from './interfaces'
 
 import { URLBuilder } from './utils/URLBuilder'
 import { cleanTagId, getTagsOfSection, pickTag } from './utils/TagsHelper'
@@ -42,7 +45,7 @@ const AS_API_DOMAIN = `https://api.${AS_DOMAIN_NAME}/api`
 const PAGE_SIZE = 20
 
 export const AsuraScansInfo: SourceInfo = {
-    version: '6.0.1',
+    version: '6.1.0',
     name: 'AsuraScans',
     description: 'Extension that pulls manga from AsuraScans',
     author: 'IvanMatthew',
@@ -52,6 +55,7 @@ export const AsuraScansInfo: SourceInfo = {
     websiteBaseURL: AS_DOMAIN,
     intents:
         SourceIntents.MANGA_CHAPTERS |
+        SourceIntents.SETTINGS_UI |
         SourceIntents.HOMEPAGE_SECTIONS |
         SourceIntents.CLOUDFLARE_BYPASS_REQUIRED,
     sourceTags: []
@@ -89,6 +93,29 @@ export class AsuraScans
 
     stateManager = App.createSourceStateManager()
 
+    async getLatestUpdatesViewMoreState(): Promise<boolean> {
+        return (await this.stateManager.retrieve('luvm')) ?? false
+    }
+
+    async getSourceMenu(): Promise<DUISection> {
+        return App.createDUISection({
+            id: 'settings',
+            header: 'Source Settings',
+            isHidden: false,
+            rows: async () => [
+                App.createDUISwitch({
+                    id: 'luvmsw',
+                    label: 'Toggle View More For Latest Updates',
+                    value: App.createDUIBinding({
+                        get: () => this.getLatestUpdatesViewMoreState(),
+                        set: async (value: boolean) =>
+                            await this.stateManager.store('luvm', value)
+                    })
+                })
+            ]
+        })
+    }
+
     getMangaShareUrl(mangaId: string): string {
         return `${AS_DOMAIN}/comics/${mangaId}`
     }
@@ -103,7 +130,7 @@ export class AsuraScans
         const response = await this.requestManager.schedule(request, 1)
 
         const $ = cheerio.load(response.data as string)
-        await parseHomeSections($, sectionCallback)
+        return await parseHomeSections(this, $, sectionCallback)
     }
 
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
@@ -147,10 +174,31 @@ export class AsuraScans
     }
 
     async getViewMoreItems(
-        _homepageSectionId: string,
-        _metadata: any
+        homepageSectionId: string,
+        metadata?: { lastPage: boolean }
     ): Promise<PagedResults> {
-        throw new Error('getViewMoreItems is not implemented for AsuraScans')
+        if (homepageSectionId === 'latest_updates') {
+            if (metadata?.lastPage) {
+                return App.createPagedResults({})
+            }
+            metadata = {
+                lastPage: true
+            }
+
+            const request = App.createRequest({
+                url: AS_DOMAIN,
+                method: 'GET'
+            })
+            const response = await this.requestManager.schedule(request, 1)
+
+            const $ = cheerio.load(response.data as string)
+
+            return App.createPagedResults({
+                results: HOME_SECTIONS[1]!.parser($)
+            })
+        } else {
+            throw new Error('Not implemented for ' + homepageSectionId)
+        }
     }
 
     async getSearchTags(): Promise<TagSection[]> {
