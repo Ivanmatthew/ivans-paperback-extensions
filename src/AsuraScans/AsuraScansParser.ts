@@ -191,7 +191,8 @@ export const parseHomeSections = async (
 
 export const parseMangaDetails = async (
     $: CheerioAPI,
-    mangaId: string
+    mangaId: string,
+    separator: string
 ): Promise<SourceManga> => {
     const title = decodeHTMLEntity(
         $(
@@ -235,7 +236,10 @@ export const parseMangaDetails = async (
         label: 'Authors',
         tags: [
             App.createTag({
-                id: TAG_SECTION_IDS.AUTHORS + '|' + encodeURIComponent(author),
+                id:
+                    TAG_SECTION_IDS.AUTHORS +
+                    separator +
+                    encodeURIComponent(author),
                 label: author
             })
         ]
@@ -251,7 +255,10 @@ export const parseMangaDetails = async (
         label: 'Artists',
         tags: [
             App.createTag({
-                id: TAG_SECTION_IDS.ARTISTS + '|' + encodeURIComponent(artist),
+                id:
+                    TAG_SECTION_IDS.ARTISTS +
+                    separator +
+                    encodeURIComponent(artist),
                 label: artist
             })
         ]
@@ -265,7 +272,10 @@ export const parseMangaDetails = async (
             const genre = $(el).text().trim()
             const genreId = el.attribs['href']?.split('=').pop() ?? genre
             return App.createTag({
-                id: TAG_SECTION_IDS.GENRES + '|' + encodeURIComponent(genreId),
+                id:
+                    TAG_SECTION_IDS.GENRES +
+                    separator +
+                    encodeURIComponent(genreId),
                 label: genre
             })
         })
@@ -375,7 +385,7 @@ export const TAG_SECTION_IDS = {
     AUTHORS: '5'
 }
 
-function parseGenres($: CheerioAPI): Tag[] {
+function parseGenres($: CheerioAPI, separator: string): Tag[] {
     const props: BrowseFiltersProps | undefined = retrieveProps(
         $,
         `astro-island[opts='{"name":"BrowseFilters","value":true}']`
@@ -387,7 +397,7 @@ function parseGenres($: CheerioAPI): Tag[] {
 
     return props.availableGenres.map((genre) =>
         App.createTag({
-            id: TAG_SECTION_IDS.GENRES + '|' + genre.slug,
+            id: TAG_SECTION_IDS.GENRES + separator + genre.slug,
             label: genre.name
         })
     )
@@ -438,24 +448,40 @@ const ORDER_TAGS_INFO = [
 
 export const parseTags = (
     $genresResponse: CheerioAPI,
-    creators: CreatorsData
+    creators: CreatorsData,
+    separator: string
 ): TagSection[] => {
-    const genresTags = parseGenres($genresResponse)
+    const genresTags = parseGenres($genresResponse, separator)
     const artistsTags = creators.data.artists.map((artist) =>
         App.createTag({
-            id: TAG_SECTION_IDS.ARTISTS + '|' + encodeURIComponent(artist),
+            id:
+                TAG_SECTION_IDS.ARTISTS +
+                separator +
+                encodeURIComponent(artist),
             label: artist
         })
     )
     const authorTags = creators.data.authors.map((author) =>
         App.createTag({
-            id: TAG_SECTION_IDS.AUTHORS + '|' + encodeURIComponent(author),
+            id:
+                TAG_SECTION_IDS.AUTHORS +
+                separator +
+                encodeURIComponent(author),
             label: author
         })
     )
-    const statusTags = STATUS_TAGS_INFO.map((status) => App.createTag(status))
-    const typeTags = TYPE_TAGS_INFO.map((type) => App.createTag(type))
-    const orderTags = ORDER_TAGS_INFO.map((order) => App.createTag(order))
+    const statusTags = STATUS_TAGS_INFO.map((status) => {
+        status.id = status.id.replace('|', separator)
+        return App.createTag(status)
+    })
+    const typeTags = TYPE_TAGS_INFO.map((type) => {
+        type.id = type.id.replace('|', separator)
+        return App.createTag(type)
+    })
+    const orderTags = ORDER_TAGS_INFO.map((order) => {
+        order.id = order.id.replace('|', separator)
+        return App.createTag(order)
+    })
 
     const tagSections: TagSection[] = [
         // Tag section for genres
