@@ -1091,7 +1091,7 @@ var _Sources = (() => {
       }
     });
   };
-  var parseMangaDetails = async ($2, mangaId) => {
+  var parseMangaDetails = async ($2, mangaId, separator) => {
     const title = (0, import_html_entities.decode)(
       $2(
         "h1[class='text-xl lg:text-[32px] font-semibold leading-tight']"
@@ -1122,7 +1122,7 @@ var _Sources = (() => {
       label: "Authors",
       tags: [
         App.createTag({
-          id: TAG_SECTION_IDS.AUTHORS + "|" + encodeURIComponent(author),
+          id: TAG_SECTION_IDS.AUTHORS + separator + encodeURIComponent(author),
           label: author
         })
       ]
@@ -1135,7 +1135,7 @@ var _Sources = (() => {
       label: "Artists",
       tags: [
         App.createTag({
-          id: TAG_SECTION_IDS.ARTISTS + "|" + encodeURIComponent(artist),
+          id: TAG_SECTION_IDS.ARTISTS + separator + encodeURIComponent(artist),
           label: artist
         })
       ]
@@ -1145,7 +1145,7 @@ var _Sources = (() => {
       const genre = $2(el).text().trim();
       const genreId = el.attribs["href"]?.split("=").pop() ?? genre;
       return App.createTag({
-        id: TAG_SECTION_IDS.GENRES + "|" + encodeURIComponent(genreId),
+        id: TAG_SECTION_IDS.GENRES + separator + encodeURIComponent(genreId),
         label: genre
       });
     }).get();
@@ -1234,7 +1234,7 @@ var _Sources = (() => {
     ARTISTS: "4",
     AUTHORS: "5"
   };
-  function parseGenres($2) {
+  function parseGenres($2, separator) {
     const props = retrieveProps(
       $2,
       `astro-island[opts='{"name":"BrowseFilters","value":true}']`
@@ -1244,7 +1244,7 @@ var _Sources = (() => {
     }
     return props.availableGenres.map(
       (genre) => App.createTag({
-        id: TAG_SECTION_IDS.GENRES + "|" + genre.slug,
+        id: TAG_SECTION_IDS.GENRES + separator + genre.slug,
         label: genre.name
       })
     );
@@ -1291,23 +1291,32 @@ var _Sources = (() => {
       label: "Descending"
     }
   ];
-  var parseTags = ($genresResponse, creators) => {
-    const genresTags = parseGenres($genresResponse);
+  var parseTags = ($genresResponse, creators, separator) => {
+    const genresTags = parseGenres($genresResponse, separator);
     const artistsTags = creators.data.artists.map(
       (artist) => App.createTag({
-        id: TAG_SECTION_IDS.ARTISTS + "|" + encodeURIComponent(artist),
+        id: TAG_SECTION_IDS.ARTISTS + separator + encodeURIComponent(artist),
         label: artist
       })
     );
     const authorTags = creators.data.authors.map(
       (author) => App.createTag({
-        id: TAG_SECTION_IDS.AUTHORS + "|" + encodeURIComponent(author),
+        id: TAG_SECTION_IDS.AUTHORS + separator + encodeURIComponent(author),
         label: author
       })
     );
-    const statusTags = STATUS_TAGS_INFO.map((status) => App.createTag(status));
-    const typeTags = TYPE_TAGS_INFO.map((type) => App.createTag(type));
-    const orderTags = ORDER_TAGS_INFO.map((order) => App.createTag(order));
+    const statusTags = STATUS_TAGS_INFO.map((status) => {
+      status.id = status.id.replace("|", separator);
+      return App.createTag(status);
+    });
+    const typeTags = TYPE_TAGS_INFO.map((type) => {
+      type.id = type.id.replace("|", separator);
+      return App.createTag(type);
+    });
+    const orderTags = ORDER_TAGS_INFO.map((order) => {
+      order.id = order.id.replace("|", separator);
+      return App.createTag(order);
+    });
     const tagSections = [
       // Tag section for genres
       App.createTagSection({
@@ -15253,14 +15262,14 @@ var _Sources = (() => {
   };
 
   // src/AsuraScans/utils/TagsHelper.ts
-  function getTagsOfSection(tags, section) {
+  function getTagsOfSection(tags, section, separator) {
     return tags.filter((tag) => {
-      const tagSection = tag.id.split("|")[0];
+      const tagSection = tag.id.split(separator)[0];
       return tagSection === section;
     });
   }
-  function pickTag(tags, section, limit, tagSectionName) {
-    const sectionTags = getTagsOfSection(tags, section);
+  function pickTag(tags, section, separator, limit, tagSectionName) {
+    const sectionTags = getTagsOfSection(tags, section, separator);
     if (limit !== void 0 && sectionTags.length > limit) {
       throw new Error(
         `Too many tags selected for ${tagSectionName ?? section}. Please select only ${limit}, not ${sectionTags.length}.`
@@ -15279,7 +15288,7 @@ var _Sources = (() => {
   var AS_API_DOMAIN = `https://api.${AS_DOMAIN_NAME}/api`;
   var PAGE_SIZE = 20;
   var AsuraScansInfo = {
-    version: "6.1.0",
+    version: "6.1.1",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
@@ -15315,6 +15324,10 @@ var _Sources = (() => {
     async getLatestUpdatesViewMoreState() {
       return await this.stateManager.retrieve("luvm") ?? false;
     }
+    // State for 0.9 compatibility
+    async get09CompatState() {
+      return await this.stateManager.retrieve("09cst") ?? false;
+    }
     async getSourceMenu() {
       return App.createDUISection({
         id: "settings",
@@ -15328,9 +15341,20 @@ var _Sources = (() => {
               get: () => this.getLatestUpdatesViewMoreState(),
               set: async (value) => await this.stateManager.store("luvm", value)
             })
+          }),
+          App.createDUISwitch({
+            id: "09cst",
+            label: "(Only for users on Paperback app version 0.9!!!) Toggle 0.9 Compatibility",
+            value: App.createDUIBinding({
+              get: () => this.get09CompatState(),
+              set: async (value) => await this.stateManager.store("09cst", value)
+            })
           })
         ]
       });
+    }
+    async getTagIdSeparator() {
+      return await this.get09CompatState() ? ":09C:" : "|";
     }
     getMangaShareUrl(mangaId) {
       return `${AS_DOMAIN}/comics/${mangaId}`;
@@ -15352,7 +15376,11 @@ var _Sources = (() => {
       const response = await this.requestManager.schedule(request, 1);
       this.CloudFlareError(response.status);
       const $2 = load(response.data);
-      return await parseMangaDetails($2, mangaId);
+      return await parseMangaDetails(
+        $2,
+        mangaId,
+        await this.getTagIdSeparator()
+      );
     }
     async getChapters(mangaId) {
       const request = App.createRequest({
@@ -15418,7 +15446,8 @@ var _Sources = (() => {
         const $2 = load(genresResponse.data);
         return parseTags(
           $2,
-          JSON.parse(creatorsResponse.data ?? "{}")
+          JSON.parse(creatorsResponse.data ?? "{}"),
+          await this.getTagIdSeparator()
         );
       } catch (error) {
         throw new Error(error);
@@ -15451,9 +15480,11 @@ var _Sources = (() => {
           encodeURIComponent(query.title)
         );
       }
+      const separator = await this.getTagIdSeparator();
       const typeTag = pickTag(
         query.includedTags,
         TAG_SECTION_IDS.TYPES,
+        separator,
         1,
         "Type"
       );
@@ -15463,6 +15494,7 @@ var _Sources = (() => {
       const statusTag = pickTag(
         query.includedTags,
         TAG_SECTION_IDS.STATUS,
+        separator,
         1,
         "Status"
       );
@@ -15472,12 +15504,17 @@ var _Sources = (() => {
       urlBuilder.addQueryParameter("sort", "latest").addQueryParameter(
         "order",
         cleanTagId(
-          pickTag(query.includedTags, TAG_SECTION_IDS.ORDER)?.id ?? "desc"
+          pickTag(
+            query.includedTags,
+            TAG_SECTION_IDS.ORDER,
+            separator
+          )?.id ?? "desc"
         )
       ).addQueryParameter("limit", PAGE_SIZE).addQueryParameter("offset", (page - 1) * PAGE_SIZE);
       const genreTags = getTagsOfSection(
         query.includedTags,
-        TAG_SECTION_IDS.GENRES
+        TAG_SECTION_IDS.GENRES,
+        separator
       );
       if (genreTags.length > 0) {
         const genreIds = genreTags.map((tag) => cleanTagId(tag.id));
@@ -15486,12 +15523,14 @@ var _Sources = (() => {
       const authorTag = pickTag(
         query.includedTags,
         TAG_SECTION_IDS.AUTHORS,
+        separator,
         1,
         "Authors"
       );
       const artistTag = pickTag(
         query.includedTags,
         TAG_SECTION_IDS.ARTISTS,
+        separator,
         1,
         "Artists"
       );
