@@ -6,8 +6,7 @@ import {
     TagSection,
     Tag,
     HomeSectionType,
-    HomeSection,
-    SourceStateManager
+    HomeSection
 } from '@paperback/types'
 
 import { decode as decodeHTMLEntity } from 'html-entities'
@@ -75,7 +74,7 @@ export const HOME_SECTIONS = [
     {
         id: 'latest_updates',
         title: 'Latest Updates',
-        containsMoreItems: false,
+        containsMoreItems: true,
         type: HomeSectionType.singleRowNormal,
         parser: ($: CheerioAPI): PartialSourceManga[] => {
             const selector = `astro-island[opts='{"name":"LatestUpdates","value":true}']`
@@ -166,7 +165,6 @@ export const HOME_SECTIONS = [
 ]
 
 export const parseHomeSections = async (
-    source: { getLatestUpdatesViewMoreState: () => Promise<boolean> },
     $: CheerioAPI,
     sectionCallback: (section: HomeSection) => void
 ): Promise<void> => {
@@ -176,16 +174,7 @@ export const parseHomeSections = async (
         const homeSection = App.createHomeSection(homeSectionInfo)
         sectionCallback(homeSection)
         homeSection.items = parser($)
-        if (homeSection.id === 'latest_updates') {
-            if (homeSection.items.length !== 0) {
-                homeSection.containsMoreItems =
-                    await source.getLatestUpdatesViewMoreState()
-
-                sectionCallback(homeSection)
-            }
-        } else {
-            sectionCallback(homeSection)
-        }
+        sectionCallback(homeSection)
     })
 }
 
@@ -235,7 +224,10 @@ export const parseMangaDetails = async (
         label: 'Authors',
         tags: [
             App.createTag({
-                id: TAG_SECTION_IDS.AUTHORS + '|' + encodeURIComponent(author),
+                id:
+                    TAG_SECTION_IDS.AUTHORS +
+                    ':PB:' +
+                    encodeURIComponent(author),
                 label: author
             })
         ]
@@ -251,7 +243,10 @@ export const parseMangaDetails = async (
         label: 'Artists',
         tags: [
             App.createTag({
-                id: TAG_SECTION_IDS.ARTISTS + '|' + encodeURIComponent(artist),
+                id:
+                    TAG_SECTION_IDS.ARTISTS +
+                    ':PB:' +
+                    encodeURIComponent(artist),
                 label: artist
             })
         ]
@@ -265,7 +260,10 @@ export const parseMangaDetails = async (
             const genre = $(el).text().trim()
             const genreId = el.attribs['href']?.split('=').pop() ?? genre
             return App.createTag({
-                id: TAG_SECTION_IDS.GENRES + '|' + encodeURIComponent(genreId),
+                id:
+                    TAG_SECTION_IDS.GENRES +
+                    ':PB:' +
+                    encodeURIComponent(genreId),
                 label: genre
             })
         })
@@ -387,7 +385,7 @@ function parseGenres($: CheerioAPI): Tag[] {
 
     return props.availableGenres.map((genre) =>
         App.createTag({
-            id: TAG_SECTION_IDS.GENRES + '|' + genre.slug,
+            id: TAG_SECTION_IDS.GENRES + ':PB:' + genre.slug,
             label: genre.name
         })
     )
@@ -395,43 +393,43 @@ function parseGenres($: CheerioAPI): Tag[] {
 
 const STATUS_TAGS_INFO = [
     {
-        id: TAG_SECTION_IDS.STATUS + '|' + 'ongoing',
+        id: TAG_SECTION_IDS.STATUS + ':PB:' + 'ongoing',
         label: 'Ongoing'
     },
     {
-        id: TAG_SECTION_IDS.STATUS + '|' + 'completed',
+        id: TAG_SECTION_IDS.STATUS + ':PB:' + 'completed',
         label: 'Completed'
     },
     {
-        id: TAG_SECTION_IDS.STATUS + '|' + 'hiatus',
+        id: TAG_SECTION_IDS.STATUS + ':PB:' + 'hiatus',
         label: 'Hiatus'
     },
     {
-        id: TAG_SECTION_IDS.STATUS + '|' + 'dropped',
+        id: TAG_SECTION_IDS.STATUS + ':PB:' + 'dropped',
         label: 'Dropped'
     }
 ]
 const TYPE_TAGS_INFO = [
     {
-        id: TAG_SECTION_IDS.TYPES + '|' + 'manga',
+        id: TAG_SECTION_IDS.TYPES + ':PB:' + 'manga',
         label: 'Manga'
     },
     {
-        id: TAG_SECTION_IDS.TYPES + '|' + 'manhwa',
+        id: TAG_SECTION_IDS.TYPES + ':PB:' + 'manhwa',
         label: 'Manhwa'
     },
     {
-        id: TAG_SECTION_IDS.TYPES + '|' + 'manhua',
+        id: TAG_SECTION_IDS.TYPES + ':PB:' + 'manhua',
         label: 'Manhua'
     }
 ]
 const ORDER_TAGS_INFO = [
     {
-        id: TAG_SECTION_IDS.ORDER + '|' + 'asc',
+        id: TAG_SECTION_IDS.ORDER + ':PB:' + 'asc',
         label: 'Ascending'
     },
     {
-        id: TAG_SECTION_IDS.ORDER + '|' + 'desc',
+        id: TAG_SECTION_IDS.ORDER + ':PB:' + 'desc',
         label: 'Descending'
     }
 ]
@@ -443,13 +441,25 @@ export const parseTags = (
     const genresTags = parseGenres($genresResponse)
     const artistsTags = creators.data.artists.map((artist) =>
         App.createTag({
-            id: TAG_SECTION_IDS.ARTISTS + '|' + encodeURIComponent(artist),
+            id:
+                TAG_SECTION_IDS.ARTISTS +
+                ':PB:' +
+                encodeURIComponent(artist)
+                    .replace("'", '%27')
+                    .replace('!', '%21')
+                    .replace('*', '%2A'),
             label: artist
         })
     )
     const authorTags = creators.data.authors.map((author) =>
         App.createTag({
-            id: TAG_SECTION_IDS.AUTHORS + '|' + encodeURIComponent(author),
+            id:
+                TAG_SECTION_IDS.AUTHORS +
+                ':PB:' +
+                encodeURIComponent(author)
+                    .replace("'", '%27')
+                    .replace('!', '%21')
+                    .replace('*', '%2A'),
             label: author
         })
     )

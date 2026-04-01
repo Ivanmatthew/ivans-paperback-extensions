@@ -33,7 +33,7 @@ import {
 import { decode as decodeHTMLEntity } from 'html-entities'
 
 import * as cheerio from 'cheerio'
-import { CreatorsData, LatestUpdatesProps, SeriesData } from './interfaces'
+import { CreatorsData, SeriesData } from './interfaces'
 
 import { URLBuilder } from './utils/URLBuilder'
 import { cleanTagId, getTagsOfSection, pickTag } from './utils/TagsHelper'
@@ -45,7 +45,7 @@ const AS_API_DOMAIN = `https://api.${AS_DOMAIN_NAME}/api`
 const PAGE_SIZE = 20
 
 export const AsuraScansInfo: SourceInfo = {
-    version: '6.1.0',
+    version: '6.1.2',
     name: 'AsuraScans',
     description: 'Extension that pulls manga from AsuraScans',
     author: 'IvanMatthew',
@@ -91,31 +91,6 @@ export class AsuraScans
         }
     })
 
-    stateManager = App.createSourceStateManager()
-
-    async getLatestUpdatesViewMoreState(): Promise<boolean> {
-        return (await this.stateManager.retrieve('luvm')) ?? false
-    }
-
-    async getSourceMenu(): Promise<DUISection> {
-        return App.createDUISection({
-            id: 'settings',
-            header: 'Source Settings',
-            isHidden: false,
-            rows: async () => [
-                App.createDUISwitch({
-                    id: 'luvmsw',
-                    label: 'Toggle View More For Latest Updates',
-                    value: App.createDUIBinding({
-                        get: () => this.getLatestUpdatesViewMoreState(),
-                        set: async (value: boolean) =>
-                            await this.stateManager.store('luvm', value)
-                    })
-                })
-            ]
-        })
-    }
-
     getMangaShareUrl(mangaId: string): string {
         return `${AS_DOMAIN}/comics/${mangaId}`
     }
@@ -130,7 +105,7 @@ export class AsuraScans
         const response = await this.requestManager.schedule(request, 1)
 
         const $ = cheerio.load(response.data as string)
-        return await parseHomeSections(this, $, sectionCallback)
+        return await parseHomeSections($, sectionCallback)
     }
 
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
@@ -255,7 +230,6 @@ export class AsuraScans
             | undefined
     ): Promise<PagedResults> {
         if (metadata?.lastPage) {
-            console.log('DEBUG: LAST PAGE')
             return App.createPagedResults({})
         }
 
@@ -330,9 +304,15 @@ export class AsuraScans
                 'Please select either Author or Artist tags, not both.'
             )
         } else if (authorTag) {
-            urlBuilder.addQueryParameter('author', cleanTagId(authorTag.id))
+            urlBuilder.addQueryParameter(
+                'author',
+                encodeURIComponent(decodeURIComponent(cleanTagId(authorTag.id)))
+            )
         } else if (artistTag) {
-            urlBuilder.addQueryParameter('artist', cleanTagId(artistTag.id))
+            urlBuilder.addQueryParameter(
+                'artist',
+                encodeURIComponent(decodeURIComponent(cleanTagId(artistTag.id)))
+            )
         }
 
         if (query.parameters.min_chapters) {
