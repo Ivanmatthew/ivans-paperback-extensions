@@ -1002,7 +1002,7 @@ var _Sources = (() => {
     {
       id: "latest_updates",
       title: "Latest Updates",
-      containsMoreItems: false,
+      containsMoreItems: true,
       type: import_types.HomeSectionType.singleRowNormal,
       parser: ($2) => {
         const selector = `astro-island[opts='{"name":"LatestUpdates","value":true}']`;
@@ -1075,23 +1075,16 @@ var _Sources = (() => {
       }
     }
   ];
-  var parseHomeSections = async (source, $2, sectionCallback) => {
+  var parseHomeSections = async ($2, sectionCallback) => {
     HOME_SECTIONS.forEach(async (section) => {
       const { parser, ...homeSectionInfo } = section;
       const homeSection = App.createHomeSection(homeSectionInfo);
       sectionCallback(homeSection);
       homeSection.items = parser($2);
-      if (homeSection.id === "latest_updates") {
-        if (homeSection.items.length !== 0) {
-          homeSection.containsMoreItems = await source.getLatestUpdatesViewMoreState();
-          sectionCallback(homeSection);
-        }
-      } else {
-        sectionCallback(homeSection);
-      }
+      sectionCallback(homeSection);
     });
   };
-  var parseMangaDetails = async ($2, mangaId, separator) => {
+  var parseMangaDetails = async ($2, mangaId) => {
     const title = (0, import_html_entities.decode)(
       $2(
         "h1[class='text-xl lg:text-[32px] font-semibold leading-tight']"
@@ -1122,7 +1115,7 @@ var _Sources = (() => {
       label: "Authors",
       tags: [
         App.createTag({
-          id: TAG_SECTION_IDS.AUTHORS + separator + encodeURIComponent(author),
+          id: TAG_SECTION_IDS.AUTHORS + ":PB:" + encodeURIComponent(author),
           label: author
         })
       ]
@@ -1135,7 +1128,7 @@ var _Sources = (() => {
       label: "Artists",
       tags: [
         App.createTag({
-          id: TAG_SECTION_IDS.ARTISTS + separator + encodeURIComponent(artist),
+          id: TAG_SECTION_IDS.ARTISTS + ":PB:" + encodeURIComponent(artist),
           label: artist
         })
       ]
@@ -1145,7 +1138,7 @@ var _Sources = (() => {
       const genre = $2(el).text().trim();
       const genreId = el.attribs["href"]?.split("=").pop() ?? genre;
       return App.createTag({
-        id: TAG_SECTION_IDS.GENRES + separator + encodeURIComponent(genreId),
+        id: TAG_SECTION_IDS.GENRES + ":PB:" + encodeURIComponent(genreId),
         label: genre
       });
     }).get();
@@ -1234,7 +1227,7 @@ var _Sources = (() => {
     ARTISTS: "4",
     AUTHORS: "5"
   };
-  function parseGenres($2, separator) {
+  function parseGenres($2) {
     const props = retrieveProps(
       $2,
       `astro-island[opts='{"name":"BrowseFilters","value":true}']`
@@ -1244,79 +1237,70 @@ var _Sources = (() => {
     }
     return props.availableGenres.map(
       (genre) => App.createTag({
-        id: TAG_SECTION_IDS.GENRES + separator + genre.slug,
+        id: TAG_SECTION_IDS.GENRES + ":PB:" + genre.slug,
         label: genre.name
       })
     );
   }
   var STATUS_TAGS_INFO = [
     {
-      id: TAG_SECTION_IDS.STATUS + "|ongoing",
+      id: TAG_SECTION_IDS.STATUS + ":PB:ongoing",
       label: "Ongoing"
     },
     {
-      id: TAG_SECTION_IDS.STATUS + "|completed",
+      id: TAG_SECTION_IDS.STATUS + ":PB:completed",
       label: "Completed"
     },
     {
-      id: TAG_SECTION_IDS.STATUS + "|hiatus",
+      id: TAG_SECTION_IDS.STATUS + ":PB:hiatus",
       label: "Hiatus"
     },
     {
-      id: TAG_SECTION_IDS.STATUS + "|dropped",
+      id: TAG_SECTION_IDS.STATUS + ":PB:dropped",
       label: "Dropped"
     }
   ];
   var TYPE_TAGS_INFO = [
     {
-      id: TAG_SECTION_IDS.TYPES + "|manga",
+      id: TAG_SECTION_IDS.TYPES + ":PB:manga",
       label: "Manga"
     },
     {
-      id: TAG_SECTION_IDS.TYPES + "|manhwa",
+      id: TAG_SECTION_IDS.TYPES + ":PB:manhwa",
       label: "Manhwa"
     },
     {
-      id: TAG_SECTION_IDS.TYPES + "|manhua",
+      id: TAG_SECTION_IDS.TYPES + ":PB:manhua",
       label: "Manhua"
     }
   ];
   var ORDER_TAGS_INFO = [
     {
-      id: TAG_SECTION_IDS.ORDER + "|asc",
+      id: TAG_SECTION_IDS.ORDER + ":PB:asc",
       label: "Ascending"
     },
     {
-      id: TAG_SECTION_IDS.ORDER + "|desc",
+      id: TAG_SECTION_IDS.ORDER + ":PB:desc",
       label: "Descending"
     }
   ];
-  var parseTags = ($genresResponse, creators, separator) => {
-    const genresTags = parseGenres($genresResponse, separator);
+  var parseTags = ($genresResponse, creators) => {
+    const genresTags = parseGenres($genresResponse);
     const artistsTags = creators.data.artists.map(
       (artist) => App.createTag({
-        id: TAG_SECTION_IDS.ARTISTS + separator + encodeURIComponent(artist),
+        id: TAG_SECTION_IDS.ARTISTS + ":PB:" + encodeURIComponent(artist).replace("'", "%27").replace("!", "%21").replace("*", "%2A"),
         label: artist
       })
     );
     const authorTags = creators.data.authors.map(
       (author) => App.createTag({
-        id: TAG_SECTION_IDS.AUTHORS + separator + encodeURIComponent(author),
+        id: TAG_SECTION_IDS.AUTHORS + ":PB:" + encodeURIComponent(author).replace("'", "%27").replace("!", "%21").replace("*", "%2A"),
         label: author
       })
     );
-    const statusTags = STATUS_TAGS_INFO.map((status) => {
-      status.id = status.id.replace("|", separator);
-      return App.createTag(status);
-    });
-    const typeTags = TYPE_TAGS_INFO.map((type) => {
-      type.id = type.id.replace("|", separator);
-      return App.createTag(type);
-    });
-    const orderTags = ORDER_TAGS_INFO.map((order) => {
-      order.id = order.id.replace("|", separator);
-      return App.createTag(order);
-    });
+    const statusTags = STATUS_TAGS_INFO.map((status) => App.createTag(status));
+    const typeTags = TYPE_TAGS_INFO.map((type) => App.createTag(type));
+    const orderTags = ORDER_TAGS_INFO.map((order) => App.createTag(order));
     const tagSections = [
       // Tag section for genres
       App.createTagSection({
@@ -15262,14 +15246,27 @@ var _Sources = (() => {
   };
 
   // src/AsuraScans/utils/TagsHelper.ts
-  function getTagsOfSection(tags, section, separator) {
+  var TAG_SEPARATORS = ["|", ":PB:", ":09C:"];
+  function identifyTagSeparator(tagId) {
+    for (const separator of TAG_SEPARATORS) {
+      if (tagId.includes(separator)) {
+        return separator;
+      }
+    }
+    return void 0;
+  }
+  function getTagsOfSection(tags, section) {
     return tags.filter((tag) => {
+      const separator = identifyTagSeparator(tag.id);
+      if (!separator) {
+        throw new Error(`Unknown tag format: ${tag.id}`);
+      }
       const tagSection = tag.id.split(separator)[0];
       return tagSection === section;
     });
   }
-  function pickTag(tags, section, separator, limit, tagSectionName) {
-    const sectionTags = getTagsOfSection(tags, section, separator);
+  function pickTag(tags, section, limit, tagSectionName) {
+    const sectionTags = getTagsOfSection(tags, section);
     if (limit !== void 0 && sectionTags.length > limit) {
       throw new Error(
         `Too many tags selected for ${tagSectionName ?? section}. Please select only ${limit}, not ${sectionTags.length}.`
@@ -15278,7 +15275,11 @@ var _Sources = (() => {
     return sectionTags.length > 0 ? sectionTags[0] : void 0;
   }
   function cleanTagId(tagId) {
-    const parts = tagId.split("|");
+    const separator = identifyTagSeparator(tagId);
+    if (!separator) {
+      return tagId;
+    }
+    const parts = tagId.split(separator);
     return parts.length > 1 ? parts[1] : tagId;
   }
 
@@ -15288,7 +15289,7 @@ var _Sources = (() => {
   var AS_API_DOMAIN = `https://api.${AS_DOMAIN_NAME}/api`;
   var PAGE_SIZE = 20;
   var AsuraScansInfo = {
-    version: "6.1.1",
+    version: "6.1.2",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
@@ -15319,42 +15320,6 @@ var _Sources = (() => {
           }
         }
       });
-      this.stateManager = App.createSourceStateManager();
-    }
-    async getLatestUpdatesViewMoreState() {
-      return await this.stateManager.retrieve("luvm") ?? false;
-    }
-    // State for 0.9 compatibility
-    async get09CompatState() {
-      return await this.stateManager.retrieve("09cst") ?? false;
-    }
-    async getSourceMenu() {
-      return App.createDUISection({
-        id: "settings",
-        header: "Source Settings",
-        isHidden: false,
-        rows: async () => [
-          App.createDUISwitch({
-            id: "luvmsw",
-            label: "Toggle View More For Latest Updates",
-            value: App.createDUIBinding({
-              get: () => this.getLatestUpdatesViewMoreState(),
-              set: async (value) => await this.stateManager.store("luvm", value)
-            })
-          }),
-          App.createDUISwitch({
-            id: "09cst",
-            label: "(Only for users on Paperback app version 0.9!!!) Toggle 0.9 Compatibility",
-            value: App.createDUIBinding({
-              get: () => this.get09CompatState(),
-              set: async (value) => await this.stateManager.store("09cst", value)
-            })
-          })
-        ]
-      });
-    }
-    async getTagIdSeparator() {
-      return await this.get09CompatState() ? ":09C:" : "|";
     }
     getMangaShareUrl(mangaId) {
       return `${AS_DOMAIN}/comics/${mangaId}`;
@@ -15366,7 +15331,7 @@ var _Sources = (() => {
       });
       const response = await this.requestManager.schedule(request, 1);
       const $2 = load(response.data);
-      return await parseHomeSections(this, $2, sectionCallback);
+      return await parseHomeSections($2, sectionCallback);
     }
     async getMangaDetails(mangaId) {
       const request = App.createRequest({
@@ -15376,11 +15341,7 @@ var _Sources = (() => {
       const response = await this.requestManager.schedule(request, 1);
       this.CloudFlareError(response.status);
       const $2 = load(response.data);
-      return await parseMangaDetails(
-        $2,
-        mangaId,
-        await this.getTagIdSeparator()
-      );
+      return await parseMangaDetails($2, mangaId);
     }
     async getChapters(mangaId) {
       const request = App.createRequest({
@@ -15446,8 +15407,7 @@ var _Sources = (() => {
         const $2 = load(genresResponse.data);
         return parseTags(
           $2,
-          JSON.parse(creatorsResponse.data ?? "{}"),
-          await this.getTagIdSeparator()
+          JSON.parse(creatorsResponse.data ?? "{}")
         );
       } catch (error) {
         throw new Error(error);
@@ -15467,7 +15427,6 @@ var _Sources = (() => {
     }
     async getSearchResults(query, metadata) {
       if (metadata?.lastPage) {
-        console.log("DEBUG: LAST PAGE");
         return App.createPagedResults({});
       }
       const page = metadata?.page ?? 1;
@@ -15480,11 +15439,9 @@ var _Sources = (() => {
           encodeURIComponent(query.title)
         );
       }
-      const separator = await this.getTagIdSeparator();
       const typeTag = pickTag(
         query.includedTags,
         TAG_SECTION_IDS.TYPES,
-        separator,
         1,
         "Type"
       );
@@ -15494,7 +15451,6 @@ var _Sources = (() => {
       const statusTag = pickTag(
         query.includedTags,
         TAG_SECTION_IDS.STATUS,
-        separator,
         1,
         "Status"
       );
@@ -15504,17 +15460,12 @@ var _Sources = (() => {
       urlBuilder.addQueryParameter("sort", "latest").addQueryParameter(
         "order",
         cleanTagId(
-          pickTag(
-            query.includedTags,
-            TAG_SECTION_IDS.ORDER,
-            separator
-          )?.id ?? "desc"
+          pickTag(query.includedTags, TAG_SECTION_IDS.ORDER)?.id ?? "desc"
         )
       ).addQueryParameter("limit", PAGE_SIZE).addQueryParameter("offset", (page - 1) * PAGE_SIZE);
       const genreTags = getTagsOfSection(
         query.includedTags,
-        TAG_SECTION_IDS.GENRES,
-        separator
+        TAG_SECTION_IDS.GENRES
       );
       if (genreTags.length > 0) {
         const genreIds = genreTags.map((tag) => cleanTagId(tag.id));
@@ -15523,14 +15474,12 @@ var _Sources = (() => {
       const authorTag = pickTag(
         query.includedTags,
         TAG_SECTION_IDS.AUTHORS,
-        separator,
         1,
         "Authors"
       );
       const artistTag = pickTag(
         query.includedTags,
         TAG_SECTION_IDS.ARTISTS,
-        separator,
         1,
         "Artists"
       );
@@ -15539,9 +15488,15 @@ var _Sources = (() => {
           "Please select either Author or Artist tags, not both."
         );
       } else if (authorTag) {
-        urlBuilder.addQueryParameter("author", cleanTagId(authorTag.id));
+        urlBuilder.addQueryParameter(
+          "author",
+          encodeURIComponent(decodeURIComponent(cleanTagId(authorTag.id)))
+        );
       } else if (artistTag) {
-        urlBuilder.addQueryParameter("artist", cleanTagId(artistTag.id));
+        urlBuilder.addQueryParameter(
+          "artist",
+          encodeURIComponent(decodeURIComponent(cleanTagId(artistTag.id)))
+        );
       }
       if (query.parameters.min_chapters) {
         const minChapters = Number(query.parameters.min_chapters);
