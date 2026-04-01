@@ -16,9 +16,7 @@ import {
     SourceIntents,
     SourceManga,
     TagSection,
-    SearchField,
-    DUISection,
-    PartialSourceManga
+    SearchField
 } from '@paperback/types'
 import {
     HOME_SECTIONS,
@@ -55,7 +53,6 @@ export const AsuraScansInfo: SourceInfo = {
     websiteBaseURL: AS_DOMAIN,
     intents:
         SourceIntents.MANGA_CHAPTERS |
-        SourceIntents.SETTINGS_UI |
         SourceIntents.HOMEPAGE_SECTIONS |
         SourceIntents.CLOUDFLARE_BYPASS_REQUIRED,
     sourceTags: []
