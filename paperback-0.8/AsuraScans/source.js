@@ -15297,7 +15297,7 @@ var _Sources = (() => {
     icon: "icon.png",
     contentRating: import_types3.ContentRating.MATURE,
     websiteBaseURL: AS_DOMAIN,
-    intents: import_types3.SourceIntents.MANGA_CHAPTERS | import_types3.SourceIntents.SETTINGS_UI | import_types3.SourceIntents.HOMEPAGE_SECTIONS | import_types3.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED,
+    intents: import_types3.SourceIntents.MANGA_CHAPTERS | import_types3.SourceIntents.HOMEPAGE_SECTIONS | import_types3.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED,
     sourceTags: []
   };
   var AsuraScans = class _AsuraScans {
