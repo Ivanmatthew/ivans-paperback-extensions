@@ -17,7 +17,8 @@ import {
     SourceManga,
     TagSection,
     SearchField,
-    DUISection
+    DUISection,
+    PartialSourceManga
 } from '@paperback/types'
 import {
     HOME_SECTIONS,
@@ -32,7 +33,7 @@ import {
 import { decode as decodeHTMLEntity } from 'html-entities'
 
 import * as cheerio from 'cheerio'
-import { CreatorsData, SeriesData } from './interfaces'
+import { CreatorsData, LatestUpdatesProps, SeriesData } from './interfaces'
 
 import { URLBuilder } from './utils/URLBuilder'
 import { cleanTagId, getTagsOfSection, pickTag } from './utils/TagsHelper'
@@ -44,7 +45,7 @@ const AS_API_DOMAIN = `https://api.${AS_DOMAIN_NAME}/api`
 const PAGE_SIZE = 20
 
 export const AsuraScansInfo: SourceInfo = {
-    version: '6.1.1',
+    version: '6.1.0',
     name: 'AsuraScans',
     description: 'Extension that pulls manga from AsuraScans',
     author: 'IvanMatthew',
@@ -96,11 +97,6 @@ export class AsuraScans
         return (await this.stateManager.retrieve('luvm')) ?? false
     }
 
-    // State for 0.9 compatibility
-    async get09CompatState(): Promise<boolean> {
-        return (await this.stateManager.retrieve('09cst')) ?? false
-    }
-
     async getSourceMenu(): Promise<DUISection> {
         return App.createDUISection({
             id: 'settings',
@@ -115,22 +111,9 @@ export class AsuraScans
                         set: async (value: boolean) =>
                             await this.stateManager.store('luvm', value)
                     })
-                }),
-                App.createDUISwitch({
-                    id: '09cst',
-                    label: '(Only for users on Paperback app version 0.9!!!) Toggle 0.9 Compatibility',
-                    value: App.createDUIBinding({
-                        get: () => this.get09CompatState(),
-                        set: async (value: boolean) =>
-                            await this.stateManager.store('09cst', value)
-                    })
                 })
             ]
         })
-    }
-
-    async getTagIdSeparator(): Promise<string> {
-        return (await this.get09CompatState()) ? ':09C:' : '|'
     }
 
     getMangaShareUrl(mangaId: string): string {
@@ -160,11 +143,7 @@ export class AsuraScans
         this.CloudFlareError(response.status)
 
         const $ = cheerio.load(response.data as string)
-        return await parseMangaDetails(
-            $,
-            mangaId,
-            await this.getTagIdSeparator()
-        )
+        return await parseMangaDetails($, mangaId)
     }
 
     async getChapters(mangaId: string): Promise<Chapter[]> {
@@ -248,8 +227,7 @@ export class AsuraScans
 
             return parseTags(
                 $,
-                JSON.parse(creatorsResponse.data ?? '{}') as CreatorsData,
-                await this.getTagIdSeparator()
+                JSON.parse(creatorsResponse.data ?? '{}') as CreatorsData
             )
         } catch (error) {
             throw new Error(error as string)
@@ -293,12 +271,10 @@ export class AsuraScans
                 encodeURIComponent(query.title)
             )
         }
-        const separator = await this.getTagIdSeparator()
 
         const typeTag = pickTag(
             query.includedTags,
             TAG_SECTION_IDS.TYPES,
-            separator,
             1,
             'Type'
         )
@@ -309,7 +285,6 @@ export class AsuraScans
         const statusTag = pickTag(
             query.includedTags,
             TAG_SECTION_IDS.STATUS,
-            separator,
             1,
             'Status'
         )
@@ -322,11 +297,8 @@ export class AsuraScans
             .addQueryParameter(
                 'order',
                 cleanTagId(
-                    pickTag(
-                        query.includedTags,
-                        TAG_SECTION_IDS.ORDER,
-                        separator
-                    )?.id ?? 'desc'
+                    pickTag(query.includedTags, TAG_SECTION_IDS.ORDER)?.id ??
+                        'desc'
                 )
             )
             .addQueryParameter('limit', PAGE_SIZE)
@@ -334,8 +306,7 @@ export class AsuraScans
 
         const genreTags = getTagsOfSection(
             query.includedTags,
-            TAG_SECTION_IDS.GENRES,
-            separator
+            TAG_SECTION_IDS.GENRES
         )
         if (genreTags.length > 0) {
             const genreIds = genreTags.map((tag) => cleanTagId(tag.id))
@@ -345,14 +316,12 @@ export class AsuraScans
         const authorTag = pickTag(
             query.includedTags,
             TAG_SECTION_IDS.AUTHORS,
-            separator,
             1,
             'Authors'
         )
         const artistTag = pickTag(
             query.includedTags,
             TAG_SECTION_IDS.ARTISTS,
-            separator,
             1,
             'Artists'
         )
