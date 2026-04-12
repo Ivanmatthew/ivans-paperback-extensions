@@ -43,7 +43,7 @@ const AS_API_DOMAIN = `https://api.${AS_DOMAIN_NAME}/api`
 const PAGE_SIZE = 20
 
 export const AsuraScansInfo: SourceInfo = {
-    version: '6.1.2',
+    version: '6.1.3',
     name: 'AsuraScans',
     description: 'Extension that pulls manga from AsuraScans',
     author: 'IvanMatthew',
@@ -102,7 +102,7 @@ export class AsuraScans
         const response = await this.requestManager.schedule(request, 1)
 
         const $ = cheerio.load(response.data as string)
-        return await parseHomeSections($, sectionCallback)
+        parseHomeSections($, sectionCallback)
     }
 
     async getMangaDetails(mangaId: string): Promise<SourceManga> {

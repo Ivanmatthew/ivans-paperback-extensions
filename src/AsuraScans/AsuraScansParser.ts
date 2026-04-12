@@ -164,15 +164,15 @@ export const HOME_SECTIONS = [
     }
 ]
 
-export const parseHomeSections = async (
+export const parseHomeSections = (
     $: CheerioAPI,
     sectionCallback: (section: HomeSection) => void
-): Promise<void> => {
-    HOME_SECTIONS.forEach(async (section) => {
+) => {
+    HOME_SECTIONS.forEach((section) => {
         const { parser, ...homeSectionInfo } = section
 
         const homeSection = App.createHomeSection(homeSectionInfo)
-        sectionCallback(homeSection)
+        // sectionCallback(homeSection) // In 0.8 this breaks the UI
         homeSection.items = parser($)
         sectionCallback(homeSection)
     })
@@ -183,9 +183,9 @@ export const parseMangaDetails = async (
     mangaId: string
 ): Promise<SourceManga> => {
     const title = decodeHTMLEntity(
-        $(
-            "h1[class='text-xl lg:text-[32px] font-semibold leading-tight']"
-        ).text()
+        $("h1[class='text-xl lg:text-[32px] font-semibold leading-tight']")
+            .text()
+            .trim()
     )
     const altTitles = $('#alt-titles')
         .text()
