@@ -1075,20 +1075,17 @@ var _Sources = (() => {
       }
     }
   ];
-  var parseHomeSections = async ($2, sectionCallback) => {
-    HOME_SECTIONS.forEach(async (section) => {
+  var parseHomeSections = ($2, sectionCallback) => {
+    HOME_SECTIONS.forEach((section) => {
       const { parser, ...homeSectionInfo } = section;
       const homeSection = App.createHomeSection(homeSectionInfo);
-      sectionCallback(homeSection);
       homeSection.items = parser($2);
       sectionCallback(homeSection);
     });
   };
   var parseMangaDetails = async ($2, mangaId) => {
     const title = (0, import_html_entities.decode)(
-      $2(
-        "h1[class='text-xl lg:text-[32px] font-semibold leading-tight']"
-      ).text()
+      $2("h1[class='text-xl lg:text-[32px] font-semibold leading-tight']").text().trim()
     );
     const altTitles = $2("#alt-titles").text().split("\u2022").map((t) => (0, import_html_entities.decode)(t.trim()));
     const titles = altTitles.length > 0 ? [title, ...altTitles] : [title];
@@ -15289,7 +15286,7 @@ var _Sources = (() => {
   var AS_API_DOMAIN = `https://api.${AS_DOMAIN_NAME}/api`;
   var PAGE_SIZE = 20;
   var AsuraScansInfo = {
-    version: "6.1.2",
+    version: "6.1.3",
     name: "AsuraScans",
     description: "Extension that pulls manga from AsuraScans",
     author: "IvanMatthew",
@@ -15331,7 +15328,7 @@ var _Sources = (() => {
       });
       const response = await this.requestManager.schedule(request, 1);
       const $2 = load(response.data);
-      return await parseHomeSections($2, sectionCallback);
+      parseHomeSections($2, sectionCallback);
     }
     async getMangaDetails(mangaId) {
       const request = App.createRequest({
