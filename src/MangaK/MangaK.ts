@@ -33,13 +33,14 @@ import type {
     ChaptersResponse
 } from './interfaces'
 import { URLBuilder } from '../UrlBuilder'
+import Fuse from 'fuse.js/basic'
 
 const BASE_URL = 'https://mangak.io'
 const API_URL = `${BASE_URL}/api`
 const API_DOMAIN_URL = 'https://api.mangak.io'
 
 export const MangaKInfo: SourceInfo = {
-    version: '0.1.0',
+    version: '0.2.0',
     name: 'MangaK',
     description: 'Extension that pulls manga from MangaK',
     author: 'IvanMatthew',
@@ -211,7 +212,8 @@ export class MangaK
         SearchResultsProviding,
         HomePageSectionsProviding
 {
-    buildId: string | null = null
+    // Caching buildId is unfortunately not possible because the buildId regularly changes
+    // buildId: string | null = null
     sections = {
         hero: {
             extractor: (
@@ -348,7 +350,7 @@ export class MangaK
     )
 
     requestManager: RequestManager = App.createRequestManager({
-        requestsPerSecond: 5,
+        requestsPerSecond: 150,
         requestTimeout: 15000,
         interceptor: {
             interceptRequest: async (request) => {
@@ -358,14 +360,23 @@ export class MangaK
                 }
                 return request
             },
-            interceptResponse: async (response) => response
+            interceptResponse: async (response) => {
+                if (response.status >= 400 && response.status < 500) {
+                    const data = JSON.parse(response.data ?? '{}')
+                    throw new Error(
+                        data.message ||
+                            `Request failed with status ${response.status}`
+                    )
+                }
+                return response
+            }
         }
     })
 
     async fetchBuildId(): Promise<string> {
-        if (this.buildId) {
-            return this.buildId
-        }
+        // if (this.buildId) {
+        //     return this.buildId
+        // }
 
         return await this.requestManager
             .schedule(
@@ -378,8 +389,9 @@ export class MangaK
             .then((res: Response) => {
                 const data: VersionResponse = JSON.parse(res.data ?? '{}')
                 if (data.buildId) {
-                    this.buildId = data.buildId
-                    return this.buildId
+                    // this.buildId = data.buildId
+                    // return this.buildId
+                    return data.buildId
                 } else {
                     throw new Error('Failed to fetch buildId')
                 }
@@ -463,9 +475,11 @@ export class MangaK
         const manga = data.pageProps.initialManga
 
         const titles = [manga.name]
-        for (const altName of manga.altNames) {
-            if (!titles.includes(altName.name)) {
-                titles.push(altName.name)
+        if (manga.altNames) {
+            for (const altName of manga.altNames) {
+                if (!titles.includes(altName.name)) {
+                    titles.push(altName.name)
+                }
             }
         }
 
@@ -732,9 +746,12 @@ export class MangaK
         }
 
         // Explicitly reduce to 200 characters to prevent serverside error constraint of max 200 character query (but it really is 52 characters???)
-        const title = query.title?.trim().slice(0, 50)
+        const title = query.title?.trim()
         if (title) {
-            urlBuilder.addQueryParameter('q', encodeURIComponent(title))
+            urlBuilder.addQueryParameter(
+                'q',
+                encodeURIComponent(title.slice(0, 50))
+            )
         }
 
         const response = await this.requestManager.schedule(
@@ -755,17 +772,26 @@ export class MangaK
 
         const pagination = data.data.pagination
 
+        // Because the native search endpoint does not match nicely
+        // Therefore we do a second search pass using a local fuzzy search
+        const unsortedResults = data.data.items.map((item) => ({
+            mangaId: item.slug,
+            title: item.name,
+            image: item.cover,
+            subtitle: item.latest_chapters[0]
+                ? `Ch. ${item.latest_chapters[0].chapter_number}`
+                : item.status
+        }))
+        const fuse = new Fuse(unsortedResults, {
+            keys: ['title'],
+            includeScore: true
+        })
+        const results = fuse
+            .search(title ?? '')
+            .map((result) => App.createPartialSourceManga(result.item))
+
         return App.createPagedResults({
-            results: data.data.items.map((item) =>
-                App.createPartialSourceManga({
-                    mangaId: item.slug,
-                    title: item.name,
-                    image: item.cover,
-                    subtitle: item.latest_chapters[0]
-                        ? `Ch. ${item.latest_chapters[0].chapter_number}`
-                        : item.status
-                })
-            ),
+            results,
             metadata: pagination.has_next
                 ? {
                       ...pagination,
