@@ -1279,6 +1279,30 @@ var _Sources = (() => {
     async getChapters(mangaId) {
       const data = await this.fetchNextData(`${mangaId}.json`);
       const manga = data.pageProps.initialManga;
+      if (manga.chapters.length === 50) {
+        console.log(
+          `${API_DOMAIN_URL}/titles/${data.pageProps.initialManga.id}/chapters`
+        );
+        const chapterListResponse = await this.requestManager.schedule(
+          App.createRequest({
+            method: "GET",
+            url: `${API_DOMAIN_URL}/titles/${data.pageProps.initialManga.id}/chapters`
+          }),
+          1
+        );
+        const chapterList = JSON.parse(
+          chapterListResponse.data ?? "[]"
+        );
+        return chapterList.data.chapters.map(
+          (chapter) => App.createChapter({
+            id: chapter.slug,
+            name: chapter.name,
+            chapNum: chapter.chapter_number,
+            time: new Date(chapter.updated_at),
+            langCode: "\u{1F1EC}\u{1F1E7}"
+          })
+        );
+      }
       return manga.chapters.map(
         (chapter) => App.createChapter({
           id: chapter.slug,
@@ -1376,7 +1400,7 @@ var _Sources = (() => {
       if (author) {
         urlBuilder.addQueryParameter("author", encodeURIComponent(author));
       }
-      const title = query.title?.trim();
+      const title = query.title?.trim().slice(0, 50);
       if (title) {
         urlBuilder.addQueryParameter("q", encodeURIComponent(title));
       }
@@ -1392,6 +1416,9 @@ var _Sources = (() => {
         1
       );
       const data = JSON.parse(response.data ?? "{}");
+      if (response.status === 400) {
+        throw new Error(data.message || "Unknown error.");
+      }
       const pagination = data.data.pagination;
       return App.createPagedResults({
         results: data.data.items.map(
