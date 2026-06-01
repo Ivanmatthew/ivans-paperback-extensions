@@ -40,7 +40,7 @@ const API_URL = `${BASE_URL}/api`
 const API_DOMAIN_URL = 'https://api.mangak.io'
 
 export const MangaKInfo: SourceInfo = {
-    version: '0.2.1',
+    version: '0.2.2',
     name: 'MangaK',
     description: 'Extension that pulls manga from MangaK',
     author: 'IvanMatthew',
@@ -596,9 +596,6 @@ export class MangaK
 
         if (manga.chapters.length === 50) {
             // Fetch the others from the chapter list endpoint
-            console.log(
-                `${API_DOMAIN_URL}/titles/${data.pageProps.initialManga.id}/chapters`
-            )
             const chapterListResponse = await this.requestManager.schedule(
                 App.createRequest({
                     method: 'GET',
@@ -606,29 +603,37 @@ export class MangaK
                 }),
                 1
             )
+            if (!chapterListResponse.data) {
+                throw new Error('Failed to fetch chapter list')
+            }
             const chapterList: ChaptersResponse = JSON.parse(
-                chapterListResponse.data ?? '[]'
+                chapterListResponse.data
             )
-            return chapterList.data.chapters.map((chapter) =>
-                App.createChapter({
+
+            let index = -1
+            return chapterList.data.chapters.map((chapter) => {
+                index++
+                return App.createChapter({
                     id: chapter.slug,
                     name: chapter.name,
                     chapNum: chapter.chapter_number,
                     time: new Date(chapter.updated_at),
                     langCode: '🇬🇧'
                 })
-            )
+            })
         }
 
-        return manga.chapters.map((chapter) =>
-            App.createChapter({
+        let index = -1
+        return manga.chapters.map((chapter) => {
+            index++
+            return App.createChapter({
                 id: chapter.slug,
                 name: chapter.name,
                 chapNum: chapter.chapterNumber,
                 time: new Date(chapter.updatedAt),
                 langCode: '🇬🇧'
             })
-        )
+        })
     }
     async getChapterDetails(
         mangaId: string,
