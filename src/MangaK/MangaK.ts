@@ -40,7 +40,7 @@ const API_URL = `${BASE_URL}/api`
 const API_DOMAIN_URL = 'https://api.mangak.io'
 
 export const MangaKInfo: SourceInfo = {
-    version: '0.2.0',
+    version: '0.2.1',
     name: 'MangaK',
     description: 'Extension that pulls manga from MangaK',
     author: 'IvanMatthew',
@@ -361,7 +361,12 @@ export class MangaK
                 return request
             },
             interceptResponse: async (response) => {
-                if (response.status >= 400 && response.status < 500) {
+                if (
+                    (response.status >= 400 && response.status < 500) ||
+                    (response.data &&
+                        'success' in JSON.parse(response.data) &&
+                        JSON.parse(response.data).success === false)
+                ) {
                     const data = JSON.parse(response.data ?? '{}')
                     throw new Error(
                         data.message ||
@@ -475,7 +480,7 @@ export class MangaK
         const manga = data.pageProps.initialManga
 
         const titles = [manga.name]
-        if (manga.altNames) {
+        if ('altNames' in manga && manga.altNames) {
             for (const altName of manga.altNames) {
                 if (!titles.includes(altName.name)) {
                     titles.push(altName.name)

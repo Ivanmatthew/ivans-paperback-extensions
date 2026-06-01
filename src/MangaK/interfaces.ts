@@ -479,7 +479,7 @@ export interface MangaResponse extends NextJSInjectedProps {
             url: string
             name: string
             altName: string
-            altNames: Array<{
+            altNames?: Array<{
                 name: string
                 language: string
             }>
