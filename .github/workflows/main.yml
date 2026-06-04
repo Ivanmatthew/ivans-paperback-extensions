@@ -1,37 +1,37 @@
 name: Bundle and Publish Sources
-on: 
-  push:
-    branches:
-      - '**'
-      - '!main'
+on:
+    push:
+        branches:
+            - '**'
+            - '!main'
 jobs:
-  build:
-    name: Bundle and Publish Sources
-    runs-on: ubuntu-latest
+    build:
+        name: Bundle and Publish Sources
+        runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout Branch
-        uses: actions/checkout@v4.1.4
+        steps:
+            - name: Checkout Branch
+              uses: actions/checkout@v4.1.4
 
-      - name: Setup Node.js environment
-        uses: oven-sh/setup-bun@v2
-      
-      - name: Extract branch name
-        run: echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
-        id: extract_branch
+            - name: Setup Bun environment
+              uses: oven-sh/setup-bun@v2
 
-      - name: Checkout existing bundles
-        uses: actions/checkout@v4.1.4
-        continue-on-error: true
-        with:
-          ref: gh-pages
-          path: bundles
+            - name: Extract branch name
+              run: echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
+              id: extract_branch
 
-      - run: bun ci
-      - run: bun run bundle -- --folder=${{ steps.extract_branch.outputs.branch }}
+            - name: Checkout existing bundles
+              uses: actions/checkout@v4.1.4
+              continue-on-error: true
+              with:
+                  ref: gh-pages
+                  path: bundles
 
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4.6.0
-        with:
-          branch: gh-pages
-          folder: bundles
+            - run: bun ci
+            - run: bun --bun run bundle -- --folder=${{ steps.extract_branch.outputs.branch }}
+
+            - name: Deploy to GitHub Pages
+              uses: JamesIves/github-pages-deploy-action@v4.6.0
+              with:
+                  branch: gh-pages
+                  folder: bundles
