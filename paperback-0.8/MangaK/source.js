@@ -2172,7 +2172,7 @@ var _Sources = (() => {
   var API_URL = `${BASE_URL}/api`;
   var API_DOMAIN_URL = "https://api.mangak.io";
   var MangaKInfo = {
-    version: "0.2.2",
+    version: "0.2.3",
     name: "MangaK",
     description: "Extension that pulls manga from MangaK",
     author: "IvanMatthew",
@@ -2377,23 +2377,7 @@ var _Sources = (() => {
             containsMoreItems: true
           }),
           viewMore: {
-            craftUrl: async (_metadata) => {
-              return `${await this.craftNextDataUrl("/top/day.json")}?type=day`;
-            },
-            extractor: (data) => {
-              const items = data.pageProps.initialItems;
-              return App.createPagedResults({
-                results: items.map(
-                  (item) => App.createPartialSourceManga({
-                    mangaId: item.slug,
-                    title: item.name,
-                    image: item.cover,
-                    subtitle: `\u2B50 ${item.displayRating} \u{1F525} ${item.displayViews}`
-                  })
-                ),
-                metadata: void 0
-              });
-            }
+            sort: "views_today"
           }
         },
         popular: {
@@ -2412,9 +2396,10 @@ var _Sources = (() => {
             type: import_types.HomeSectionType.singleRowNormal,
             title: "Popular Updates",
             containsMoreItems: false
-            // use search with sort by Most Followed
           }),
-          viewMore: void 0
+          viewMore: {
+            sort: "popular"
+          }
         },
         latest: {
           extractor: (data) => {
@@ -2434,23 +2419,7 @@ var _Sources = (() => {
             containsMoreItems: true
           }),
           viewMore: {
-            craftUrl: async (_metadata) => {
-              return await this.craftNextDataUrl("latest.json");
-            },
-            extractor: (data) => {
-              const items = data.pageProps.items;
-              return App.createPagedResults({
-                results: items.map(
-                  (item) => App.createPartialSourceManga({
-                    mangaId: item.slug,
-                    title: item.name,
-                    image: item.cover,
-                    subtitle: `${item.displayUpdatedShort} Ch. ${item.latestChapters[0]?.slug.split("-")[1] ?? "N/A"}`
-                  })
-                ),
-                metadata: void 0
-              });
-            }
+            sort: "latest"
           }
         }
       };
@@ -2538,29 +2507,42 @@ var _Sources = (() => {
       });
     }
     async getViewMoreItems(homepageSectionId, metadata) {
-      switch (homepageSectionId) {
-        case this.sections.popular.section.id:
-          throw new Error(
-            'The Popular Updates section does not support view more. Please use search with the "Most Followed" sort option to see more popular manga.'
-          );
-        default:
-          const sectionObj = Object.values(this.sections).find(
-            (section) => section.section.id === homepageSectionId
-          );
-          if (!sectionObj || !sectionObj.viewMore) {
-            throw new Error("Invalid homepage section ID");
-          }
-          return await this.requestManager.schedule(
-            App.createRequest({
-              url: await sectionObj.viewMore.craftUrl(metadata),
-              method: "GET"
-            }),
-            1
-          ).then((res) => {
-            const data = JSON.parse(res.data ?? "{}");
-            return sectionObj.viewMore.extractor(data);
-          });
+      const sectionObj = Object.values(this.sections).find(
+        (section) => section.section.id === homepageSectionId
+      );
+      if (!sectionObj?.viewMore || !("sort" in sectionObj.viewMore)) {
+        throw new Error("Invalid homepage section ID");
       }
+      const page = metadata?.page ?? 1;
+      const urlBuilder = new URLBuilder(API_DOMAIN_URL).addPathComponent("titles").addPathComponent("search").addQueryParameter("page", page.toString()).addQueryParameter("limit", "24").addQueryParameter("sort", sectionObj.viewMore.sort);
+      const response = await this.requestManager.schedule(
+        App.createRequest({
+          method: "GET",
+          url: urlBuilder.build(),
+          headers: {
+            origin: BASE_URL,
+            referer: `${BASE_URL}/search`
+          }
+        }),
+        1
+      );
+      const data = JSON.parse(response.data ?? "{}");
+      if (response.status === 400) {
+        throw new Error(data.message || "Unknown error.");
+      }
+      const pagination = data.data.pagination;
+      const results = data.data.items.map(
+        (item) => App.createPartialSourceManga({
+          mangaId: item.slug,
+          title: item.name,
+          image: item.cover,
+          subtitle: item.latest_chapters[0] ? `Ch. ${item.latest_chapters[0].chapter_number}` : item.status
+        })
+      );
+      return App.createPagedResults({
+        results,
+        metadata: pagination.has_next ? { ...pagination, page: pagination.page + 1 } : void 0
+      });
     }
     async getMangaDetails(mangaId) {
       const data = await this.fetchNextData(`${mangaId}.json`);
