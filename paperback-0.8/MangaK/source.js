@@ -2172,7 +2172,7 @@ var _Sources = (() => {
   var API_URL = `${BASE_URL}/api`;
   var API_DOMAIN_URL = "https://api.mangak.io";
   var MangaKInfo = {
-    version: "0.2.3",
+    version: "0.2.4",
     name: "MangaK",
     description: "Extension that pulls manga from MangaK",
     author: "IvanMatthew",
@@ -2636,8 +2636,7 @@ var _Sources = (() => {
           desc: manga.summary,
           status: manga.status,
           tags: tagSections,
-          covers: [manga.cover],
-          hentai: manga.contentRating === "erotica" || manga.contentRating === "pornographic"
+          covers: [manga.cover]
         })
       });
     }
