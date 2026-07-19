@@ -2172,7 +2172,7 @@ var _Sources = (() => {
   var API_URL = `${BASE_URL}/api`;
   var API_DOMAIN_URL = "https://api.mangak.io";
   var MangaKInfo = {
-    version: "0.2.4",
+    version: "0.2.5",
     name: "MangaK",
     description: "Extension that pulls manga from MangaK",
     author: "IvanMatthew",
@@ -2536,7 +2536,7 @@ var _Sources = (() => {
           mangaId: item.slug,
           title: item.name,
           image: item.cover,
-          subtitle: item.latest_chapters[0] ? `Ch. ${item.latest_chapters[0].chapter_number}` : item.status
+          subtitle: item.latest_chapters[0] ? `Ch. ${item.latest_chapters[0].number}` : item.status
         })
       );
       return App.createPagedResults({
@@ -2663,7 +2663,7 @@ var _Sources = (() => {
           return App.createChapter({
             id: chapter.slug,
             name: chapter.name,
-            chapNum: chapter.chapter_number,
+            chapNum: chapter.number,
             time: new Date(chapter.updated_at),
             langCode: "\u{1F1EC}\u{1F1E7}"
           });
@@ -2675,7 +2675,7 @@ var _Sources = (() => {
         return App.createChapter({
           id: chapter.slug,
           name: chapter.name,
-          chapNum: chapter.chapterNumber,
+          chapNum: chapter.number,
           time: new Date(chapter.updatedAt),
           langCode: "\u{1F1EC}\u{1F1E7}"
         });
@@ -2795,7 +2795,7 @@ var _Sources = (() => {
         mangaId: item.slug,
         title: item.name,
         image: item.cover,
-        subtitle: item.latest_chapters[0] ? `Ch. ${item.latest_chapters[0].chapter_number}` : item.status
+        subtitle: item.latest_chapters[0] ? `Ch. ${item.latest_chapters[0].number}` : item.status
       }));
       const fuse = new Fuse(unsortedResults, {
         keys: ["title"],
