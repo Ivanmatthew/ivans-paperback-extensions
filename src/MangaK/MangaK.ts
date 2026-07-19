@@ -38,7 +38,7 @@ const API_URL = `${BASE_URL}/api`
 const API_DOMAIN_URL = 'https://api.mangak.io'
 
 export const MangaKInfo: SourceInfo = {
-    version: '0.2.4',
+    version: '0.2.5',
     name: 'MangaK',
     description: 'Extension that pulls manga from MangaK',
     author: 'IvanMatthew',
@@ -449,7 +449,7 @@ export class MangaK
                 title: item.name,
                 image: item.cover,
                 subtitle: item.latest_chapters[0]
-                    ? `Ch. ${item.latest_chapters[0].chapter_number}`
+                    ? `Ch. ${item.latest_chapters[0].number}`
                     : item.status
             })
         )
@@ -600,7 +600,7 @@ export class MangaK
                 return App.createChapter({
                     id: chapter.slug,
                     name: chapter.name,
-                    chapNum: chapter.chapter_number,
+                    chapNum: chapter.number,
                     time: new Date(chapter.updated_at),
                     langCode: '🇬🇧'
                 })
@@ -613,7 +613,7 @@ export class MangaK
             return App.createChapter({
                 id: chapter.slug,
                 name: chapter.name,
-                chapNum: chapter.chapterNumber,
+                chapNum: chapter.number,
                 time: new Date(chapter.updatedAt),
                 langCode: '🇬🇧'
             })
@@ -773,7 +773,7 @@ export class MangaK
             title: item.name,
             image: item.cover,
             subtitle: item.latest_chapters[0]
-                ? `Ch. ${item.latest_chapters[0].chapter_number}`
+                ? `Ch. ${item.latest_chapters[0].number}`
                 : item.status
         }))
         const fuse = new Fuse(unsortedResults, {

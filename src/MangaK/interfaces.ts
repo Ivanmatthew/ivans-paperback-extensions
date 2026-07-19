@@ -460,7 +460,7 @@ export interface MangaResponse extends NextJSInjectedProps {
                 commentsCount: number
                 uploader: any
                 cv: number
-                chapterNumber: number
+                number: number
             }>
             firstChapter: {
                 id: string
@@ -489,7 +489,7 @@ export interface ChapterResponse extends NextJSInjectedProps {
             views: number
             comments_count: number
             updated_at: string
-            chapter_number: number
+            number: number
             cv: number
             images: Array<string>
             chapterPages: Array<{
@@ -518,7 +518,7 @@ export interface ChapterResponse extends NextJSInjectedProps {
             name: string
             slug: string
             updated_at: string
-            chapter_number: number
+            number: number
             cv: number
         }
         previousChapter: any
@@ -583,7 +583,7 @@ export interface SearchResponse extends InjextedAPIFields {
                 slug: string
                 created_at: string
                 updated_at: string
-                chapter_number: number
+                number: number
                 cv: number
             }>
             genres: Array<{
@@ -627,7 +627,7 @@ export interface ChaptersResponse extends InjextedAPIFields {
             views: number
             comments_count: number
             updated_at: string
-            chapter_number: number
+            number: number
             cv: number
         }>
     }
