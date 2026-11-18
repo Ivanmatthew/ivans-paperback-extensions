@@ -1,5 +1,5 @@
 import { Chapter } from '@paperback/types'
-import { BuddyComplexParser } from '../BuddyComplexParser'
+import { BuddyComplexParser } from '@template/BuddyComplex/BuddyComplexParser'
 
 export class MangaBuddyParser extends BuddyComplexParser {
     fullParseChapterList($: CheerioSelector, mangaId: string, mangaPage$: CheerioSelector): Chapter[] {

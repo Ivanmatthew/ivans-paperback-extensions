@@ -11,7 +11,7 @@ import {
 import {
     getExportVersion,
     BuddyComplex
-} from '../BuddyComplex'
+} from '@template/BuddyComplex/BuddyComplex'
 import { MangaBuddyParser } from './MangaBuddyParser'
 
 const DOMAIN = 'https://mangabuddy.com'

@@ -5,16 +5,16 @@ import {
     SourceIntents
 } from '@paperback/types'
 
-import { getExportVersion, BuddyComplex } from '../BuddyComplex'
+import { MangaKBase } from '@template/MangaK/MangaKBase'
 
-const DOMAIN = 'https://toonily.me'
+const DOMAIN = 'https://toontop.io'
 
-export const ToonilyMeInfo: SourceInfo = {
-    version: getExportVersion('0.0.0'),
-    name: 'ToonilyMe',
+export const ToonTopInfo: SourceInfo = {
+    version: '2.2.0',
+    name: 'ToonTop',
     description: `Extension that pulls manga from ${DOMAIN}`,
     author: 'IvanMatthew',
-    authorWebsite: 'http://github.com/Ivanmatthew',
+    authorWebsite: 'https://github.com/Ivanmatthew',
     icon: 'icon.png',
     contentRating: ContentRating.ADULT,
     websiteBaseURL: DOMAIN,
@@ -26,10 +26,10 @@ export const ToonilyMeInfo: SourceInfo = {
     ],
     intents:
         SourceIntents.MANGA_CHAPTERS |
-        SourceIntents.HOMEPAGE_SECTIONS |
-        SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
+        SourceIntents.HOMEPAGE_SECTIONS
 }
 
-export class ToonilyMe extends BuddyComplex {
+export class ToonTop extends MangaKBase {
     baseUrl: string = DOMAIN
+    apiUrl: string = 'https://api.toontop.io'
 }

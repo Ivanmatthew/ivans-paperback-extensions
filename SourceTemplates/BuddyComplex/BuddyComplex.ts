@@ -18,9 +18,9 @@ import {
 
 import { CheerioAPI } from 'cheerio'
 
-import { BuddyComplexParser } from './BuddyComplexParser'
+import { BuddyComplexParser } from '@template/BuddyComplex/BuddyComplexParser'
 
-import { URLBuilder } from './UrlBuilder'
+import { URLBuilder } from '../../src/UrlBuilder'
 
 // Set the version for the base, changing this version will change the versions of all sources
 const BASE_VERSION = '2.1.3'
