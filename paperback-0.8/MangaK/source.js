@@ -509,14 +509,14 @@ var _Sources = (() => {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.BadgeColor = void 0;
-      var BadgeColor;
-      (function(BadgeColor2) {
-        BadgeColor2["BLUE"] = "default";
-        BadgeColor2["GREEN"] = "success";
-        BadgeColor2["GREY"] = "info";
-        BadgeColor2["YELLOW"] = "warning";
-        BadgeColor2["RED"] = "danger";
-      })(BadgeColor = exports.BadgeColor || (exports.BadgeColor = {}));
+      var BadgeColor2;
+      (function(BadgeColor3) {
+        BadgeColor3["BLUE"] = "default";
+        BadgeColor3["GREEN"] = "success";
+        BadgeColor3["GREY"] = "info";
+        BadgeColor3["YELLOW"] = "warning";
+        BadgeColor3["RED"] = "danger";
+      })(BadgeColor2 = exports.BadgeColor || (exports.BadgeColor = {}));
     }
   });
 
@@ -727,6 +727,9 @@ var _Sources = (() => {
     MangaK: () => MangaK,
     MangaKInfo: () => MangaKInfo
   });
+  var import_types2 = __toESM(require_lib());
+
+  // SourceTemplates/MangaK/MangaKBase.ts
   var import_types = __toESM(require_lib());
 
   // src/UrlBuilder.ts
@@ -2167,22 +2170,7 @@ var _Sources = (() => {
     plugins.forEach((plugin) => register(plugin));
   };
 
-  // src/MangaK/MangaK.ts
-  var BASE_URL = "https://mangak.io";
-  var API_URL = `${BASE_URL}/api`;
-  var API_DOMAIN_URL = "https://api.mangak.io";
-  var MangaKInfo = {
-    version: "0.2.5",
-    name: "MangaK",
-    description: "Extension that pulls manga from MangaK",
-    author: "IvanMatthew",
-    authorWebsite: "https://github.com/Ivanmatthew",
-    icon: "icon.png",
-    contentRating: import_types.ContentRating.MATURE,
-    websiteBaseURL: BASE_URL,
-    intents: import_types.SourceIntents.MANGA_CHAPTERS | import_types.SourceIntents.HOMEPAGE_SECTIONS,
-    sourceTags: []
-  };
+  // SourceTemplates/MangaK/MangaKBase.ts
   var TAG_SECTIONS = [
     // <option value="newest">Recently Added</option><option value="popular">Most Followed</option><option value="rating">Highest Rating</option><option value="views_today">Most Viewed: Today</option><option value="views_7days">Most Viewed: 7 Days</option><option value="views_30days">Most Viewed: 30 Days</option><option value="views">Most Viewed: All Time</option><option value="chapters">Most Chapters</option><option value="alphabetical">A-Z</option>
     {
@@ -2336,8 +2324,10 @@ var _Sources = (() => {
       placeholder: "e.g. RomanticKat NIGYEONG"
     }
   ];
-  var MangaK = class {
+  var CONTENT_RATINGS = ["safe", "suggestive", "erotica", "pornographic"];
+  var MangaKBase = class {
     constructor() {
+      this.stateManager = App.createSourceStateManager();
       // Caching buildId is unfortunately not possible because the buildId regularly changes
       // buildId: string | null = null
       this.sections = {
@@ -2366,7 +2356,10 @@ var _Sources = (() => {
                 mangaId: item.slug,
                 title: item.name,
                 image: item.cover,
-                subtitle: `\u2B50 ${item.displayRating} \u{1F525} ${item.displayViews}`
+                subtitle: [
+                  item.displayRating ? `\u2B50 ${item.displayRating}` : void 0,
+                  item.displayViews ? `\u{1F525} ${item.displayViews}` : void 0
+                ].filter(Boolean).join(" ") || void 0
               })
             );
           },
@@ -2438,7 +2431,7 @@ var _Sources = (() => {
           interceptRequest: async (request) => {
             request.headers = {
               ...request.headers,
-              referer: `${BASE_URL}/`
+              referer: `${this.baseUrl}/`
             };
             return request;
           },
@@ -2454,10 +2447,96 @@ var _Sources = (() => {
         }
       });
     }
+    async getSourceMenu() {
+      return App.createDUISection({
+        id: "settings",
+        header: "Source Settings",
+        isHidden: false,
+        rows: async () => [
+          App.createDUINavigationButton({
+            id: "contentSettings",
+            label: "Content Settings",
+            form: App.createDUIForm({
+              sections: async () => [
+                App.createDUISection({
+                  id: "contentSettings",
+                  isHidden: false,
+                  footer: "Includes the selected content rating and all lower ratings.",
+                  rows: async () => [
+                    App.createDUISelect({
+                      id: "maximumContentRating",
+                      label: "Maximum Content Rating",
+                      options: [...CONTENT_RATINGS],
+                      allowsMultiselect: false,
+                      labelResolver: async (rating) => rating.charAt(0).toUpperCase() + rating.slice(1),
+                      value: App.createDUIBinding({
+                        get: async () => [CONTENT_RATINGS[await this.maximumContentRating()]],
+                        set: async (value) => {
+                          const rating = value[0];
+                          if (!CONTENT_RATINGS.some((option) => option === rating)) {
+                            throw new Error("Invalid content rating");
+                          }
+                          await this.stateManager.store("maximumContentRating", rating);
+                        }
+                      })
+                    })
+                  ]
+                }),
+                ...await this.additionalContentSettings()
+              ]
+            })
+          })
+        ]
+      });
+    }
+    async additionalContentSettings() {
+      return [];
+    }
+    async blockedGenres() {
+      return [];
+    }
+    async maximumContentRating() {
+      const rating = await this.stateManager.retrieve("maximumContentRating");
+      const index = CONTENT_RATINGS.findIndex((option) => option === rating);
+      return index < 0 ? CONTENT_RATINGS.length - 1 : index;
+    }
+    contentRating(manga) {
+      const rating = manga.contentRating !== void 0 ? manga.contentRating : manga.content_rating;
+      const index = rating == null ? 0 : CONTENT_RATINGS.findIndex((option) => option === rating.toLowerCase());
+      return Math.max(
+        index < 0 ? CONTENT_RATINGS.length - 1 : index,
+        (manga.isAdult ?? manga.is_adult) === true ? 2 : 0
+      );
+    }
+    async filterContent(items, buildId) {
+      const maximum = await this.maximumContentRating();
+      const blocked = await this.blockedGenres();
+      const ratedItems = items.filter((item) => this.contentRating(item) <= maximum);
+      if (!blocked.length) return ratedItems;
+      const sharedBuildId = buildId ?? (ratedItems.some((item) => !item.genres) ? await this.fetchBuildId() : void 0);
+      const allowed = await Promise.all(ratedItems.map(async (item) => {
+        const manga = item.genres ? item : (await this.fetchNextData(`${item.slug}.json`, sharedBuildId)).pageProps.initialManga;
+        return !manga.genres?.some(
+          (genre) => blocked.includes(genre.name.trim().toLowerCase()) || blocked.includes(genre.slug.trim().toLowerCase())
+        );
+      }));
+      return ratedItems.filter((_, index) => allowed[index]);
+    }
+    async checkContent(manga) {
+      if (this.contentRating(manga) > await this.maximumContentRating()) {
+        throw new Error("This manga is blocked by the maximum content rating in Content Settings.");
+      }
+      const blocked = await this.blockedGenres();
+      if (manga.genres.some(
+        (genre) => blocked.includes(genre.name.trim().toLowerCase()) || blocked.includes(genre.slug.trim().toLowerCase())
+      )) {
+        throw new Error("This manga is blocked by the genre filter in Content Settings.");
+      }
+    }
     async fetchBuildId() {
       return await this.requestManager.schedule(
         App.createRequest({
-          url: `${API_URL}/version`,
+          url: `${this.baseUrl}/api/version`,
           method: "GET"
         }),
         1
@@ -2470,17 +2549,17 @@ var _Sources = (() => {
         }
       });
     }
-    async craftNextDataUrl(route) {
-      return `${BASE_URL}/_next/data/${await this.fetchBuildId()}/${route}`;
+    async craftNextDataUrl(route, buildId) {
+      return `${this.baseUrl}/_next/data/${buildId ?? await this.fetchBuildId()}/${route}`;
     }
-    async fetchNextData(route) {
+    async fetchNextData(route, buildId) {
       const response = await this.requestManager.schedule(
         App.createRequest({
-          url: await this.craftNextDataUrl(route),
+          url: await this.craftNextDataUrl(route, buildId),
           method: "GET",
           headers: {
-            origin: BASE_URL,
-            referer: `${BASE_URL}/`
+            origin: this.baseUrl,
+            referer: `${this.baseUrl}/`
           }
         }),
         1
@@ -2488,18 +2567,29 @@ var _Sources = (() => {
       return JSON.parse(response.data ?? "{}");
     }
     getMangaShareUrl(mangaId) {
-      return `${MangaKInfo.websiteBaseURL}/${mangaId}`;
+      return `${this.baseUrl}/${mangaId}`;
     }
     async getHomePageSections(sectionCallback) {
       Object.values(this.sections).forEach((sectionObj) => {
         sectionCallback(sectionObj.section);
       });
+      const buildId = await this.fetchBuildId();
       const request = App.createRequest({
-        url: await this.craftNextDataUrl("home.json"),
+        url: await this.craftNextDataUrl("home.json", buildId),
         method: "GET"
       });
-      await this.requestManager.schedule(request, 1).then((res) => {
+      await this.requestManager.schedule(request, 1).then(async (res) => {
         const data = JSON.parse(res.data ?? "{}");
+        const [hero, trending, popular, latest] = await Promise.all([
+          this.filterContent(data.pageProps.heroItems, buildId),
+          this.filterContent(data.pageProps.trendingItems, buildId),
+          this.filterContent(data.pageProps.popularItems, buildId),
+          this.filterContent(data.pageProps.latest.items, buildId)
+        ]);
+        data.pageProps.heroItems = hero;
+        data.pageProps.trendingItems = trending;
+        data.pageProps.popularItems = popular;
+        data.pageProps.latest.items = latest;
         Object.values(this.sections).forEach((sectionObj) => {
           sectionObj.section.items = sectionObj.extractor(data.pageProps);
           sectionCallback(sectionObj.section);
@@ -2514,14 +2604,14 @@ var _Sources = (() => {
         throw new Error("Invalid homepage section ID");
       }
       const page = metadata?.page ?? 1;
-      const urlBuilder = new URLBuilder(API_DOMAIN_URL).addPathComponent("titles").addPathComponent("search").addQueryParameter("page", page.toString()).addQueryParameter("limit", "24").addQueryParameter("sort", sectionObj.viewMore.sort);
+      const urlBuilder = new URLBuilder(this.apiUrl).addPathComponent("titles").addPathComponent("search").addQueryParameter("page", page.toString()).addQueryParameter("limit", "24").addQueryParameter("sort", sectionObj.viewMore.sort);
       const response = await this.requestManager.schedule(
         App.createRequest({
           method: "GET",
           url: urlBuilder.build(),
           headers: {
-            origin: BASE_URL,
-            referer: `${BASE_URL}/search`
+            origin: this.baseUrl,
+            referer: `${this.baseUrl}/search`
           }
         }),
         1
@@ -2531,7 +2621,7 @@ var _Sources = (() => {
         throw new Error(data.message || "Unknown error.");
       }
       const pagination = data.data.pagination;
-      const results = data.data.items.map(
+      const results = (await this.filterContent(data.data.items)).map(
         (item) => App.createPartialSourceManga({
           mangaId: item.slug,
           title: item.name,
@@ -2547,6 +2637,7 @@ var _Sources = (() => {
     async getMangaDetails(mangaId) {
       const data = await this.fetchNextData(`${mangaId}.json`);
       const manga = data.pageProps.initialManga;
+      await this.checkContent(manga);
       const titles = [manga.name];
       if ("altNames" in manga && manga.altNames) {
         for (const altName of manga.altNames) {
@@ -2643,11 +2734,12 @@ var _Sources = (() => {
     async getChapters(mangaId) {
       const data = await this.fetchNextData(`${mangaId}.json`);
       const manga = data.pageProps.initialManga;
+      await this.checkContent(manga);
       if (manga.chapters.length === 50) {
         const chapterListResponse = await this.requestManager.schedule(
           App.createRequest({
             method: "GET",
-            url: `${API_DOMAIN_URL}/titles/${data.pageProps.initialManga.id}/chapters`
+            url: `${this.apiUrl}/titles/${data.pageProps.initialManga.id}/chapters`
           }),
           1
         );
@@ -2682,6 +2774,10 @@ var _Sources = (() => {
       });
     }
     async getChapterDetails(mangaId, chapterId) {
+      if (await this.maximumContentRating() < CONTENT_RATINGS.length - 1 || (await this.blockedGenres()).length > 0) {
+        const manga = await this.fetchNextData(`${mangaId}.json`);
+        await this.checkContent(manga.pageProps.initialManga);
+      }
       const data = await this.fetchNextData(
         `${mangaId}/${chapterId}.json`
       );
@@ -2694,7 +2790,7 @@ var _Sources = (() => {
     }
     async getSearchResults(query, metadata) {
       const page = metadata?.page ?? 1;
-      const urlBuilder = new URLBuilder(API_DOMAIN_URL).addPathComponent("titles").addPathComponent("search").addQueryParameter("page", page.toString()).addQueryParameter("limit", "24");
+      const urlBuilder = new URLBuilder(this.apiUrl).addPathComponent("titles").addPathComponent("search").addQueryParameter("page", page.toString()).addQueryParameter("limit", "24");
       const tagSectionsById = this.TAG_SECTIONS.reduce(
         (sections, section) => {
           sections[section.id] = new Set(
@@ -2780,8 +2876,8 @@ var _Sources = (() => {
           method: "GET",
           url: urlBuilder.build(),
           headers: {
-            origin: BASE_URL,
-            referer: `${BASE_URL}/search`
+            origin: this.baseUrl,
+            referer: `${this.baseUrl}/search`
           }
         }),
         1
@@ -2791,7 +2887,7 @@ var _Sources = (() => {
         throw new Error(data.message || "Unknown error.");
       }
       const pagination = data.data.pagination;
-      const unsortedResults = data.data.items.map((item) => ({
+      const unsortedResults = (await this.filterContent(data.data.items)).map((item) => ({
         mangaId: item.slug,
         title: item.name,
         image: item.cover,
@@ -2815,7 +2911,7 @@ var _Sources = (() => {
       const genresResponse = await this.requestManager.schedule(
         App.createRequest({
           method: "GET",
-          url: `${API_DOMAIN_URL}/genres`
+          url: `${this.apiUrl}/genres`
         }),
         1
       );
@@ -2853,6 +2949,33 @@ var _Sources = (() => {
     }
     async supportsSearchOperators() {
       return false;
+    }
+  };
+
+  // src/MangaK/MangaK.ts
+  var DOMAIN = "https://mangak.io";
+  var MangaKInfo = {
+    version: "0.3.0",
+    name: "MangaK",
+    description: "Extension that pulls manga from MangaK",
+    author: "IvanMatthew",
+    authorWebsite: "https://github.com/Ivanmatthew",
+    icon: "icon.png",
+    contentRating: import_types2.ContentRating.MATURE,
+    websiteBaseURL: DOMAIN,
+    intents: import_types2.SourceIntents.MANGA_CHAPTERS | import_types2.SourceIntents.HOMEPAGE_SECTIONS | import_types2.SourceIntents.SETTINGS_UI,
+    sourceTags: [
+      {
+        text: "18+",
+        type: import_types2.BadgeColor.YELLOW
+      }
+    ]
+  };
+  var MangaK = class extends MangaKBase {
+    constructor() {
+      super(...arguments);
+      this.baseUrl = DOMAIN;
+      this.apiUrl = "https://api.mangak.io";
     }
   };
   return __toCommonJS(MangaK_exports);

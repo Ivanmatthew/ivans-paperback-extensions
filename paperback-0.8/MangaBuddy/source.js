@@ -880,10 +880,10 @@ var _Sources = (() => {
   });
   var import_types2 = __toESM(require_lib());
 
-  // src/BuddyComplex.ts
+  // SourceTemplates/BuddyComplex/BuddyComplex.ts
   var import_types = __toESM(require_lib());
 
-  // src/BuddyComplexParser.ts
+  // SourceTemplates/BuddyComplex/BuddyComplexParser.ts
   var import_html_entities = __toESM(require_lib2());
   var BuddyComplexParser = class {
     constructor() {
@@ -1372,7 +1372,7 @@ var _Sources = (() => {
     }
   };
 
-  // src/BuddyComplex.ts
+  // SourceTemplates/BuddyComplex/BuddyComplex.ts
   var BASE_VERSION = "2.1.3";
   var getExportVersion = (EXTENSION_VERSION) => {
     return BASE_VERSION.split(".").map(
