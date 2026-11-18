@@ -15,7 +15,8 @@ import {
     SearchField,
     RequestManager,
     HomeSectionType,
-    PartialSourceManga
+    PartialSourceManga,
+    DUISection
 } from '@paperback/types'
 import type {
     HomeResponse,
@@ -184,6 +185,16 @@ const SEARCH_FIELDS = [
     }
 ]
 
+const CONTENT_RATINGS = ['safe', 'suggestive', 'erotica', 'pornographic'] as const
+
+interface MangaContent {
+    genres?: { name: string, slug: string }[]
+    isAdult?: boolean | null
+    contentRating?: string | null
+    is_adult?: boolean | null
+    content_rating?: string | null
+}
+
 export abstract class MangaKBase
     implements
         MangaProviding,
@@ -193,6 +204,121 @@ export abstract class MangaKBase
 {
     abstract baseUrl: string
     abstract apiUrl: string
+
+    stateManager = App.createSourceStateManager()
+
+    async getSourceMenu(): Promise<DUISection> {
+        return App.createDUISection({
+            id: 'settings',
+            header: 'Source Settings',
+            isHidden: false,
+            rows: async () => [
+                App.createDUINavigationButton({
+                    id: 'contentSettings',
+                    label: 'Content Settings',
+                    form: App.createDUIForm({
+                        sections: async () => [
+                            App.createDUISection({
+                                id: 'contentSettings',
+                                isHidden: false,
+                                footer: 'Includes the selected content rating and all lower ratings.',
+                                rows: async () => [
+                                    App.createDUISelect({
+                                        id: 'maximumContentRating',
+                                        label: 'Maximum Content Rating',
+                                        options: [...CONTENT_RATINGS],
+                                        allowsMultiselect: false,
+                                        labelResolver: async (rating) =>
+                                            rating.charAt(0).toUpperCase() + rating.slice(1),
+                                        value: App.createDUIBinding({
+                                            get: async () => [CONTENT_RATINGS[await this.maximumContentRating()]],
+                                            set: async (value: string[]) => {
+                                                const rating = value[0]
+                                                if (!CONTENT_RATINGS.some((option) => option === rating)) {
+                                                    throw new Error('Invalid content rating')
+                                                }
+                                                await this.stateManager.store('maximumContentRating', rating)
+                                            }
+                                        })
+                                    })
+                                ]
+                            }),
+                            ...(await this.additionalContentSettings())
+                        ]
+                    })
+                })
+            ]
+        })
+    }
+
+    protected async additionalContentSettings(): Promise<DUISection[]> {
+        return []
+    }
+
+    protected async blockedGenres(): Promise<string[]> {
+        return []
+    }
+
+    private async maximumContentRating(): Promise<number> {
+        const rating = await this.stateManager.retrieve('maximumContentRating')
+        const index = CONTENT_RATINGS.findIndex((option) => option === rating)
+        return index < 0 ? CONTENT_RATINGS.length - 1 : index
+    }
+
+    private contentRating(manga: MangaContent): number {
+        const rating = manga.contentRating !== undefined
+            ? manga.contentRating
+            : manga.content_rating
+        const index = rating == null
+            ? 0
+            : CONTENT_RATINGS.findIndex((option) => option === rating.toLowerCase())
+        // Unrecognized ratings are restricted; the adult flag imposes an 18+ floor.
+        return Math.max(
+            index < 0 ? CONTENT_RATINGS.length - 1 : index,
+            (manga.isAdult ?? manga.is_adult) === true ? 2 : 0
+        )
+    }
+
+    private async filterContent<T extends MangaContent & { slug: string }>(
+        items: T[],
+        buildId?: string
+    ): Promise<T[]> {
+        const maximum = await this.maximumContentRating()
+        const blocked = await this.blockedGenres()
+        const ratedItems = items.filter((item) => this.contentRating(item) <= maximum)
+        if (!blocked.length) return ratedItems
+
+        const sharedBuildId = buildId ?? (ratedItems.some((item) => !item.genres)
+            ? await this.fetchBuildId()
+            : undefined)
+        const allowed = await Promise.all(ratedItems.map(async (item) => {
+            // Some homepage cards omit genres; only fetch details when a genre filter is active.
+            const manga = item.genres
+                ? item
+                : (await this.fetchNextData<MangaResponse>(`${item.slug}.json`, sharedBuildId))
+                      .pageProps.initialManga
+            return !manga.genres?.some((genre) =>
+                blocked.includes(genre.name.trim().toLowerCase()) ||
+                blocked.includes(genre.slug.trim().toLowerCase())
+            )
+        }))
+        return ratedItems.filter((_, index) => allowed[index])
+    }
+
+    private async checkContent(
+        manga: MangaResponse['pageProps']['initialManga']
+    ): Promise<void> {
+        if (this.contentRating(manga) > await this.maximumContentRating()) {
+            throw new Error('This manga is blocked by the maximum content rating in Content Settings.')
+        }
+        const blocked = await this.blockedGenres()
+        if (manga.genres.some((genre) =>
+            blocked.includes(genre.name.trim().toLowerCase()) ||
+            blocked.includes(genre.slug.trim().toLowerCase())
+        )) {
+            throw new Error('This manga is blocked by the genre filter in Content Settings.')
+        }
+    }
 
     // Caching buildId is unfortunately not possible because the buildId regularly changes
     // buildId: string | null = null
@@ -226,7 +352,10 @@ export abstract class MangaKBase
                         mangaId: item.slug,
                         title: item.name,
                         image: item.cover,
-                        subtitle: `⭐ ${item.displayRating} 🔥 ${item.displayViews}`
+                        subtitle: [
+                            item.displayRating ? `⭐ ${item.displayRating}` : undefined,
+                            item.displayViews ? `🔥 ${item.displayViews}` : undefined
+                        ].filter(Boolean).join(' ') || undefined
                     })
                 )
             },
@@ -349,14 +478,14 @@ export abstract class MangaKBase
                 }
             })
     }
-    async craftNextDataUrl(route: string): Promise<string> {
-        return `${this.baseUrl}/_next/data/${await this.fetchBuildId()}/${route}`
+    async craftNextDataUrl(route: string, buildId?: string): Promise<string> {
+        return `${this.baseUrl}/_next/data/${buildId ?? await this.fetchBuildId()}/${route}`
     }
 
-    async fetchNextData<T>(route: string): Promise<T> {
+    async fetchNextData<T>(route: string, buildId?: string): Promise<T> {
         const response = await this.requestManager.schedule(
             App.createRequest({
-                url: await this.craftNextDataUrl(route),
+                url: await this.craftNextDataUrl(route, buildId),
                 method: 'GET',
                 headers: {
                     origin: this.baseUrl,
@@ -378,13 +507,24 @@ export abstract class MangaKBase
         Object.values(this.sections).forEach((sectionObj) => {
             sectionCallback(sectionObj.section)
         })
+        const buildId = await this.fetchBuildId()
         const request = App.createRequest({
-            url: await this.craftNextDataUrl('home.json'),
+            url: await this.craftNextDataUrl('home.json', buildId),
             method: 'GET'
         })
 
-        await this.requestManager.schedule(request, 1).then((res: Response) => {
+        await this.requestManager.schedule(request, 1).then(async (res: Response) => {
             const data: HomeResponse = JSON.parse(res.data ?? '{}')
+            const [hero, trending, popular, latest] = await Promise.all([
+                this.filterContent(data.pageProps.heroItems, buildId),
+                this.filterContent(data.pageProps.trendingItems, buildId),
+                this.filterContent(data.pageProps.popularItems, buildId),
+                this.filterContent(data.pageProps.latest.items, buildId)
+            ])
+            data.pageProps.heroItems = hero
+            data.pageProps.trendingItems = trending
+            data.pageProps.popularItems = popular
+            data.pageProps.latest.items = latest
             Object.values(this.sections).forEach((sectionObj) => {
                 sectionObj.section.items = sectionObj.extractor(data.pageProps)
                 sectionCallback(sectionObj.section)
@@ -427,7 +567,7 @@ export abstract class MangaKBase
         }
 
         const pagination = data.data.pagination
-        const results = data.data.items.map((item) =>
+        const results = (await this.filterContent(data.data.items)).map((item) =>
             App.createPartialSourceManga({
                 mangaId: item.slug,
                 title: item.name,
@@ -449,6 +589,8 @@ export abstract class MangaKBase
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
         const data = await this.fetchNextData<MangaResponse>(`${mangaId}.json`)
         const manga = data.pageProps.initialManga
+
+        await this.checkContent(manga)
 
         const titles = [manga.name]
         if ('altNames' in manga && manga.altNames) {
@@ -562,6 +704,8 @@ export abstract class MangaKBase
         const data = await this.fetchNextData<MangaResponse>(`${mangaId}.json`)
         const manga = data.pageProps.initialManga
 
+        await this.checkContent(manga)
+
         if (manga.chapters.length === 50) {
             // Fetch the others from the chapter list endpoint
             const chapterListResponse = await this.requestManager.schedule(
@@ -607,6 +751,11 @@ export abstract class MangaKBase
         mangaId: string,
         chapterId: string
     ): Promise<ChapterDetails> {
+        if (await this.maximumContentRating() < CONTENT_RATINGS.length - 1 ||
+            (await this.blockedGenres()).length > 0) {
+            const manga = await this.fetchNextData<MangaResponse>(`${mangaId}.json`)
+            await this.checkContent(manga.pageProps.initialManga)
+        }
         const data = await this.fetchNextData<ChapterResponse>(
             `${mangaId}/${chapterId}.json`
         )
@@ -752,7 +901,7 @@ export abstract class MangaKBase
 
         // Because the native search endpoint does not match nicely
         // Therefore we do a second search pass using a local fuzzy search
-        const unsortedResults = data.data.items.map((item) => ({
+        const unsortedResults = (await this.filterContent(data.data.items)).map((item) => ({
             mangaId: item.slug,
             title: item.name,
             image: item.cover,

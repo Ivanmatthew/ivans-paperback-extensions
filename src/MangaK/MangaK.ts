@@ -1,10 +1,10 @@
-import { ContentRating, SourceInfo, SourceIntents } from '@paperback/types'
+import { BadgeColor, ContentRating, SourceInfo, SourceIntents } from '@paperback/types'
 import { MangaKBase } from '@template/MangaK/MangaKBase'
 
 const DOMAIN = 'https://mangak.io'
 
 export const MangaKInfo: SourceInfo = {
-    version: '0.2.6',
+    version: '0.3.0',
     name: 'MangaK',
     description: 'Extension that pulls manga from MangaK',
     author: 'IvanMatthew',
@@ -12,8 +12,13 @@ export const MangaKInfo: SourceInfo = {
     icon: 'icon.png',
     contentRating: ContentRating.MATURE,
     websiteBaseURL: DOMAIN,
-    intents: SourceIntents.MANGA_CHAPTERS | SourceIntents.HOMEPAGE_SECTIONS,
-    sourceTags: []
+    intents: SourceIntents.MANGA_CHAPTERS | SourceIntents.HOMEPAGE_SECTIONS | SourceIntents.SETTINGS_UI,
+    sourceTags: [
+        {
+            text: '18+',
+            type: BadgeColor.YELLOW
+        }
+    ]
 }
 
 export class MangaK extends MangaKBase {

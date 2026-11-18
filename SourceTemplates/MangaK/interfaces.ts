@@ -151,7 +151,8 @@ export interface HomeResponse extends NextJSInjectedProps {
                     ratingsCount: number
                     reviewsCount: number
                 }
-                isAdult: any
+                isAdult: boolean | null
+                contentRating?: string | null
                 isNew: boolean
                 isHot: boolean
                 isDeleted: boolean
@@ -202,7 +203,8 @@ export interface HomeResponse extends NextJSInjectedProps {
                 ratingsCount: number
                 reviewsCount: number
             }
-            isAdult: any
+            isAdult: boolean | null
+            contentRating?: string | null
             isNew: boolean
             isHot: boolean
             isDeleted: boolean
@@ -222,8 +224,8 @@ export interface HomeResponse extends NextJSInjectedProps {
             altName: string
             altNames?: Array<{ name: string }>
             displayAltName: string
-            displayRating: string
-            displayViews: string
+            displayRating: string | null
+            displayViews: string | null
             displayBookmarks: string
             displayChapters: string
             displayUpdated: string
@@ -244,7 +246,8 @@ export interface HomeResponse extends NextJSInjectedProps {
                 ratingsCount: number
                 reviewsCount: number
             }
-            isAdult: any
+            isAdult: boolean | null
+            contentRating?: string | null
             isNew: boolean
             isHot: boolean
             isDeleted: boolean
@@ -280,7 +283,8 @@ export interface HomeResponse extends NextJSInjectedProps {
                 ratingsCount: number
                 reviewsCount: number
             }
-            isAdult: any
+            isAdult: boolean | null
+            contentRating?: string | null
             isNew: boolean
             isHot: boolean
             isDeleted: boolean
@@ -315,7 +319,8 @@ export interface HomeResponse extends NextJSInjectedProps {
                 ratingsCount: number
                 reviewsCount: number
             }
-            isAdult: any
+            isAdult: boolean | null
+            contentRating?: string | null
             isNew: boolean
             isHot: boolean
             isDeleted: boolean
@@ -351,7 +356,8 @@ export interface HomeResponse extends NextJSInjectedProps {
                 ratingsCount: number
                 reviewsCount: number
             }
-            isAdult: any
+            isAdult: boolean | null
+            contentRating?: string | null
             isNew: boolean
             isHot: boolean
             isDeleted: boolean
@@ -425,7 +431,7 @@ export interface MangaResponse extends NextJSInjectedProps {
                 slug: string
             }
             releaseDate: string
-            contentRating: string
+            contentRating: string | null
             demographic: any
             demographics: Array<any>
             formats: Array<{
@@ -590,7 +596,10 @@ export interface SearchResponse extends InjextedAPIFields {
                 name: string
                 slug: string
             }>
-            content_rating?: string
+            content_rating?: string | null
+            is_adult?: boolean | null
+            isAdult?: boolean | null
+            contentRating?: string | null
             demographic_ids: Array<number>
             demographic_names: Array<string>
             demographic_slugs: Array<string>
