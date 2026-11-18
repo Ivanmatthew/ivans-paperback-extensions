@@ -6,6 +6,8 @@ import {
     HomeSection,
     MangaProviding,
     PagedResults,
+    RawData,
+    Request,
     Tag,
     Response,
     SearchRequest,
@@ -30,6 +32,11 @@ import type {
 } from '@template/MangaK/interfaces'
 import { URLBuilder } from '../../src/UrlBuilder'
 import Fuse from 'fuse.js/basic'
+
+// MangaK spreads a chapter's pages over several hosts that hold the same files
+// (rx.qvzra.org, rx.qvzrb.org, ...), so a page one of them refuses is tried on
+// up to this many others
+const MAX_PAGE_RETRIES = 3
 
 const TAG_SECTIONS = [
     // <option value="newest">Recently Added</option><option value="popular">Most Followed</option><option value="rating">Highest Rating</option><option value="views_today">Most Viewed: Today</option><option value="views_7days">Most Viewed: 7 Days</option><option value="views_30days">Most Viewed: 30 Days</option><option value="views">Most Viewed: All Time</option><option value="chapters">Most Chapters</option><option value="alphabetical">A-Z</option>
@@ -425,8 +432,15 @@ export abstract class MangaKBase
         })
     )
 
+    // Hosts seen serving chapter pages
+    pageHosts = new Set<string>()
+    // Page retries in flight, so a retry that fails is not retried again
+    retrying = new Set<string>()
+
     requestManager: RequestManager = App.createRequestManager({
-        requestsPerSecond: 150,
+        // Page images go through this limit too: without one, a chapter asks
+        // for all its pages at once, and the image hosts start refusing them
+        requestsPerSecond: 5,
         requestTimeout: 15000,
         interceptor: {
             interceptRequest: async (request) => {
@@ -437,15 +451,40 @@ export abstract class MangaKBase
                 return request
             },
             interceptResponse: async (response) => {
+                const url = response.request.url
+                const page = splitUrl(url)
+                if (page && this.pageHosts.has(page.host)) {
+                    if (response.status < 400 || this.retrying.has(url)) {
+                        return response
+                    }
+                    const image = await this.loadPageFromOtherHost(
+                        page.host,
+                        page.path
+                    )
+                    if (image) {
+                        // The app only takes back the response it handed
+                        // over, and on it only rawData can be changed
+                        response.rawData = image
+                        return response
+                    }
+                    throw new Error(
+                        `Request failed with status ${response.status}`
+                    )
+                }
+
+                if (this.isCloudflareBlock(response)) {
+                    throw new Error(
+                        `CLOUDFLARE BYPASS ERROR:\nPlease go to the homepage of <${this.baseUrl}> and press the cloud icon.`
+                    )
+                }
+
+                const data = parseJson(response.data)
                 if (
                     (response.status >= 400 && response.status < 500) ||
-                    (response.data &&
-                        'success' in JSON.parse(response.data) &&
-                        JSON.parse(response.data).success === false)
+                    data?.success === false
                 ) {
-                    const data = JSON.parse(response.data ?? '{}')
                     throw new Error(
-                        data.message ||
+                        data?.message ||
                             `Request failed with status ${response.status}`
                     )
                 }
@@ -453,6 +492,65 @@ export abstract class MangaKBase
             }
         }
     })
+
+    async loadPageFromOtherHost(
+        failedHost: string,
+        path: string
+    ): Promise<RawData | undefined> {
+        // Start after the failed host, so failed pages spread over the others
+        const hosts = [...this.pageHosts].sort()
+        const start = hosts.indexOf(failedHost) + 1
+        const others = [...hosts.slice(start), ...hosts.slice(0, start)]
+            .filter((host) => host !== failedHost)
+            .slice(0, MAX_PAGE_RETRIES)
+
+        for (const host of others) {
+            const url = `https://${host}${path}`
+            this.retrying.add(url)
+            try {
+                const response = await this.requestManager.schedule(
+                    App.createRequest({ url, method: 'GET' }),
+                    0
+                )
+                if (response.status === 200 && response.rawData?.length) {
+                    return response.rawData
+                }
+            } catch {
+                // Try the next host
+            } finally {
+                this.retrying.delete(url)
+            }
+        }
+        return undefined
+    }
+
+    // Cloudflare's own check or block on the site or its API, as opposed to an
+    // API error, which comes back as JSON
+    isCloudflareBlock(response: Response): boolean {
+        const host = splitUrl(response.request.url)?.host ?? ''
+        const site = splitUrl(this.baseUrl)?.host ?? ''
+        if (host !== site && !host.endsWith(`.${site}`)) {
+            return false
+        }
+        if (response.status !== 403 && response.status !== 503) {
+            return false
+        }
+        return (
+            headerValue(response, 'cf-mitigated').toLowerCase() === 'challenge' ||
+            headerValue(response, 'content-type').includes('text/html')
+        )
+    }
+
+    async getCloudflareBypassRequestAsync(): Promise<Request> {
+        return App.createRequest({
+            url: this.baseUrl,
+            method: 'GET',
+            headers: {
+                referer: `${this.baseUrl}/`,
+                'user-agent': await this.requestManager.getDefaultUserAgent()
+            }
+        })
+    }
 
     async fetchBuildId(): Promise<string> {
         // if (this.buildId) {
@@ -760,6 +858,12 @@ export abstract class MangaKBase
             `${mangaId}/${chapterId}.json`
         )
         const chapter = data.pageProps.initialChapter
+        for (const image of chapter.images) {
+            const host = splitUrl(image)?.host
+            if (host) {
+                this.pageHosts.add(host)
+            }
+        }
 
         return App.createChapterDetails({
             id: chapter.slug,
@@ -975,5 +1079,40 @@ export abstract class MangaKBase
     }
     async supportsSearchOperators?(): Promise<boolean> {
         return false
+    }
+}
+
+function splitUrl(url: string): { host: string; path: string } | undefined {
+    const match = /^https?:\/\/([^/?#]+)(.*)$/i.exec(url)
+    if (!match?.[1]) {
+        return undefined
+    }
+    return { host: match[1].toLowerCase(), path: match[2] || '/' }
+}
+
+function headerValue(response: Response, name: string): string {
+    const headers = (response.headers ?? {}) as Record<string, unknown>
+    for (const key of Object.keys(headers)) {
+        if (key.toLowerCase() === name) {
+            const value = headers[key]
+            return typeof value === 'string' ? value : ''
+        }
+    }
+    return ''
+}
+
+function parseJson(
+    text: string | undefined
+): { success?: boolean; message?: string } | undefined {
+    if (!text) {
+        return undefined
+    }
+    try {
+        const value: unknown = JSON.parse(text)
+        return typeof value === 'object' && value !== null
+            ? (value as { success?: boolean; message?: string })
+            : undefined
+    } catch {
+        return undefined
     }
 }
