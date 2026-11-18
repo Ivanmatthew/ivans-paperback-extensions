@@ -4,7 +4,7 @@ import { MangaKBase } from '@template/MangaK/MangaKBase'
 const DOMAIN = 'https://mangak.io'
 
 export const MangaKInfo: SourceInfo = {
-    version: '0.3.0',
+    version: '0.3.1',
     name: 'MangaK',
     description: 'Extension that pulls manga from MangaK',
     author: 'IvanMatthew',
@@ -12,7 +12,11 @@ export const MangaKInfo: SourceInfo = {
     icon: 'icon.png',
     contentRating: ContentRating.MATURE,
     websiteBaseURL: DOMAIN,
-    intents: SourceIntents.MANGA_CHAPTERS | SourceIntents.HOMEPAGE_SECTIONS | SourceIntents.SETTINGS_UI,
+    intents:
+        SourceIntents.MANGA_CHAPTERS |
+        SourceIntents.HOMEPAGE_SECTIONS |
+        SourceIntents.SETTINGS_UI |
+        SourceIntents.CLOUDFLARE_BYPASS_REQUIRED,
     sourceTags: [
         {
             text: '18+',

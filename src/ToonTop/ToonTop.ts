@@ -11,7 +11,7 @@ import { MangaKBase } from '@template/MangaK/MangaKBase'
 const DOMAIN = 'https://toontop.io'
 
 export const ToonTopInfo: SourceInfo = {
-    version: '0.1.0',
+    version: '0.1.1',
     name: 'ToonTop',
     description: `Extension that pulls manga from ${DOMAIN}`,
     author: 'IvanMatthew',
@@ -27,7 +27,8 @@ export const ToonTopInfo: SourceInfo = {
     ],
     intents:
         SourceIntents.MANGA_CHAPTERS |
-        SourceIntents.HOMEPAGE_SECTIONS | SourceIntents.SETTINGS_UI
+        SourceIntents.HOMEPAGE_SECTIONS | SourceIntents.SETTINGS_UI |
+        SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
 }
 
 export class ToonTop extends MangaKBase {
