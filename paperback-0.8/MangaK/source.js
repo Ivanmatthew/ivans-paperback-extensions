@@ -2325,7 +2325,7 @@ var _Sources = (() => {
     }
   ];
   var CONTENT_RATINGS = ["safe", "suggestive", "erotica", "pornographic"];
-  var BLOCKED_GENRES = ["adult", "mature"];
+  var BLOCKED_GENRES = ["adult", "mature", "hentai"];
   var MangaKBase = class {
     constructor() {
       this.stateManager = App.createSourceStateManager();
@@ -2455,12 +2455,14 @@ var _Sources = (() => {
         isHidden: false,
         rows: async () => [
           App.createDUINavigationButton({
-            id: "contentSettings",
+            id: "contentSettingsNavBtn",
             label: "Content Settings",
             form: App.createDUIForm({
+              onSubmit: async () => {
+              },
               sections: async () => [
                 App.createDUISection({
-                  id: "contentSettings",
+                  id: "contentSettingsSection",
                   isHidden: false,
                   footer: "Includes the selected content rating and all lower ratings.",
                   rows: async () => [
@@ -2475,7 +2477,7 @@ var _Sources = (() => {
                         set: async (value) => {
                           const rating = value[0];
                           if (!CONTENT_RATINGS.some((option) => option === rating)) {
-                            throw new Error("Invalid content rating");
+                            return;
                           }
                           await this.stateManager.store("maximumContentRating", rating);
                         }
@@ -2484,12 +2486,12 @@ var _Sources = (() => {
                   ]
                 }),
                 App.createDUISection({
-                  id: "genreContentRatingSettings",
+                  id: "genreContentRatingSettingsSection",
                   isHidden: false,
                   footer: "Content ratings are not always set. When a manga has no content rating, filter it by its Adult and Mature genres instead. Untagged NSFW content may still appear.",
                   rows: async () => [
                     App.createDUISwitch({
-                      id: "filterGenreContentRating",
+                      id: "filterGenreContentRatingSwitch",
                       label: "Genre Content Rating Filtering",
                       value: App.createDUIBinding({
                         get: async () => await this.genreContentRatingFiltering(),
@@ -2960,7 +2962,7 @@ var _Sources = (() => {
   // src/MangaK/MangaK.ts
   var DOMAIN = "https://mangak.io";
   var MangaKInfo = {
-    version: "0.3.1",
+    version: "0.3.2",
     name: "MangaK",
     description: "Extension that pulls manga from MangaK",
     author: "IvanMatthew",
