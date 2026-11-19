@@ -2325,6 +2325,7 @@ var _Sources = (() => {
     }
   ];
   var CONTENT_RATINGS = ["safe", "suggestive", "erotica", "pornographic"];
+  var BLOCKED_GENRES = ["adult", "mature"];
   var MangaKBase = class {
     constructor() {
       this.stateManager = App.createSourceStateManager();
@@ -2482,56 +2483,66 @@ var _Sources = (() => {
                     })
                   ]
                 }),
-                ...await this.additionalContentSettings()
+                App.createDUISection({
+                  id: "genreContentRatingSettings",
+                  isHidden: false,
+                  footer: "Content ratings are not always set. When a manga has no content rating, filter it by its Adult and Mature genres instead. Untagged NSFW content may still appear.",
+                  rows: async () => [
+                    App.createDUISwitch({
+                      id: "filterGenreContentRating",
+                      label: "Genre Content Rating Filtering",
+                      value: App.createDUIBinding({
+                        get: async () => await this.genreContentRatingFiltering(),
+                        set: async (value) => {
+                          await this.stateManager.store("filterGenreContentRating", value);
+                        }
+                      })
+                    })
+                  ]
+                })
               ]
             })
           })
         ]
       });
     }
-    async additionalContentSettings() {
-      return [];
-    }
-    async blockedGenres() {
-      return [];
+    async genreContentRatingFiltering() {
+      return await this.stateManager.retrieve("filterGenreContentRating") === true;
     }
     async maximumContentRating() {
       const rating = await this.stateManager.retrieve("maximumContentRating");
       const index = CONTENT_RATINGS.findIndex((option) => option === rating);
       return index < 0 ? CONTENT_RATINGS.length - 1 : index;
     }
-    contentRating(manga) {
-      const rating = manga.contentRating !== void 0 ? manga.contentRating : manga.content_rating;
-      const index = rating == null ? 0 : CONTENT_RATINGS.findIndex((option) => option === rating.toLowerCase());
-      return Math.max(
-        index < 0 ? CONTENT_RATINGS.length - 1 : index,
-        (manga.isAdult ?? manga.is_adult) === true ? 2 : 0
-      );
+    // undefined = field absent (unknown, needs details), null = undetermined
+    rawContentRating(manga) {
+      return manga.contentRating !== void 0 ? manga.contentRating : manga.content_rating;
+    }
+    isAllowed(manga, maximum, filterGenres) {
+      const rating = this.rawContentRating(manga);
+      if (rating != null) {
+        const index = CONTENT_RATINGS.findIndex((option) => option === rating.toLowerCase());
+        return (index < 0 ? CONTENT_RATINGS.length - 1 : index) <= maximum;
+      }
+      if ((manga.isAdult ?? manga.is_adult) === true && maximum < 2) return false;
+      if (filterGenres && manga.genres?.some(
+        (genre) => BLOCKED_GENRES.includes(genre.name.trim().toLowerCase()) || BLOCKED_GENRES.includes(genre.slug.trim().toLowerCase())
+      )) {
+        return false;
+      }
+      return true;
     }
     async filterContent(items, buildId) {
       const maximum = await this.maximumContentRating();
-      const blocked = await this.blockedGenres();
-      const ratedItems = items.filter((item) => this.contentRating(item) <= maximum);
-      if (!blocked.length) return ratedItems;
-      const sharedBuildId = buildId ?? (ratedItems.some((item) => !item.genres) ? await this.fetchBuildId() : void 0);
-      const allowed = await Promise.all(ratedItems.map(async (item) => {
-        const manga = item.genres ? item : (await this.fetchNextData(`${item.slug}.json`, sharedBuildId)).pageProps.initialManga;
-        return !manga.genres?.some(
-          (genre) => blocked.includes(genre.name.trim().toLowerCase()) || blocked.includes(genre.slug.trim().toLowerCase())
-        );
+      const filterGenres = await this.genreContentRatingFiltering();
+      if (maximum >= CONTENT_RATINGS.length - 1 && !filterGenres) return items;
+      const needsDetails = (item) => this.rawContentRating(item) === void 0 || this.rawContentRating(item) === null && filterGenres && !item.genres;
+      const sharedBuildId = buildId ?? (items.some(needsDetails) ? await this.fetchBuildId() : void 0);
+      const allowed = await Promise.all(items.map(async (item) => {
+        const manga = needsDetails(item) ? (await this.fetchNextData(`${item.slug}.json`, sharedBuildId)).pageProps.initialManga : item;
+        return this.isAllowed(manga, maximum, filterGenres);
       }));
-      return ratedItems.filter((_, index) => allowed[index]);
-    }
-    async checkContent(manga) {
-      if (this.contentRating(manga) > await this.maximumContentRating()) {
-        throw new Error("This manga is blocked by the maximum content rating in Content Settings.");
-      }
-      const blocked = await this.blockedGenres();
-      if (manga.genres.some(
-        (genre) => blocked.includes(genre.name.trim().toLowerCase()) || blocked.includes(genre.slug.trim().toLowerCase())
-      )) {
-        throw new Error("This manga is blocked by the genre filter in Content Settings.");
-      }
+      return items.filter((_, index) => allowed[index]);
     }
     async fetchBuildId() {
       return await this.requestManager.schedule(
@@ -2637,7 +2648,6 @@ var _Sources = (() => {
     async getMangaDetails(mangaId) {
       const data = await this.fetchNextData(`${mangaId}.json`);
       const manga = data.pageProps.initialManga;
-      await this.checkContent(manga);
       const titles = [manga.name];
       if ("altNames" in manga && manga.altNames) {
         for (const altName of manga.altNames) {
@@ -2734,7 +2744,6 @@ var _Sources = (() => {
     async getChapters(mangaId) {
       const data = await this.fetchNextData(`${mangaId}.json`);
       const manga = data.pageProps.initialManga;
-      await this.checkContent(manga);
       if (manga.chapters.length === 50) {
         const chapterListResponse = await this.requestManager.schedule(
           App.createRequest({
@@ -2774,10 +2783,6 @@ var _Sources = (() => {
       });
     }
     async getChapterDetails(mangaId, chapterId) {
-      if (await this.maximumContentRating() < CONTENT_RATINGS.length - 1 || (await this.blockedGenres()).length > 0) {
-        const manga = await this.fetchNextData(`${mangaId}.json`);
-        await this.checkContent(manga.pageProps.initialManga);
-      }
       const data = await this.fetchNextData(
         `${mangaId}/${chapterId}.json`
       );
@@ -2955,7 +2960,7 @@ var _Sources = (() => {
   // src/ToonTop/ToonTop.ts
   var DOMAIN = "https://toontop.io";
   var ToonTopInfo = {
-    version: "0.1.0",
+    version: "0.1.1",
     name: "ToonTop",
     description: `Extension that pulls manga from ${DOMAIN}`,
     author: "IvanMatthew",
@@ -2976,26 +2981,6 @@ var _Sources = (() => {
       super(...arguments);
       this.baseUrl = DOMAIN;
       this.apiUrl = "https://api.toontop.io";
-    }
-    async additionalContentSettings() {
-      return [App.createDUISection({
-        id: "matureGenreSettings",
-        isHidden: false,
-        footer: "ToonTop does not always tag content ratings correctly. Filter the Mature genre for stricter NSFW protection. Untagged NSFW content may still appear.",
-        rows: async () => [App.createDUISwitch({
-          id: "filterMature",
-          label: "Filter Mature Genre",
-          value: App.createDUIBinding({
-            get: async () => await this.stateManager.retrieve("filterMature") === true,
-            set: async (value) => {
-              await this.stateManager.store("filterMature", value);
-            }
-          })
-        })]
-      })];
-    }
-    async blockedGenres() {
-      return await this.stateManager.retrieve("filterMature") === true ? ["mature"] : [];
     }
   };
   return __toCommonJS(ToonTop_exports);
