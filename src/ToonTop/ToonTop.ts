@@ -10,7 +10,7 @@ import { MangaKBase } from '@template/MangaK/MangaKBase'
 const DOMAIN = 'https://toontop.io'
 
 export const ToonTopInfo: SourceInfo = {
-    version: '0.1.1',
+    version: '0.1.2',
     name: 'ToonTop',
     description: `Extension that pulls manga from ${DOMAIN}`,
     author: 'IvanMatthew',

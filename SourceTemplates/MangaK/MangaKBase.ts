@@ -186,7 +186,7 @@ const SEARCH_FIELDS = [
 ]
 
 const CONTENT_RATINGS = ['safe', 'suggestive', 'erotica', 'pornographic'] as const
-const BLOCKED_GENRES = ['adult', 'mature']
+const BLOCKED_GENRES = ['adult', 'mature', 'hentai']
 
 interface MangaContent {
     genres?: { name: string, slug: string }[]
@@ -215,12 +215,13 @@ export abstract class MangaKBase
             isHidden: false,
             rows: async () => [
                 App.createDUINavigationButton({
-                    id: 'contentSettings',
+                    id: 'contentSettingsNavBtn',
                     label: 'Content Settings',
                     form: App.createDUIForm({
+                        onSubmit: async () => {},
                         sections: async () => [
                             App.createDUISection({
-                                id: 'contentSettings',
+                                id: 'contentSettingsSection',
                                 isHidden: false,
                                 footer: 'Includes the selected content rating and all lower ratings.',
                                 rows: async () => [
@@ -236,7 +237,8 @@ export abstract class MangaKBase
                                             set: async (value: string[]) => {
                                                 const rating = value[0]
                                                 if (!CONTENT_RATINGS.some((option) => option === rating)) {
-                                                    throw new Error('Invalid content rating')
+                                                    // Invalid content rating
+                                                    return
                                                 }
                                                 await this.stateManager.store('maximumContentRating', rating)
                                             }
@@ -245,12 +247,12 @@ export abstract class MangaKBase
                                 ]
                             }),
                             App.createDUISection({
-                                id: 'genreContentRatingSettings',
+                                id: 'genreContentRatingSettingsSection',
                                 isHidden: false,
                                 footer: 'Content ratings are not always set. When a manga has no content rating, filter it by its Adult and Mature genres instead. Untagged NSFW content may still appear.',
                                 rows: async () => [
                                     App.createDUISwitch({
-                                        id: 'filterGenreContentRating',
+                                        id: 'filterGenreContentRatingSwitch',
                                         label: 'Genre Content Rating Filtering',
                                         value: App.createDUIBinding({
                                             get: async () => await this.genreContentRatingFiltering(),

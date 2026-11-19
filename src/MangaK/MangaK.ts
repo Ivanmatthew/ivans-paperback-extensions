@@ -4,7 +4,7 @@ import { MangaKBase } from '@template/MangaK/MangaKBase'
 const DOMAIN = 'https://mangak.io'
 
 export const MangaKInfo: SourceInfo = {
-    version: '0.3.1',
+    version: '0.3.2',
     name: 'MangaK',
     description: 'Extension that pulls manga from MangaK',
     author: 'IvanMatthew',
